@@ -25,8 +25,8 @@ defineProps<{
 
 <style scoped>
 .medical-card {
-  background: #1e1e1e;
-  border: 1px solid #333;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1rem;
@@ -36,11 +36,11 @@ defineProps<{
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 0.75rem 0;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .card-summary {
-  color: #b0b0b0;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin: 0 0 1rem 0;
 }
@@ -48,7 +48,7 @@ defineProps<{
 .card-factors {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border);
 }
 
 .factors-title {
@@ -66,11 +66,11 @@ defineProps<{
 
 .factor-item {
   padding: 0.5rem 0;
-  color: #b0b0b0;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .factor-item strong {
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 </style>

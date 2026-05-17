@@ -250,21 +250,21 @@ defineExpose({ resetForm })
 
 <style scoped>
 .health-entry-form {
-  background: #1e1e1e;
-  border: 1px solid #333;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.5rem;
 }
 
 .form-lang-hint {
   font-size: 0.875rem;
-  color: #999;
+  color: var(--text-muted);
   line-height: 1.5;
   margin: 0 0 1.25rem;
   padding: 0.75rem 1rem;
-  background: #252525;
+  background: var(--hint-bg);
   border-radius: 6px;
-  border-left: 3px solid #64b5f6;
+  border-left: 3px solid var(--hint-border);
 }
 
 .form-grid {
@@ -281,12 +281,12 @@ defineExpose({ resetForm })
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #b0b0b0;
+  color: var(--text-secondary);
   margin-bottom: 0.5rem;
 }
 
 .severity-value {
-  color: #64b5f6;
+  color: var(--accent);
   font-weight: 600;
   margin-left: 0.5rem;
 }
@@ -297,10 +297,10 @@ defineExpose({ resetForm })
 .form-field textarea {
   width: 100%;
   padding: 0.65rem 0.75rem;
-  background: #121212;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  color: #e0e0e0;
+  color: var(--text-primary);
   font-size: 0.95rem;
   font-family: inherit;
 }
@@ -309,7 +309,7 @@ defineExpose({ resetForm })
 .form-field select:focus,
 .form-field textarea:focus {
   outline: none;
-  border-color: #64b5f6;
+  border-color: var(--accent);
 }
 
 .form-field textarea {
@@ -320,30 +320,30 @@ defineExpose({ resetForm })
 
 .form-field input[type='range'] {
   width: 100%;
-  accent-color: #64b5f6;
+  accent-color: var(--accent);
 }
 
 .clear-severity {
   margin-top: 0.35rem;
   background: none;
   border: none;
-  color: #999;
+  color: var(--text-muted);
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0;
 }
 
 .clear-severity:hover {
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .form-error {
   margin-top: 1rem;
   padding: 0.75rem;
-  background: #3a1e1e;
-  border: 1px solid #c62828;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 6px;
-  color: #ef9a9a;
+  color: var(--error-text);
   font-size: 0.9rem;
 }
 
@@ -366,12 +366,12 @@ defineExpose({ resetForm })
 }
 
 .btn-primary {
-  background: #1976d2;
+  background: var(--accent-strong);
   color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #1565c0;
+  background: var(--accent-hover);
 }
 
 .btn-primary:disabled {
@@ -380,13 +380,13 @@ defineExpose({ resetForm })
 }
 
 .btn-secondary {
-  background: #2a2a2a;
-  color: #e0e0e0;
-  border: 1px solid #444;
+  background: var(--bg-muted);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #333;
+  background: var(--border);
 }
 
 @media (max-width: 640px) {

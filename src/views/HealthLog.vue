@@ -98,10 +98,10 @@ function onEntrySubmitted(entry: HealthEntry) {
 .success-banner {
   margin-bottom: 1.5rem;
   padding: 1rem 1.25rem;
-  background: #1e3a2a;
-  border: 1px solid #2e7d52;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
   border-radius: 8px;
-  color: #a5d6a7;
+  color: var(--success-text);
   font-size: 0.95rem;
 }
 
@@ -109,7 +109,7 @@ function onEntrySubmitted(entry: HealthEntry) {
 .empty-state {
   text-align: center;
   padding: 2rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .entries-list {

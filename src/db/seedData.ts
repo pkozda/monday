@@ -1,8 +1,21 @@
-import type {
-  ClinicalModel,
-  TimelineEvent,
-  Hypothesis,
-} from '@/models/types'
+import type { ClinicalModel } from '@/models/types'
+
+/** Fixed IDs of demo timeline events — removed on startup for existing DBs */
+export const SEED_TIMELINE_IDS = [
+  'event-1',
+  'event-2',
+  'event-3',
+  'event-4',
+  'event-5',
+] as const
+
+/** Fixed IDs of demo hypotheses — removed on startup for existing DBs */
+export const SEED_HYPOTHESIS_IDS = [
+  'hyp-1',
+  'hyp-2',
+  'hyp-3',
+  'hyp-4',
+] as const
 
 export const seedClinicalModel: ClinicalModel = {
   id: 'model-1',
@@ -28,71 +41,3 @@ export const seedClinicalModel: ClinicalModel = {
     },
   ],
 }
-
-export const seedTimeline: TimelineEvent[] = [
-  {
-    id: 'event-1',
-    date: '2024-01-15',
-    type: 'symptom',
-    title: 'Fatigue and Brain Fog',
-    description:
-      'Patient reports persistent fatigue and difficulty concentrating over past 2 weeks',
-  },
-  {
-    id: 'event-2',
-    date: '2024-01-20',
-    type: 'imaging',
-    title: 'MRI Brain Scan',
-    description: 'Routine imaging study completed. Results pending review.',
-  },
-  {
-    id: 'event-3',
-    date: '2024-01-25',
-    type: 'diagnosis',
-    title: 'Chronic Fatigue Syndrome',
-    description:
-      'Clinical diagnosis based on symptom pattern and exclusion of other causes',
-  },
-  {
-    id: 'event-4',
-    date: '2024-02-01',
-    type: 'treatment',
-    title: 'Lifestyle Modification Protocol',
-    description: 'Initiated structured rest schedule and dietary adjustments',
-  },
-  {
-    id: 'event-5',
-    date: '2024-02-10',
-    type: 'symptom',
-    title: 'Improved Energy Levels',
-    description:
-      'Patient reports moderate improvement in daily energy and cognitive function',
-  },
-]
-
-export const seedHypotheses: Hypothesis[] = [
-  {
-    id: 'hyp-1',
-    title: 'Metabolic Dysregulation Contributing to Fatigue',
-    confidence: 'Supported',
-    evidenceIds: ['event-1', 'event-3', 'event-5'],
-  },
-  {
-    id: 'hyp-2',
-    title: 'Immune System Overactivation',
-    confidence: 'Exploratory',
-    evidenceIds: ['event-1', 'event-2'],
-  },
-  {
-    id: 'hyp-3',
-    title: 'Treatment Protocol Effectiveness',
-    confidence: 'Strongly Supported',
-    evidenceIds: ['event-4', 'event-5'],
-  },
-  {
-    id: 'hyp-4',
-    title: 'Potential Autoimmune Component',
-    confidence: 'Exploratory',
-    evidenceIds: ['event-2', 'event-3'],
-  },
-]

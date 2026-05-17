@@ -8,7 +8,7 @@
     <div v-if="loading" class="loading">Loading hypotheses...</div>
     
     <div v-else-if="hypotheses.length === 0" class="empty-state">
-      <p>No hypotheses available at this time.</p>
+      <p>No hypotheses yet. Hypotheses will appear here when you add them.</p>
     </div>
 
     <div v-else class="hypotheses-container">
@@ -50,13 +50,13 @@ onMounted(async () => {
 .loading {
   text-align: center;
   padding: 3rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .empty-state {
   text-align: center;
   padding: 3rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .hypotheses-container {

@@ -2,13 +2,14 @@
   <div class="timeline-view">
     <SectionHeader 
       title="Medical Timeline" 
-      subtitle="Chronological view of medical events"
+      subtitle="Events from your health journal, newest first"
     />
 
     <div v-if="loading" class="loading">Loading timeline...</div>
     
     <div v-else-if="timeline.length === 0" class="empty-state">
-      <p>No timeline events available.</p>
+      <p>No timeline events yet. Save an entry in the Journal to add one.</p>
+      <router-link to="/journal" class="empty-link">Go to Journal</router-link>
     </div>
 
     <div v-else class="timeline-container">
@@ -50,18 +51,30 @@ onMounted(async () => {
 .loading {
   text-align: center;
   padding: 3rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .empty-state {
   text-align: center;
   padding: 3rem;
-  color: #999;
+  color: var(--text-muted);
+}
+
+.empty-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.empty-link:hover {
+  text-decoration: underline;
 }
 
 .timeline-container {
-  background: #1e1e1e;
-  border: 1px solid #333;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.5rem;
 }

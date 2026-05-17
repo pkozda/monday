@@ -82,24 +82,11 @@ function formatFlag(flag: string): string {
 
 <style scoped>
 .health-entry-card {
-  background: #1e1e1e;
-  border: 1px solid #333;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.25rem;
-  border-left: 4px solid #444;
-}
-
-.health-entry-card.urgency--monitor {
-  border-left-color: #ffb74d;
-}
-
-.health-entry-card.urgency--urgent {
-  border-left-color: #ff7043;
-}
-
-.health-entry-card.urgency--emergency {
-  border-left-color: #ef5350;
-  background: #2a1e1e;
+  border-left: 4px solid var(--border-strong);
 }
 
 .entry-header {
@@ -115,7 +102,7 @@ function formatFlag(flag: string): string {
   flex-wrap: wrap;
   gap: 0.5rem 0.75rem;
   font-size: 0.85rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .entry-type {
@@ -124,12 +111,12 @@ function formatFlag(flag: string): string {
   font-size: 0.75rem;
   padding: 0.2rem 0.45rem;
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #64b5f6;
+  background: var(--bg-muted);
+  color: var(--accent);
 }
 
 .condition-area {
-  color: #b0b0b0;
+  color: var(--text-secondary);
 }
 
 .urgency-badge {
@@ -138,33 +125,46 @@ function formatFlag(flag: string): string {
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   white-space: nowrap;
-  background: #2a2a2a;
-  color: #999;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+
+.health-entry-card.urgency--monitor {
+  border-left-color: var(--urgency-monitor-text);
+}
+
+.health-entry-card.urgency--urgent {
+  border-left-color: var(--urgency-urgent-text);
+}
+
+.health-entry-card.urgency--emergency {
+  border-left-color: var(--urgency-emergency-text);
+  background: var(--urgency-emergency-bg);
 }
 
 .urgency--monitor .urgency-badge {
-  background: #4a3a1e;
-  color: #ffb74d;
+  background: var(--urgency-monitor-bg);
+  color: var(--urgency-monitor-text);
 }
 
 .urgency--urgent .urgency-badge {
-  background: #4a2a1e;
-  color: #ff7043;
+  background: var(--urgency-urgent-bg);
+  color: var(--urgency-urgent-text);
 }
 
 .urgency--emergency .urgency-badge {
-  background: #4a1e1e;
-  color: #ef5350;
+  background: var(--urgency-emergency-bg);
+  color: var(--urgency-emergency-text);
 }
 
 .entry-title {
   font-size: 1.1rem;
   margin: 0 0 0.5rem;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .entry-description {
-  color: #b0b0b0;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin: 0 0 0.75rem;
   white-space: pre-wrap;
@@ -173,7 +173,7 @@ function formatFlag(flag: string): string {
 .entry-medications,
 .entry-severity {
   font-size: 0.9rem;
-  color: #b0b0b0;
+  color: var(--text-secondary);
   margin: 0 0 0.5rem;
 }
 
@@ -189,16 +189,16 @@ function formatFlag(flag: string): string {
   text-transform: capitalize;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #999;
+  background: var(--bg-muted);
+  color: var(--text-muted);
 }
 
 .entry-summary {
   font-size: 0.85rem;
-  color: #999;
+  color: var(--text-muted);
   line-height: 1.5;
   margin: 0;
   padding-top: 0.75rem;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border);
 }
 </style>

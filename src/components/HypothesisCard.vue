@@ -33,8 +33,8 @@ const confidenceClass = computed(() => {
 
 <style scoped>
 .hypothesis-card {
-  background: #1e1e1e;
-  border: 1px solid #333;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1rem;
@@ -52,7 +52,7 @@ const confidenceClass = computed(() => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
-  color: #e0e0e0;
+  color: var(--text-primary);
   flex: 1;
 }
 
@@ -65,23 +65,23 @@ const confidenceClass = computed(() => {
 }
 
 .confidence--exploratory {
-  background: #4a3a1e;
-  color: #ffb74d;
+  background: var(--confidence-exploratory-bg);
+  color: var(--confidence-exploratory-text);
 }
 
 .confidence--supported {
-  background: #1e3a5f;
-  color: #64b5f6;
+  background: var(--confidence-supported-bg);
+  color: var(--confidence-supported-text);
 }
 
 .confidence--strong {
-  background: #1e3a2a;
-  color: #81c784;
+  background: var(--confidence-strong-bg);
+  color: var(--confidence-strong-text);
 }
 
 .hypothesis-evidence {
   font-size: 0.9rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .evidence-label {
@@ -90,6 +90,6 @@ const confidenceClass = computed(() => {
 }
 
 .evidence-count {
-  color: #777;
+  color: var(--text-faint);
 }
 </style>

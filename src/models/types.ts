@@ -69,3 +69,49 @@ export interface HealthEntryInput {
   medications?: string
   severity?: number
 }
+
+export type BiologicalSex = 'female' | 'male' | 'other' | 'prefer_not_to_say'
+
+export interface PatientProfile {
+  id: string
+  displayName: string
+  dateOfBirth?: string
+  biologicalSex?: BiologicalSex
+  bloodType?: string
+  createdAt: string
+}
+
+export interface ConditionSummary {
+  name: string
+  entryCount: number
+  lastEntryDate: string
+  latestUrgency: HealthUrgency
+}
+
+export interface ChartSegment {
+  label: string
+  value: number
+  color: string
+}
+
+export interface SeverityPoint {
+  date: string
+  severity: number
+  label: string
+}
+
+export interface DashboardStats {
+  trackingSince: string | null
+  daysTracked: number
+  totalJournalEntries: number
+  totalTimelineEvents: number
+  totalHypotheses: number
+  entriesLast30Days: number
+  attentionRequired: number
+  averageSeverity: number | null
+  conditions: ConditionSummary[]
+  entriesByType: ChartSegment[]
+  urgencyBreakdown: ChartSegment[]
+  severityTrend: SeverityPoint[]
+  hypothesesByConfidence: ChartSegment[]
+}
