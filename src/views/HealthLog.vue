@@ -12,7 +12,7 @@
     <section class="log-section">
       <SectionHeader
         title="New entry"
-        subtitle="Describe what you are experiencing today — or log an update from a past date."
+        subtitle="Describe what you are experiencing in English or Russian — entries are stored in English."
       />
       <HealthEntryForm @submitted="onEntrySubmitted" />
     </section>

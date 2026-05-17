@@ -5,12 +5,14 @@ import {
   buildTimelineTitle,
   entryTypeToTimelineType,
 } from '@/services/healthAnalysis'
+import { normalizeHealthEntryInput } from '@/services/translation'
 import type { HealthEntry, HealthEntryInput, TimelineEvent } from '@/models/types'
 
 export async function createHealthEntry(
   input: HealthEntryInput
 ): Promise<HealthEntry> {
-  const analysis = analyzeHealthEntry(input)
+  const englishInput = await normalizeHealthEntryInput(input)
+  const analysis = analyzeHealthEntry(englishInput)
   const id = crypto.randomUUID()
   const timelineEventId = crypto.randomUUID()
   const now = new Date().toISOString()
@@ -18,13 +20,13 @@ export async function createHealthEntry(
   const entry: HealthEntry = {
     id,
     createdAt: now,
-    eventDate: input.eventDate,
-    conditionArea: input.conditionArea.trim(),
-    entryType: input.entryType,
-    title: input.title.trim(),
-    description: input.description.trim(),
-    medications: input.medications?.trim() || undefined,
-    severity: input.severity,
+    eventDate: englishInput.eventDate,
+    conditionArea: englishInput.conditionArea.trim(),
+    entryType: englishInput.entryType,
+    title: englishInput.title.trim(),
+    description: englishInput.description.trim(),
+    medications: englishInput.medications?.trim() || undefined,
+    severity: englishInput.severity,
     analysis: {
       ...analysis,
       linkedTimelineEventId: timelineEventId,
@@ -33,8 +35,8 @@ export async function createHealthEntry(
 
   const timelineEvent: TimelineEvent = {
     id: timelineEventId,
-    date: input.eventDate,
-    type: entryTypeToTimelineType(input.entryType),
+    date: englishInput.eventDate,
+    type: entryTypeToTimelineType(englishInput.entryType),
     title: buildTimelineTitle(
       entry.conditionArea,
       entry.entryType,

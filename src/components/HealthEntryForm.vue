@@ -1,5 +1,10 @@
 <template>
   <form class="health-entry-form" @submit.prevent="handleSubmit">
+    <p class="form-lang-hint">
+      English and Russian (Русский) are supported. Russian text is translated to
+      English before saving so analysis and your timeline stay consistent.
+    </p>
+
     <div class="form-grid">
       <div class="form-field">
         <label for="eventDate">When did this happen?</label>
@@ -19,7 +24,7 @@
           v-model="form.conditionArea"
           type="text"
           required
-          placeholder="e.g. Left leg, lower back"
+          placeholder="e.g. Left leg / левая нога"
           autocomplete="off"
         />
       </div>
@@ -101,7 +106,7 @@
 
     <div class="form-actions">
       <button type="submit" class="btn-primary" :disabled="submitting">
-        {{ submitting ? 'Saving & analyzing…' : 'Save health record' }}
+        {{ submitLabel }}
       </button>
       <button type="button" class="btn-secondary" :disabled="submitting" @click="resetForm">
         Clear form
@@ -113,6 +118,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { createHealthEntry } from '@/api/healthApi'
+import { entryNeedsTranslation } from '@/services/translation'
 import type { HealthEntry, HealthEntryInput, HealthEntryType } from '@/models/types'
 
 const props = withDefaults(
@@ -153,12 +159,12 @@ const showMedications = computed(
 
 const titlePlaceholder = computed(() => {
   const map: Record<HealthEntryType, string> = {
-    symptom: 'e.g. Sharp pain when walking',
-    change: 'e.g. Swelling reduced, still stiff',
-    medication: 'e.g. Started prescribed pills',
-    doctor_visit: 'e.g. Orthopedist follow-up',
-    imaging: 'e.g. X-ray of left knee',
-    other: 'e.g. Sleep affected by pain',
+    symptom: 'e.g. Sharp pain when walking / острая боль при ходьбе',
+    change: 'e.g. Swelling reduced / отёк уменьшился',
+    medication: 'e.g. Started prescribed pills / начал принимать таблетки',
+    doctor_visit: 'e.g. Orthopedist follow-up / приём у ортопеда',
+    imaging: 'e.g. X-ray of left knee / рентген левого колена',
+    other: 'e.g. Sleep affected by pain / боль мешает спать',
   }
   return map[form.entryType]
 })
@@ -166,17 +172,35 @@ const titlePlaceholder = computed(() => {
 const descriptionPlaceholder = computed(() => {
   const map: Record<HealthEntryType, string> = {
     symptom:
-      'What you feel, when it started, what makes it better or worse…',
+      'What you feel, when it started… / Что чувствуете, когда началось…',
     change:
-      'How things changed since your last note — better, worse, or new symptoms…',
+      'Better, worse, or new symptoms… / Стало лучше, хуже или новые симптомы…',
     medication:
-      'What you were prescribed, when you started, any side effects so far…',
+      'Prescription, when started, side effects… / Назначение, когда начали, побочные эффекты…',
     doctor_visit:
-      'What the doctor said, recommendations, next steps…',
-    imaging: 'What was done and any results you know so far…',
-    other: 'Anything relevant to your health story…',
+      'What the doctor said, next steps… / Что сказал врач, рекомендации…',
+    imaging:
+      'What was done and results… / Что делали и результаты…',
+    other:
+      'Anything relevant to your health… / Всё важное о вашем состоянии…',
   }
   return map[form.entryType]
+})
+
+const submitLabel = computed(() => {
+  if (!submitting.value) return 'Save health record'
+  const draft: HealthEntryInput = {
+    eventDate: form.eventDate,
+    conditionArea: form.conditionArea,
+    entryType: form.entryType,
+    title: form.title,
+    description: form.description,
+    medications: form.medications?.trim() || undefined,
+    severity: form.severity,
+  }
+  return entryNeedsTranslation(draft)
+    ? 'Translating & saving…'
+    : 'Saving & analyzing…'
 })
 
 function resetForm() {
@@ -230,6 +254,17 @@ defineExpose({ resetForm })
   border: 1px solid #333;
   border-radius: 8px;
   padding: 1.5rem;
+}
+
+.form-lang-hint {
+  font-size: 0.875rem;
+  color: #999;
+  line-height: 1.5;
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem;
+  background: #252525;
+  border-radius: 6px;
+  border-left: 3px solid #64b5f6;
 }
 
 .form-grid {
