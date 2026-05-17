@@ -11,9 +11,10 @@
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "date-fns": "^2.30.0",
+    "dexie": "^4.4.2",
     "vue": "^3.3.11",
-    "vue-router": "^4.2.5",
-    "date-fns": "^2.30.0"
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.2",
