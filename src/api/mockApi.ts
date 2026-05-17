@@ -1,19 +1,5 @@
 import { db } from '@/db/database'
-import type {
-  ClinicalModel,
-  TimelineEvent,
-  Hypothesis,
-} from '@/models/types'
-
-const PRIMARY_MODEL_ID = 'model-1'
-
-export async function getClinicalModel(): Promise<ClinicalModel> {
-  const model = await db.clinicalModels.get(PRIMARY_MODEL_ID)
-  if (!model) {
-    throw new Error('Clinical model not found in local database')
-  }
-  return model
-}
+import type { TimelineEvent, Hypothesis, ClinicalModel } from '@/models/types'
 
 export async function getTimeline(): Promise<TimelineEvent[]> {
   const events = await db.timelineEvents.toArray()

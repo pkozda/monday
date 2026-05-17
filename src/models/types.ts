@@ -42,6 +42,8 @@ export type HealthUrgency = 'routine' | 'monitor' | 'urgent' | 'emergency'
 
 export interface HealthEntryAnalysis {
   urgency: HealthUrgency
+  /** Specific care context label shown in the UI (e.g. "Surgery / procedure"). */
+  classification: string
   flags: string[]
   summary: string
   linkedTimelineEventId?: string
@@ -86,6 +88,7 @@ export interface ConditionSummary {
   entryCount: number
   lastEntryDate: string
   latestUrgency: HealthUrgency
+  latestClassification: string
 }
 
 export interface ChartSegment {

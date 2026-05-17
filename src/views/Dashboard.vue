@@ -14,6 +14,7 @@
           :tracking-since="stats?.trackingSince ?? null"
           :days-tracked="stats?.daysTracked ?? 0"
           @updated="onPatientUpdated"
+          @journal-imported="onJournalImported"
         />
       </section>
 
@@ -25,34 +26,41 @@
         <SectionHeader title="Overview" subtitle="Key metrics from your health journal" />
         <div class="stats-grid">
           <StatCard
+            variant="journal"
             label="Journal entries"
             :value="stats?.totalJournalEntries ?? 0"
             hint="All time"
           />
           <StatCard
+            variant="activity"
             label="Last 30 days"
             :value="stats?.entriesLast30Days ?? 0"
             hint="Recent activity"
           />
           <StatCard
+            variant="conditions"
             label="Tracked conditions"
             :value="stats?.conditions.length ?? 0"
             hint="Body areas / issues"
           />
           <StatCard
+            variant="severity"
             label="Avg severity"
             :value="avgSeverityLabel"
             hint="When reported (1–10)"
           />
           <StatCard
+            variant="timeline"
             label="Timeline events"
             :value="stats?.totalTimelineEvents ?? 0"
           />
           <StatCard
+            variant="hypotheses"
             label="Hypotheses"
             :value="stats?.totalHypotheses ?? 0"
           />
           <StatCard
+            variant="attention"
             label="Needs attention"
             :value="stats?.attentionRequired ?? 0"
             hint="Urgent or emergency flags"
@@ -71,8 +79,8 @@
         </div>
         <div class="chart-panel">
           <SectionHeader
-            title="Urgency breakdown"
-            subtitle="How entries were classified on save"
+            title="Entry classification"
+            subtitle="How journal entries were categorized from your descriptions"
           />
           <DonutChart :segments="stats?.urgencyBreakdown ?? []" />
         </div>
@@ -114,7 +122,7 @@
                 <th>Condition / area</th>
                 <th>Entries</th>
                 <th>Last update</th>
-                <th>Latest urgency</th>
+                <th>Latest classification</th>
               </tr>
             </thead>
             <tbody>
@@ -124,7 +132,7 @@
                 <td>{{ formatDate(c.lastEntryDate) }}</td>
                 <td>
                   <span class="urgency-pill" :class="`urgency--${c.latestUrgency}`">
-                    {{ c.latestUrgency }}
+                    {{ c.latestClassification }}
                   </span>
                 </td>
               </tr>
@@ -134,13 +142,19 @@
       </section>
 
       <section class="dashboard-section">
-        <SectionHeader title="Current clinical model" />
+        <SectionHeader
+          title="Current clinical model"
+          subtitle="Synthesized from your health journal"
+        />
         <MedicalCard
           v-if="clinicalModel"
           :title="clinicalModel.title"
           :summary="clinicalModel.summary"
           :factors="clinicalModel.factors"
         />
+        <p v-if="clinicalModel && !clinicalModel.factors.length" class="clinical-model-hint">
+          Log symptoms and visits in the Journal to populate condition-specific factors.
+        </p>
       </section>
 
       <section class="dashboard-section hypotheses-section">
@@ -175,6 +189,8 @@
             v-for="hypothesis in hypotheses.slice(0, 5)"
             :key="hypothesis.id"
             :hypothesis="hypothesis"
+            :journal-entries="journalEntries"
+            :patient="patient"
           />
         </div>
         <div v-else class="empty-state">
@@ -197,7 +213,8 @@ import StatCard from '@/components/dashboard/StatCard.vue'
 import BarChart from '@/components/dashboard/BarChart.vue'
 import DonutChart from '@/components/dashboard/DonutChart.vue'
 import SeverityLineChart from '@/components/dashboard/SeverityLineChart.vue'
-import { getClinicalModel, getHypotheses, getTimeline } from '@/api/mockApi'
+import { getClinicalModel } from '@/api/clinicalModelApi'
+import { getHypotheses, getTimeline } from '@/api/mockApi'
 import { tryGenerateHypothesis } from '@/api/hypothesisApi'
 import { getHealthEntries } from '@/api/healthApi'
 import { getPatientProfile } from '@/api/patientApi'
@@ -206,6 +223,7 @@ import { getHealthRecommendations } from '@/services/healthRecommendations'
 import type {
   ClinicalModel,
   DashboardStats,
+  HealthEntry,
   Hypothesis,
   PatientProfile,
 } from '@/models/types'
@@ -216,6 +234,7 @@ const stats = ref<DashboardStats | null>(null)
 const clinicalModel = ref<ClinicalModel | null>(null)
 const hypotheses = ref<Hypothesis[]>([])
 const journalEntryCount = ref(0)
+const journalEntries = ref<HealthEntry[]>([])
 const generatingHypothesis = ref(false)
 const hypothesisMessage = ref('')
 const hypothesisMessageType = ref<'success' | 'error' | 'info'>('success')
@@ -243,6 +262,7 @@ onMounted(async () => {
     patient.value = profile
     clinicalModel.value = model
     hypotheses.value = hyps
+    journalEntries.value = entries
     journalEntryCount.value = entries.length
     stats.value = buildDashboardStats(profile, entries, timeline, hyps)
   } finally {
@@ -252,12 +272,15 @@ onMounted(async () => {
 
 async function refreshStats() {
   if (!patient.value) return
-  const [entries, timeline, hyps] = await Promise.all([
+  const [entries, timeline, hyps, model] = await Promise.all([
     getHealthEntries(),
     getTimeline(),
     getHypotheses(),
+    getClinicalModel(),
   ])
   hypotheses.value = hyps
+  clinicalModel.value = model
+  journalEntries.value = entries
   journalEntryCount.value = entries.length
   stats.value = buildDashboardStats(
     patient.value,
@@ -295,6 +318,10 @@ async function onPatientUpdated(updated: PatientProfile) {
   await refreshStats()
 }
 
+async function onJournalImported() {
+  await refreshStats()
+}
+
 function formatDate(iso: string): string {
   return format(parseISO(iso), 'MMM d, yyyy')
 }
@@ -313,8 +340,29 @@ function formatDate(iso: string): string {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
+}
+
+@media (max-width: 960px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Full-width last card when 7 items sit alone on a 2-column row */
+  .stats-grid > :nth-child(7):last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 420px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid > :nth-child(7):last-child {
+    grid-column: auto;
+  }
 }
 
 .charts-row {
@@ -501,5 +549,11 @@ function formatDate(iso: string): string {
   display: flex;
   flex-direction: column;
   gap: 0;
+}
+
+.clinical-model-hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-faint);
 }
 </style>

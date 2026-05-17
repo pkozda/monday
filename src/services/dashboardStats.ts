@@ -1,11 +1,11 @@
 import { differenceInDays, format, parseISO, subDays } from 'date-fns'
+import { getEntryClassificationLabel } from '@/services/healthAnalysis'
 import type {
   ChartSegment,
   ConditionSummary,
   DashboardStats,
   HealthEntry,
   HealthEntryType,
-  HealthUrgency,
   Hypothesis,
   HypothesisConfidence,
   PatientProfile,
@@ -31,13 +31,6 @@ const ENTRY_TYPE_COLORS: Record<HealthEntryType, string> = {
   other: '#90a4ae',
 }
 
-const URGENCY_COLORS: Record<HealthUrgency, string> = {
-  routine: '#66bb6a',
-  monitor: '#ffb74d',
-  urgent: '#ff7043',
-  emergency: '#ef5350',
-}
-
 const CONFIDENCE_COLORS: Record<HypothesisConfidence, string> = {
   Exploratory: '#90a4ae',
   Supported: '#64b5f6',
@@ -58,24 +51,31 @@ function countByType(entries: HealthEntry[]): ChartSegment[] {
     .sort((a, b) => b.value - a.value)
 }
 
-function countByUrgency(entries: HealthEntry[]): ChartSegment[] {
-  const order: HealthUrgency[] = ['routine', 'monitor', 'urgent', 'emergency']
-  const counts: Record<HealthUrgency, number> = {
-    routine: 0,
-    monitor: 0,
-    urgent: 0,
-    emergency: 0,
-  }
+const CLASSIFICATION_CHART_COLORS = [
+  '#42a5f5',
+  '#26a69a',
+  '#ab47bc',
+  '#ffa726',
+  '#5c6bc0',
+  '#66bb6a',
+  '#ef5350',
+  '#90a4ae',
+]
+
+function countByClassification(entries: HealthEntry[]): ChartSegment[] {
+  const counts = new Map<string, number>()
   for (const entry of entries) {
-    counts[entry.analysis.urgency] += 1
+    const label = getEntryClassificationLabel(entry)
+    counts.set(label, (counts.get(label) ?? 0) + 1)
   }
-  return order
-    .map((urgency) => ({
-      label: urgency.charAt(0).toUpperCase() + urgency.slice(1),
-      value: counts[urgency],
-      color: URGENCY_COLORS[urgency],
+  return [...counts.entries()]
+    .map(([label, value], index) => ({
+      label,
+      value,
+      color:
+        CLASSIFICATION_CHART_COLORS[index % CLASSIFICATION_CHART_COLORS.length],
     }))
-    .filter((s) => s.value > 0)
+    .sort((a, b) => b.value - a.value)
 }
 
 function buildConditions(entries: HealthEntry[]): ConditionSummary[] {
@@ -98,6 +98,7 @@ function buildConditions(entries: HealthEntry[]): ConditionSummary[] {
         entryCount: list.length,
         lastEntryDate: sorted[0].eventDate,
         latestUrgency: sorted[0].analysis.urgency,
+        latestClassification: getEntryClassificationLabel(sorted[0]),
       }
     })
     .sort((a, b) => b.entryCount - a.entryCount)
@@ -183,7 +184,7 @@ export function buildDashboardStats(
     averageSeverity,
     conditions: buildConditions(entries),
     entriesByType: countByType(entries),
-    urgencyBreakdown: countByUrgency(entries),
+    urgencyBreakdown: countByClassification(entries),
     severityTrend: buildSeverityTrend(entries),
     hypothesesByConfidence: countHypotheses(hypotheses),
   }
