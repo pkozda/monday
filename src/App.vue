@@ -7,6 +7,7 @@
           <router-link to="/" class="nav-link">Dashboard</router-link>
           <router-link to="/timeline" class="nav-link">Timeline</router-link>
           <router-link to="/hypotheses" class="nav-link">Hypotheses</router-link>
+          <router-link to="/journal" class="nav-link">Journal</router-link>
         </div>
       </div>
     </nav>
