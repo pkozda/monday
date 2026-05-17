@@ -77,13 +77,13 @@ function getCoveredEntryIds(hypotheses: Hypothesis[]): Set<string> {
   return covered
 }
 
-function extractAreaFromTitle(title: string): string {
+export function extractAreaFromTitle(title: string): string {
   const idx = title.indexOf(':')
   if (idx === -1) return title.trim().toLowerCase()
   return title.slice(0, idx).trim().toLowerCase()
 }
 
-function patternFromTitle(title: string): HypothesisPattern {
+export function patternFromTitle(title: string): HypothesisPattern {
   const t = title.toLowerCase()
   if (t.includes('clinical attention') || t.includes('urgent')) return 'urgent'
   if (t.includes('contributing') || t.includes('improvement')) {

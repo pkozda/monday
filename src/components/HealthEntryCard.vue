@@ -39,6 +39,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { format } from 'date-fns'
+import { getEntryClassificationLabel } from '@/services/healthAnalysis'
 import type { HealthEntry, HealthEntryType } from '@/models/types'
 
 const props = defineProps<{
@@ -54,13 +55,6 @@ const TYPE_LABELS: Record<HealthEntryType, string> = {
   other: 'Note',
 }
 
-const URGENCY_LABELS = {
-  routine: 'Routine',
-  monitor: 'Monitor',
-  urgent: 'See clinician soon',
-  emergency: 'Seek emergency care',
-} as const
-
 const formattedDate = computed(() =>
   format(new Date(props.entry.eventDate), 'MMM d, yyyy')
 )
@@ -71,9 +65,7 @@ const urgencyClass = computed(
   () => `urgency--${props.entry.analysis.urgency}`
 )
 
-const urgencyLabel = computed(
-  () => URGENCY_LABELS[props.entry.analysis.urgency]
-)
+const urgencyLabel = computed(() => getEntryClassificationLabel(props.entry))
 
 function formatFlag(flag: string): string {
   return flag.replace(/_/g, ' ')

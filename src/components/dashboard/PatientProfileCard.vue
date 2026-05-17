@@ -7,10 +7,21 @@
         <p v-if="ageLabel" class="patient-meta">{{ ageLabel }}</p>
         <p v-if="trackingLabel" class="patient-meta">{{ trackingLabel }}</p>
       </div>
-      <button type="button" class="edit-toggle" @click="editing = !editing">
-        {{ editing ? 'Cancel' : 'Edit profile' }}
-      </button>
+      <div class="patient-actions">
+        <button type="button" class="anamnesis-btn" @click="anamnesisOpen = true">
+          Add health history
+        </button>
+        <button type="button" class="edit-toggle" @click="editing = !editing">
+          {{ editing ? 'Cancel' : 'Edit profile' }}
+        </button>
+      </div>
     </div>
+
+    <AnamnesisModal
+      :open="anamnesisOpen"
+      @close="anamnesisOpen = false"
+      @imported="onAnamnesisImported"
+    />
 
     <form v-if="editing" class="patient-form" @submit.prevent="save">
       <div class="form-row">
@@ -70,6 +81,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { format, parseISO, differenceInYears } from 'date-fns'
 import { savePatientProfile } from '@/api/patientApi'
+import AnamnesisModal from '@/components/dashboard/AnamnesisModal.vue'
 import type { BiologicalSex, PatientProfile } from '@/models/types'
 
 const props = defineProps<{
@@ -80,10 +92,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   updated: [profile: PatientProfile]
+  journalImported: [count: number]
 }>()
 
 const editing = ref(false)
 const saving = ref(false)
+const anamnesisOpen = ref(false)
+
+function onAnamnesisImported(count: number) {
+  emit('journalImported', count)
+}
 
 const draft = reactive({
   displayName: '',
@@ -208,6 +226,39 @@ async function save() {
   margin: 0;
   font-size: 0.9rem;
   color: var(--text-muted);
+}
+
+.patient-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.anamnesis-btn {
+  background: #42a5f5;
+  color: #fff;
+  border: none;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+
+.anamnesis-btn:hover {
+  background: #64b5f6;
+}
+
+[data-theme='dark'] .anamnesis-btn {
+  background: #4da3e8;
+}
+
+[data-theme='dark'] .anamnesis-btn:hover {
+  background: #6eb5f0;
 }
 
 .edit-toggle {

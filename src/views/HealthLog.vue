@@ -46,21 +46,13 @@ import SectionHeader from '@/components/SectionHeader.vue'
 import HealthEntryForm from '@/components/HealthEntryForm.vue'
 import HealthEntryCard from '@/components/HealthEntryCard.vue'
 import { getHealthEntries } from '@/api/healthApi'
-import type { HealthEntry, HealthUrgency } from '@/models/types'
+import { getEntryClassificationLabel } from '@/services/healthAnalysis'
+import type { HealthEntry } from '@/models/types'
 
 const loading = ref(true)
 const entries = ref<HealthEntry[]>([])
 const successMessage = ref('')
 
-const URGENCY_MESSAGES: Record<HealthUrgency, string> = {
-  routine: 'Saved. Your note was added to your timeline.',
-  monitor:
-    'Saved. We flagged this for monitoring — keep tracking if symptoms persist.',
-  urgent:
-    'Saved. Consider contacting a clinician soon based on what you described.',
-  emergency:
-    'Saved. Your description may indicate an emergency — seek immediate medical care if you are in danger.',
-}
 
 onMounted(async () => {
   await loadEntries()
@@ -77,7 +69,7 @@ async function loadEntries() {
 
 function onEntrySubmitted(entry: HealthEntry) {
   entries.value = [entry, ...entries.value.filter((e) => e.id !== entry.id)]
-  successMessage.value = URGENCY_MESSAGES[entry.analysis.urgency]
+  successMessage.value = `Saved as “${getEntryClassificationLabel(entry)}”. Added to your timeline.`
   window.setTimeout(() => {
     successMessage.value = ''
   }, 8000)

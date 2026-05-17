@@ -20,7 +20,7 @@ const EMERGENCY_PATTERNS = [
   /\bslurred\s+speech\b/i,
   /\bsevere\s+bleeding\b/i,
   /\bsuicidal\b/i,
-  /\b911\b/,
+  /\b911\b/i,
   /\bemergency\s+room\b/i,
   /\bgo\s+to\s+(the\s+)?er\b/i,
 ]
@@ -55,6 +55,45 @@ const WORSENING_PATTERNS = [
   /\bchronic\b/i,
 ]
 
+const PROCEDURE_PATTERNS = [
+  /\bsurger(y|ies|ical)\b/i,
+  /\boperation\b/i,
+  /\boperated\b/i,
+  /\bunderwent\b/i,
+  /\bpost-?op(erative)?\b/i,
+  /\bpre-?op\b/i,
+  /\banesthesia\b/i,
+  /\banaesthesia\b/i,
+  /\bappendectomy\b/i,
+  /\bhip\s+replacement\b/i,
+  /\bknee\s+replacement\b/i,
+  /\btransplant\b/i,
+  /\bbiopsy\b/i,
+  /\bendoscopy\b/i,
+  /\bcolonoscopy\b/i,
+  /\barthroscop/i,
+  /\blaparoscop/i,
+  /\bstent\b/i,
+  /\bimplant\b/i,
+]
+
+const HOSPITAL_CARE_PATTERNS = [
+  /\bhospitalized\b/i,
+  /\bhospitalization\b/i,
+  /\badmitted\s+(to\s+)?(the\s+)?hospital\b/i,
+  /\binpatient\b/i,
+  /\bicu\b/i,
+  /\bdischarged\s+from\b/i,
+  /\ber\s+visit\b/i,
+  /\bemergency\s+department\b/i,
+]
+
+const IMPROVEMENT_PATTERNS =
+  /\b(improv|better|easier|reduced|less|easing|recover|progress|healing|resolved)\w*/i
+
+const DIAGNOSIS_PATTERNS =
+  /\b(diagnosed|diagnosis|confirmed|found\s+to\s+have|tested\s+positive)\b/i
+
 const ENTRY_TYPE_LABELS: Record<HealthEntryType, string> = {
   symptom: 'Symptom report',
   medication: 'Medication update',
@@ -64,43 +103,154 @@ const ENTRY_TYPE_LABELS: Record<HealthEntryType, string> = {
   other: 'Health note',
 }
 
-function resolveUrgency(
-  input: HealthEntryInput,
-  combinedText: string
-): HealthUrgency {
-  for (const pattern of EMERGENCY_PATTERNS) {
-    if (pattern.test(combinedText)) return 'emergency'
-  }
-
-  if (input.severity !== undefined && input.severity >= 9) return 'urgent'
-
-  for (const pattern of URGENT_PATTERNS) {
-    if (pattern.test(combinedText)) return 'urgent'
-  }
-
-  if (input.severity !== undefined && input.severity >= 7) return 'urgent'
-  if (input.severity !== undefined && input.severity >= 4) return 'monitor'
-
-  for (const pattern of WORSENING_PATTERNS) {
-    if (pattern.test(combinedText)) return 'monitor'
-  }
-
-  return 'routine'
+interface ClassificationResult {
+  urgency: HealthUrgency
+  label: string
 }
 
-function buildFlags(input: HealthEntryInput, combinedText: string): string[] {
-  const flags: string[] = []
+function hasEmergencySignal(text: string): boolean {
+  return EMERGENCY_PATTERNS.some((p) => p.test(text))
+}
 
-  for (const pattern of EMERGENCY_PATTERNS) {
-    if (pattern.test(combinedText)) flags.push('possible_emergency')
-    break
+function hasUrgentSignal(text: string, severity?: number): boolean {
+  if (severity !== undefined && severity >= 9) return true
+  if (URGENT_PATTERNS.some((p) => p.test(text))) return true
+  if (severity !== undefined && severity >= 7) return true
+  return false
+}
+
+function hasWorseningSignal(text: string): boolean {
+  return WORSENING_PATTERNS.some((p) => p.test(text))
+}
+
+function isProcedureOrSurgery(text: string): boolean {
+  return PROCEDURE_PATTERNS.some((p) => p.test(text))
+}
+
+function isHospitalCare(text: string): boolean {
+  return HOSPITAL_CARE_PATTERNS.some((p) => p.test(text))
+}
+
+function classifyHealthEntry(
+  input: HealthEntryInput,
+  combinedText: string
+): ClassificationResult {
+  if (hasEmergencySignal(combinedText)) {
+    return { urgency: 'emergency', label: 'Emergency — seek care now' }
   }
 
-  for (const pattern of URGENT_PATTERNS) {
-    if (pattern.test(combinedText)) {
-      flags.push('needs_attention')
-      break
+  if (hasUrgentSignal(combinedText, input.severity)) {
+    if (isProcedureOrSurgery(combinedText) && hasWorseningSignal(combinedText)) {
+      return { urgency: 'urgent', label: 'Post-procedure concern' }
     }
+    return { urgency: 'urgent', label: 'Urgent — contact clinician' }
+  }
+
+  if (isProcedureOrSurgery(combinedText)) {
+    return { urgency: 'monitor', label: 'Surgery / procedure' }
+  }
+
+  if (isHospitalCare(combinedText)) {
+    return { urgency: 'monitor', label: 'Hospital / ER care' }
+  }
+
+  if (input.entryType === 'imaging') {
+    return { urgency: 'monitor', label: 'Test or imaging' }
+  }
+
+  if (input.entryType === 'medication') {
+    return { urgency: 'monitor', label: 'Medication update' }
+  }
+
+  if (input.entryType === 'doctor_visit') {
+    if (DIAGNOSIS_PATTERNS.test(combinedText)) {
+      return { urgency: 'monitor', label: 'Diagnosis / specialist visit' }
+    }
+    return { urgency: 'monitor', label: 'Clinical visit' }
+  }
+
+  if (input.entryType === 'change') {
+    if (IMPROVEMENT_PATTERNS.test(combinedText)) {
+      return { urgency: 'routine', label: 'Condition improving' }
+    }
+    if (hasWorseningSignal(combinedText)) {
+      return { urgency: 'monitor', label: 'Condition worsening' }
+    }
+    return { urgency: 'monitor', label: 'Condition change' }
+  }
+
+  if (input.severity !== undefined && input.severity >= 4) {
+    return { urgency: 'monitor', label: 'Symptoms — follow up' }
+  }
+
+  if (hasWorseningSignal(combinedText)) {
+    return { urgency: 'monitor', label: 'Persistent or worsening symptoms' }
+  }
+
+  if (/\b(chronic|long-?standing|for\s+years|ongoing)\b/i.test(combinedText)) {
+    return { urgency: 'routine', label: 'Ongoing / chronic condition' }
+  }
+
+  if (input.entryType === 'symptom') {
+    return { urgency: 'routine', label: 'Symptom log' }
+  }
+
+  return { urgency: 'routine', label: 'Health record' }
+}
+
+/** Re-derive label for entries saved before classification existed. */
+export function getEntryClassificationLabel(entry: {
+  eventDate: string
+  conditionArea: string
+  entryType: HealthEntryType
+  title: string
+  description: string
+  medications?: string
+  severity?: number
+  analysis: HealthEntryAnalysis
+}): string {
+  if (entry.analysis.classification) return entry.analysis.classification
+
+  const input: HealthEntryInput = {
+    eventDate: entry.eventDate,
+    conditionArea: entry.conditionArea,
+    entryType: entry.entryType,
+    title: entry.title,
+    description: entry.description,
+    medications: entry.medications,
+    severity: entry.severity,
+  }
+  const combinedText = [
+    input.title,
+    input.description,
+    input.medications ?? '',
+    input.conditionArea,
+  ].join(' ')
+
+  return classifyHealthEntry(input, combinedText).label
+}
+
+function buildFlags(
+  input: HealthEntryInput,
+  combinedText: string,
+  classification: ClassificationResult
+): string[] {
+  const flags: string[] = []
+
+  if (classification.urgency === 'emergency') {
+    flags.push('possible_emergency')
+  }
+
+  if (classification.urgency === 'urgent') {
+    flags.push('needs_attention')
+  }
+
+  if (isProcedureOrSurgery(combinedText)) {
+    flags.push('procedure_or_surgery')
+  }
+
+  if (isHospitalCare(combinedText)) {
+    flags.push('hospital_care')
   }
 
   for (const pattern of WORSENING_PATTERNS) {
@@ -125,11 +275,15 @@ function buildFlags(input: HealthEntryInput, combinedText: string): string[] {
   return [...new Set(flags)]
 }
 
-function buildSummary(input: HealthEntryInput): string {
+function buildSummary(
+  input: HealthEntryInput,
+  classification: ClassificationResult
+): string {
   const typeLabel = ENTRY_TYPE_LABELS[input.entryType]
   const area = input.conditionArea.trim()
   const parts = [
     `${typeLabel} for ${area} on ${input.eventDate}: ${input.title.trim()}.`,
+    `Classification: ${classification.label}.`,
     input.description.trim(),
   ]
 
@@ -152,20 +306,25 @@ export function analyzeHealthEntry(input: HealthEntryInput): HealthEntryAnalysis
     input.conditionArea,
   ].join(' ')
 
-  const flags = buildFlags(input, combinedText)
-  const urgency = resolveUrgency(input, combinedText)
+  const classification = classifyHealthEntry(input, combinedText)
+  const flags = buildFlags(input, combinedText, classification)
 
-  let summary = buildSummary(input)
+  let summary = buildSummary(input, classification)
 
-  if (urgency === 'emergency') {
+  if (classification.urgency === 'emergency') {
     summary += ' Consider seeking emergency care immediately.'
-  } else if (urgency === 'urgent') {
+  } else if (classification.urgency === 'urgent') {
     summary += ' Consider contacting a clinician soon.'
-  } else if (urgency === 'monitor') {
-    summary += ' Continue monitoring; follow up if symptoms persist or worsen.'
+  } else if (classification.urgency === 'monitor') {
+    summary += ' Continue monitoring and follow your care plan.'
   }
 
-  return { urgency, flags, summary }
+  return {
+    urgency: classification.urgency,
+    classification: classification.label,
+    flags,
+    summary,
+  }
 }
 
 export function entryTypeToTimelineType(
