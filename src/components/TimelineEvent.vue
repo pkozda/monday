@@ -34,7 +34,7 @@ const typeClass = computed(() => {
   display: flex;
   gap: 1.5rem;
   padding: 1rem 0;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border);
 }
 
 .timeline-event:last-child {
@@ -44,7 +44,7 @@ const typeClass = computed(() => {
 .event-date {
   min-width: 120px;
   font-size: 0.9rem;
-  color: #999;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
@@ -65,39 +65,39 @@ const typeClass = computed(() => {
   text-transform: uppercase;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  background: #2a2a2a;
-  color: #999;
+  background: var(--bg-muted);
+  color: var(--text-muted);
 }
 
 .event-type--diagnosis {
-  background: #1e3a5f;
-  color: #64b5f6;
+  background: var(--event-diagnosis-bg);
+  color: var(--event-diagnosis-text);
 }
 
 .event-type--imaging {
-  background: #3d2a4a;
-  color: #ba68c8;
+  background: var(--event-imaging-bg);
+  color: var(--event-imaging-text);
 }
 
 .event-type--symptom {
-  background: #4a3a1e;
-  color: #ffb74d;
+  background: var(--event-symptom-bg);
+  color: var(--event-symptom-text);
 }
 
 .event-type--treatment {
-  background: #1e3a2a;
-  color: #81c784;
+  background: var(--event-treatment-bg);
+  color: var(--event-treatment-text);
 }
 
 .event-title {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .event-description {
-  color: #b0b0b0;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin: 0;
 }

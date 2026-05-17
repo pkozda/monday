@@ -1,15 +1,136 @@
 <template>
   <div class="dashboard">
-    <SectionHeader 
-      title="Dashboard" 
-      subtitle="High-level overview of your health status"
+    <SectionHeader
+      title="Dashboard"
+      subtitle="Your health overview — patient profile, statistics, and trends"
     />
 
-    <div v-if="loading" class="loading">Loading...</div>
-    
-    <div v-else>
+    <div v-if="loading" class="loading">Loading dashboard…</div>
+
+    <template v-else>
       <section class="dashboard-section">
-        <SectionHeader title="Current Clinical Model" />
+        <PatientProfileCard
+          :profile="patient"
+          :tracking-since="stats?.trackingSince ?? null"
+          :days-tracked="stats?.daysTracked ?? 0"
+          @updated="onPatientUpdated"
+        />
+      </section>
+
+      <section class="dashboard-section">
+        <SectionHeader title="Overview" subtitle="Key metrics from your health journal" />
+        <div class="stats-grid">
+          <StatCard
+            label="Journal entries"
+            :value="stats?.totalJournalEntries ?? 0"
+            hint="All time"
+          />
+          <StatCard
+            label="Last 30 days"
+            :value="stats?.entriesLast30Days ?? 0"
+            hint="Recent activity"
+          />
+          <StatCard
+            label="Tracked conditions"
+            :value="stats?.conditions.length ?? 0"
+            hint="Body areas / issues"
+          />
+          <StatCard
+            label="Avg severity"
+            :value="avgSeverityLabel"
+            hint="When reported (1–10)"
+          />
+          <StatCard
+            label="Timeline events"
+            :value="stats?.totalTimelineEvents ?? 0"
+          />
+          <StatCard
+            label="Hypotheses"
+            :value="stats?.totalHypotheses ?? 0"
+          />
+          <StatCard
+            label="Needs attention"
+            :value="stats?.attentionRequired ?? 0"
+            hint="Urgent or emergency flags"
+            :alert="(stats?.attentionRequired ?? 0) > 0"
+          />
+        </div>
+      </section>
+
+      <section class="dashboard-section charts-row">
+        <div class="chart-panel">
+          <SectionHeader
+            title="Severity trend"
+            subtitle="Self-reported severity over time"
+          />
+          <SeverityLineChart :points="stats?.severityTrend ?? []" />
+        </div>
+        <div class="chart-panel">
+          <SectionHeader
+            title="Urgency breakdown"
+            subtitle="How entries were classified on save"
+          />
+          <DonutChart :segments="stats?.urgencyBreakdown ?? []" />
+        </div>
+      </section>
+
+      <section class="dashboard-section charts-row">
+        <div class="chart-panel">
+          <SectionHeader
+            title="Entries by type"
+            subtitle="Symptoms, medications, visits, and more"
+          />
+          <BarChart :segments="stats?.entriesByType ?? []" />
+        </div>
+        <div class="chart-panel">
+          <SectionHeader
+            title="Hypothesis confidence"
+            subtitle="Distribution of active hypotheses"
+          />
+          <DonutChart
+            :segments="stats?.hypothesesByConfidence ?? []"
+            empty-text="No hypotheses yet"
+          />
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <SectionHeader
+          title="Tracked conditions"
+          subtitle="Body areas you have logged in your journal"
+        />
+        <div v-if="!stats?.conditions.length" class="empty-state">
+          <p>No conditions tracked yet. Add an entry in the Journal.</p>
+          <router-link to="/journal" class="link-cta">Go to Journal</router-link>
+        </div>
+        <div v-else class="conditions-table-wrap">
+          <table class="conditions-table">
+            <thead>
+              <tr>
+                <th>Condition / area</th>
+                <th>Entries</th>
+                <th>Last update</th>
+                <th>Latest urgency</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in stats.conditions" :key="c.name">
+                <td class="condition-name">{{ c.name }}</td>
+                <td>{{ c.entryCount }}</td>
+                <td>{{ formatDate(c.lastEntryDate) }}</td>
+                <td>
+                  <span class="urgency-pill" :class="`urgency--${c.latestUrgency}`">
+                    {{ c.latestUrgency }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="dashboard-section">
+        <SectionHeader title="Current clinical model" />
         <MedicalCard
           v-if="clinicalModel"
           :title="clinicalModel.title"
@@ -18,54 +139,148 @@
         />
       </section>
 
-      <section class="dashboard-section">
-        <SectionHeader title="Key Conditions" />
-        <div class="conditions-placeholder">
-          <p>Key conditions will be displayed here based on clinical model analysis.</p>
+      <section class="dashboard-section hypotheses-section">
+        <div class="hypotheses-section-header">
+          <SectionHeader
+            title="Active hypotheses"
+            subtitle="Generated from your journal entries and health data"
+          />
+          <button
+            type="button"
+            class="btn-generate"
+            :disabled="generatingHypothesis || !hasJournalData"
+            @click="onGenerateHypothesis"
+          >
+            {{ generatingHypothesis ? 'Analyzing your data…' : 'Generate hypothesis' }}
+          </button>
         </div>
-      </section>
 
-      <section class="dashboard-section">
-        <SectionHeader title="Active Hypotheses" />
+        <p v-if="!hasJournalData" class="hypotheses-hint">
+          Add journal entries first so the system can analyze your health data.
+        </p>
+        <p
+          v-if="hypothesisMessage"
+          class="hypotheses-feedback"
+          :class="hypothesisMessageType"
+        >
+          {{ hypothesisMessage }}
+        </p>
+
         <div v-if="hypotheses.length > 0" class="hypotheses-preview">
           <HypothesisCard
-            v-for="hypothesis in hypotheses.slice(0, 3)"
+            v-for="hypothesis in hypotheses.slice(0, 5)"
             :key="hypothesis.id"
             :hypothesis="hypothesis"
           />
         </div>
         <div v-else class="empty-state">
-          <p>No active hypotheses at this time.</p>
+          <p>No hypotheses yet. Click generate to analyze your records.</p>
         </div>
       </section>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { format, parseISO } from 'date-fns'
 import SectionHeader from '@/components/SectionHeader.vue'
 import MedicalCard from '@/components/MedicalCard.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
-import { getClinicalModel, getHypotheses } from '@/api/mockApi'
-import type { ClinicalModel, Hypothesis } from '@/models/types'
+import PatientProfileCard from '@/components/dashboard/PatientProfileCard.vue'
+import StatCard from '@/components/dashboard/StatCard.vue'
+import BarChart from '@/components/dashboard/BarChart.vue'
+import DonutChart from '@/components/dashboard/DonutChart.vue'
+import SeverityLineChart from '@/components/dashboard/SeverityLineChart.vue'
+import { getClinicalModel, getHypotheses, getTimeline } from '@/api/mockApi'
+import { generateAndSaveHypothesis } from '@/api/hypothesisApi'
+import { getHealthEntries } from '@/api/healthApi'
+import { getPatientProfile } from '@/api/patientApi'
+import { buildDashboardStats } from '@/services/dashboardStats'
+import type {
+  ClinicalModel,
+  DashboardStats,
+  Hypothesis,
+  PatientProfile,
+} from '@/models/types'
 
 const loading = ref(true)
+const patient = ref<PatientProfile | null>(null)
+const stats = ref<DashboardStats | null>(null)
 const clinicalModel = ref<ClinicalModel | null>(null)
 const hypotheses = ref<Hypothesis[]>([])
+const journalEntryCount = ref(0)
+const generatingHypothesis = ref(false)
+const hypothesisMessage = ref('')
+const hypothesisMessageType = ref<'success' | 'error'>('success')
+
+const hasJournalData = computed(() => journalEntryCount.value > 0)
+
+const avgSeverityLabel = computed(() => {
+  const avg = stats.value?.averageSeverity
+  return avg !== null && avg !== undefined ? `${avg} / 10` : '—'
+})
 
 onMounted(async () => {
   try {
-    const [model, hyps] = await Promise.all([
+    const [profile, entries, timeline, model, hyps] = await Promise.all([
+      getPatientProfile(),
+      getHealthEntries(),
+      getTimeline(),
       getClinicalModel(),
       getHypotheses(),
     ])
+    patient.value = profile
     clinicalModel.value = model
     hypotheses.value = hyps
+    journalEntryCount.value = entries.length
+    stats.value = buildDashboardStats(profile, entries, timeline, hyps)
   } finally {
     loading.value = false
   }
 })
+
+async function refreshStats() {
+  if (!patient.value) return
+  const [entries, timeline, hyps] = await Promise.all([
+    getHealthEntries(),
+    getTimeline(),
+    getHypotheses(),
+  ])
+  hypotheses.value = hyps
+  journalEntryCount.value = entries.length
+  stats.value = buildDashboardStats(
+    patient.value,
+    entries,
+    timeline,
+    hyps
+  )
+}
+
+async function onGenerateHypothesis() {
+  hypothesisMessage.value = ''
+  generatingHypothesis.value = true
+  try {
+    const created = await generateAndSaveHypothesis()
+    await refreshStats()
+    hypothesisMessageType.value = 'success'
+    hypothesisMessage.value = `New hypothesis created: “${created.title}” (${created.confidence}).`
+  } catch (e) {
+    hypothesisMessageType.value = 'error'
+    hypothesisMessage.value =
+      e instanceof Error ? e.message : 'Could not generate a hypothesis.'
+  } finally {
+    generatingHypothesis.value = false
+  }
+}
+
+function onPatientUpdated(updated: PatientProfile) {
+  patient.value = updated
+}
+
+function formatDate(iso: string): string {
+  return format(parseISO(iso), 'MMM d, yyyy')
+}
 </script>
 
 <style scoped>
@@ -76,33 +291,192 @@ onMounted(async () => {
 }
 
 .dashboard-section {
-  margin-bottom: 3rem;
+  margin-bottom: 2.5rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.chart-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.chart-panel :deep(.section-header) {
+  margin-bottom: 1rem;
+}
+
+.chart-panel :deep(.section-title) {
+  font-size: 1.1rem;
 }
 
 .loading {
   text-align: center;
   padding: 3rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
-.conditions-placeholder {
-  background: #1e1e1e;
-  border: 1px dashed #444;
-  border-radius: 8px;
-  padding: 2rem;
+.empty-state {
   text-align: center;
-  color: #999;
+  padding: 2rem;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+}
+
+.link-cta {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link-cta:hover {
+  text-decoration: underline;
+}
+
+.conditions-table-wrap {
+  overflow-x: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.conditions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.conditions-table th,
+.conditions-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.conditions-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.condition-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.urgency-pill {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+
+.urgency--monitor {
+  background: var(--urgency-monitor-bg);
+  color: var(--urgency-monitor-text);
+}
+
+.urgency--urgent {
+  background: var(--urgency-urgent-bg);
+  color: var(--urgency-urgent-text);
+}
+
+.urgency--emergency {
+  background: var(--urgency-emergency-bg);
+  color: var(--urgency-emergency-text);
+}
+
+.urgency--routine {
+  background: var(--urgency-routine-bg);
+  color: var(--urgency-routine-text);
+}
+
+.hypotheses-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.hypotheses-section-header :deep(.section-header) {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 200px;
+}
+
+.btn-generate {
+  background: var(--accent-strong);
+  color: #fff;
+  border: none;
+  padding: 0.65rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-generate:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-generate:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hypotheses-hint {
+  font-size: 0.875rem;
+  color: var(--text-faint);
+  margin: 0 0 1rem;
+}
+
+.hypotheses-feedback {
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.hypotheses-feedback.success {
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: var(--success-text);
+}
+
+.hypotheses-feedback.error {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
 }
 
 .hypotheses-preview {
   display: flex;
   flex-direction: column;
   gap: 0;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: #999;
 }
 </style>

@@ -21,12 +21,12 @@ defineProps<{
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .section-subtitle {
   font-size: 0.95rem;
-  color: #999;
+  color: var(--text-muted);
   margin: 0;
 }
 </style>

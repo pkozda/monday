@@ -1,0 +1,136 @@
+/* Dark theme (default) */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-page: #121212;
+  --bg-surface: #1e1e1e;
+  --bg-surface-alt: #252525;
+  --bg-muted: #2a2a2a;
+  --bg-input: #121212;
+  --bg-nav: rgba(30, 30, 30, 0.88);
+  --bg-gradient-start: #1e2a3a;
+  --bg-overlay: rgba(18, 18, 18, 0.72);
+
+  --border: #333333;
+  --border-strong: #444444;
+  --border-dashed: #444444;
+
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --text-muted: #999999;
+  --text-faint: #777777;
+
+  --accent: #64b5f6;
+  --accent-strong: #1976d2;
+  --accent-hover: #1565c0;
+
+  --success-bg: #1e3a2a;
+  --success-border: #2e7d52;
+  --success-text: #a5d6a7;
+
+  --error-bg: #3a1e1e;
+  --error-border: #c62828;
+  --error-text: #ef9a9a;
+
+  --hint-bg: #252525;
+  --hint-border: #64b5f6;
+
+  --shadow: rgba(0, 0, 0, 0.25);
+
+  --chart-track: #2a2a2a;
+  --donut-hole: #1e1e1e;
+
+  --confidence-exploratory-bg: #4a3a1e;
+  --confidence-exploratory-text: #ffb74d;
+  --confidence-supported-bg: #1e3a5f;
+  --confidence-supported-text: #64b5f6;
+  --confidence-strong-bg: #1e3a2a;
+  --confidence-strong-text: #81c784;
+
+  --event-diagnosis-bg: #1e3a5f;
+  --event-diagnosis-text: #64b5f6;
+  --event-imaging-bg: #3d2a4a;
+  --event-imaging-text: #ba68c8;
+  --event-symptom-bg: #4a3a1e;
+  --event-symptom-text: #ffb74d;
+  --event-treatment-bg: #1e3a2a;
+  --event-treatment-text: #81c784;
+
+  --urgency-monitor-bg: #4a3a1e;
+  --urgency-monitor-text: #ffb74d;
+  --urgency-urgent-bg: #4a2a1e;
+  --urgency-urgent-text: #ff7043;
+  --urgency-emergency-bg: #4a1e1e;
+  --urgency-emergency-text: #ef5350;
+  --urgency-routine-bg: #1e3a2a;
+  --urgency-routine-text: #81c784;
+}
+
+/* Light theme */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-page: #f4f6f9;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #f0f2f5;
+  --bg-muted: #e8eaed;
+  --bg-input: #ffffff;
+  --bg-nav: rgba(255, 255, 255, 0.9);
+  --bg-gradient-start: #e3f2fd;
+  --bg-overlay: rgba(244, 246, 249, 0.78);
+
+  --border: #dde1e6;
+  --border-strong: #c5cad1;
+  --border-dashed: #c5cad1;
+
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+
+  --accent: #1565c0;
+  --accent-strong: #0d47a1;
+  --accent-hover: #0a3d91;
+
+  --success-bg: #e8f5e9;
+  --success-border: #81c784;
+  --success-text: #2e7d32;
+
+  --error-bg: #ffebee;
+  --error-border: #ef5350;
+  --error-text: #c62828;
+
+  --hint-bg: #e3f2fd;
+  --hint-border: #1976d2;
+
+  --shadow: rgba(0, 0, 0, 0.08);
+
+  --chart-track: #e8eaed;
+  --donut-hole: #ffffff;
+
+  --confidence-exploratory-bg: #fff3e0;
+  --confidence-exploratory-text: #e65100;
+  --confidence-supported-bg: #e3f2fd;
+  --confidence-supported-text: #1565c0;
+  --confidence-strong-bg: #e8f5e9;
+  --confidence-strong-text: #2e7d32;
+
+  --event-diagnosis-bg: #e3f2fd;
+  --event-diagnosis-text: #1565c0;
+  --event-imaging-bg: #f3e5f5;
+  --event-imaging-text: #7b1fa2;
+  --event-symptom-bg: #fff3e0;
+  --event-symptom-text: #e65100;
+  --event-treatment-bg: #e8f5e9;
+  --event-treatment-text: #2e7d32;
+
+  --urgency-monitor-bg: #fff3e0;
+  --urgency-monitor-text: #e65100;
+  --urgency-urgent-bg: #fbe9e7;
+  --urgency-urgent-text: #d84315;
+  --urgency-emergency-bg: #ffebee;
+  --urgency-emergency-text: #c62828;
+  --urgency-routine-bg: #e8f5e9;
+  --urgency-routine-text: #2e7d32;
+}

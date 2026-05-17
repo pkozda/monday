@@ -1,30 +1,21 @@
 import { db } from '@/db/database'
 import {
   seedClinicalModel,
-  seedTimeline,
-  seedHypotheses,
+  SEED_TIMELINE_IDS,
+  SEED_HYPOTHESIS_IDS,
 } from '@/db/seedData'
 
+/** Remove demo timeline and hypothesis rows; journal-created events are kept. */
+export async function purgeSeedMockData(): Promise<void> {
+  await db.transaction('rw', db.timelineEvents, db.hypotheses, async () => {
+    await db.timelineEvents.bulkDelete([...SEED_TIMELINE_IDS])
+    await db.hypotheses.bulkDelete([...SEED_HYPOTHESIS_IDS])
+  })
+}
+
 export async function seedDatabaseIfEmpty(): Promise<void> {
-  const [modelCount, eventCount, hypothesisCount] = await Promise.all([
-    db.clinicalModels.count(),
-    db.timelineEvents.count(),
-    db.hypotheses.count(),
-  ])
+  const modelCount = await db.clinicalModels.count()
+  if (modelCount > 0) return
 
-  if (modelCount > 0 || eventCount > 0 || hypothesisCount > 0) {
-    return
-  }
-
-  await db.transaction(
-    'rw',
-    db.clinicalModels,
-    db.timelineEvents,
-    db.hypotheses,
-    async () => {
-      await db.clinicalModels.add(seedClinicalModel)
-      await db.timelineEvents.bulkAdd(seedTimeline)
-      await db.hypotheses.bulkAdd(seedHypotheses)
-    }
-  )
+  await db.clinicalModels.add(seedClinicalModel)
 }
