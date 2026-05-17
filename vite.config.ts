@@ -10,4 +10,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/api/translate': {
+        target: 'https://api.mymemory.translated.net',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/translate/, '/get'),
+      },
+    },
+  },
 })
