@@ -8,7 +8,10 @@
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
-    "type-check": "vue-tsc --noEmit"
+    "type-check": "vue-tsc --noEmit",
+    "pr:description": "node scripts/generate-pr-description.mjs",
+    "setup:hooks": "git config core.hooksPath .githooks",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "date-fns": "^2.30.0",

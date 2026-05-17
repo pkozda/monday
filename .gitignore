@@ -28,3 +28,9 @@ dist-ssr
 .env.local
 .env.production.local
 .env.development.local
+
+# Auto-generated PR description (updated on git push)
+.pr-description.md
+
+# Vite cache artifacts
+vite.config.ts.timestamp-*.mjs
