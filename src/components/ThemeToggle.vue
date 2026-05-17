@@ -1,6 +1,9 @@
 <template>
-  <label class="theme-toggle" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'">
-    <span class="theme-toggle__icon" aria-hidden="true">{{ theme === 'dark' ? '☀️' : '🌙' }}</span>
+  <label
+    class="theme-toggle"
+    :title="theme === 'dark' ? 'Dark mode — click to switch to light' : 'Light mode — click to switch to dark'"
+  >
+    <span class="theme-toggle__icon" aria-hidden="true">{{ theme === 'dark' ? '🌙' : '☀️' }}</span>
     <span class="theme-toggle__track">
       <input
         type="checkbox"
@@ -10,7 +13,7 @@
       />
       <span class="theme-toggle__thumb" />
     </span>
-    <span class="theme-toggle__label">{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
+    <span class="theme-toggle__label">{{ theme === 'dark' ? 'Dark' : 'Light' }}</span>
   </label>
 </template>
 

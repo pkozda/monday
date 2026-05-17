@@ -100,6 +100,23 @@ export interface SeverityPoint {
   label: string
 }
 
+export type HealthRecommendationCategory =
+  | 'screening'
+  | 'preventive'
+  | 'lifestyle'
+  | 'profile'
+  | 'journal'
+
+export type HealthRecommendationPriority = 'high' | 'medium' | 'low'
+
+export interface HealthRecommendation {
+  id: string
+  title: string
+  detail: string
+  category: HealthRecommendationCategory
+  priority: HealthRecommendationPriority
+}
+
 export interface DashboardStats {
   trackingSince: string | null
   daysTracked: number

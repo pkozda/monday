@@ -18,6 +18,10 @@
       </section>
 
       <section class="dashboard-section">
+        <HealthRecommendationsCard :recommendations="recommendations" />
+      </section>
+
+      <section class="dashboard-section">
         <SectionHeader title="Overview" subtitle="Key metrics from your health journal" />
         <div class="stats-grid">
           <StatCard
@@ -188,15 +192,17 @@ import SectionHeader from '@/components/SectionHeader.vue'
 import MedicalCard from '@/components/MedicalCard.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
 import PatientProfileCard from '@/components/dashboard/PatientProfileCard.vue'
+import HealthRecommendationsCard from '@/components/dashboard/HealthRecommendationsCard.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
 import BarChart from '@/components/dashboard/BarChart.vue'
 import DonutChart from '@/components/dashboard/DonutChart.vue'
 import SeverityLineChart from '@/components/dashboard/SeverityLineChart.vue'
 import { getClinicalModel, getHypotheses, getTimeline } from '@/api/mockApi'
-import { generateAndSaveHypothesis } from '@/api/hypothesisApi'
+import { tryGenerateHypothesis } from '@/api/hypothesisApi'
 import { getHealthEntries } from '@/api/healthApi'
 import { getPatientProfile } from '@/api/patientApi'
 import { buildDashboardStats } from '@/services/dashboardStats'
+import { getHealthRecommendations } from '@/services/healthRecommendations'
 import type {
   ClinicalModel,
   DashboardStats,
@@ -212,7 +218,7 @@ const hypotheses = ref<Hypothesis[]>([])
 const journalEntryCount = ref(0)
 const generatingHypothesis = ref(false)
 const hypothesisMessage = ref('')
-const hypothesisMessageType = ref<'success' | 'error'>('success')
+const hypothesisMessageType = ref<'success' | 'error' | 'info'>('success')
 
 const hasJournalData = computed(() => journalEntryCount.value > 0)
 
@@ -220,6 +226,10 @@ const avgSeverityLabel = computed(() => {
   const avg = stats.value?.averageSeverity
   return avg !== null && avg !== undefined ? `${avg} / 10` : '—'
 })
+
+const recommendations = computed(() =>
+  getHealthRecommendations(patient.value, stats.value)
+)
 
 onMounted(async () => {
   try {
@@ -261,10 +271,16 @@ async function onGenerateHypothesis() {
   hypothesisMessage.value = ''
   generatingHypothesis.value = true
   try {
-    const created = await generateAndSaveHypothesis()
+    const result = await tryGenerateHypothesis()
     await refreshStats()
-    hypothesisMessageType.value = 'success'
-    hypothesisMessage.value = `New hypothesis created: “${created.title}” (${created.confidence}).`
+
+    if (result.status === 'created' && result.hypothesis) {
+      hypothesisMessageType.value = 'success'
+      hypothesisMessage.value = `New hypothesis created: “${result.hypothesis.title}” (${result.hypothesis.confidence}).`
+    } else {
+      hypothesisMessageType.value = 'info'
+      hypothesisMessage.value = result.message
+    }
   } catch (e) {
     hypothesisMessageType.value = 'error'
     hypothesisMessage.value =
@@ -274,8 +290,9 @@ async function onGenerateHypothesis() {
   }
 }
 
-function onPatientUpdated(updated: PatientProfile) {
+async function onPatientUpdated(updated: PatientProfile) {
   patient.value = updated
+  await refreshStats()
 }
 
 function formatDate(iso: string): string {
@@ -472,6 +489,12 @@ function formatDate(iso: string): string {
   background: var(--error-bg);
   border: 1px solid var(--error-border);
   color: var(--error-text);
+}
+
+.hypotheses-feedback.info {
+  background: var(--hint-bg);
+  border: 1px solid var(--hint-border);
+  color: var(--text-secondary);
 }
 
 .hypotheses-preview {

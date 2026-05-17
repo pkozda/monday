@@ -82,3 +82,42 @@ export async function getHealthEntriesByCondition(
         new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()
     )
 }
+
+export interface ClearJournalResult {
+  entriesRemoved: number
+  timelineEventsRemoved: number
+  hypothesesRemoved: number
+}
+
+/** Removes all journal entries, linked timeline events, and hypotheses for the local user. */
+export async function clearAllJournalRecords(): Promise<ClearJournalResult> {
+  const entries = await db.healthEntries.toArray()
+  const timelineIds = [
+    ...new Set(
+      entries
+        .map((e) => e.analysis?.linkedTimelineEventId)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ]
+  const hypothesesCount = await db.hypotheses.count()
+
+  await db.transaction(
+    'rw',
+    db.healthEntries,
+    db.timelineEvents,
+    db.hypotheses,
+    async () => {
+      await db.healthEntries.clear()
+      if (timelineIds.length > 0) {
+        await db.timelineEvents.bulkDelete(timelineIds)
+      }
+      await db.hypotheses.clear()
+    }
+  )
+
+  return {
+    entriesRemoved: entries.length,
+    timelineEventsRemoved: timelineIds.length,
+    hypothesesRemoved: hypothesesCount,
+  }
+}
