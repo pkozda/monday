@@ -9,6 +9,20 @@ const IMPROVEMENT_RE =
 const WORSENING_RE =
   /\b(worse|worsen|deteriorat|declin|spreading|intensif|unbearable|severe)\w*/i
 
+export type HypothesisPattern =
+  | 'urgent'
+  | 'treatment_improvement'
+  | 'worsening'
+  | 'recurring'
+  | 'treatment_unclear'
+  | 'general'
+
+export interface HypothesisGenerationResult {
+  status: 'created' | 'no_new_data' | 'no_journal_data'
+  hypothesis?: Hypothesis
+  message: string
+}
+
 interface ConditionCluster {
   area: string
   entries: HealthEntry[]
@@ -20,6 +34,7 @@ interface HypothesisCandidate {
   title: string
   confidence: HypothesisConfidence
   score: number
+  pattern: HypothesisPattern
 }
 
 function clusterByCondition(entries: HealthEntry[]): ConditionCluster[] {
@@ -52,6 +67,66 @@ function collectEvidenceIds(entries: HealthEntry[]): string[] {
   return [...ids]
 }
 
+function getCoveredEntryIds(hypotheses: Hypothesis[]): Set<string> {
+  const covered = new Set<string>()
+  for (const hypothesis of hypotheses) {
+    for (const id of hypothesis.evidenceIds) {
+      covered.add(id)
+    }
+  }
+  return covered
+}
+
+function extractAreaFromTitle(title: string): string {
+  const idx = title.indexOf(':')
+  if (idx === -1) return title.trim().toLowerCase()
+  return title.slice(0, idx).trim().toLowerCase()
+}
+
+function patternFromTitle(title: string): HypothesisPattern {
+  const t = title.toLowerCase()
+  if (t.includes('clinical attention') || t.includes('urgent')) return 'urgent'
+  if (t.includes('contributing') || t.includes('improvement')) {
+    return 'treatment_improvement'
+  }
+  if (t.includes('worsening')) return 'worsening'
+  if (t.includes('recurring')) return 'recurring'
+  if (t.includes('response still unclear') || t.includes('new treatment')) {
+    return 'treatment_unclear'
+  }
+  return 'general'
+}
+
+function isDuplicateCandidate(
+  candidate: HypothesisCandidate,
+  existing: Hypothesis[]
+): boolean {
+  const area = candidate.area.toLowerCase()
+  const pattern = candidate.pattern
+
+  for (const hypothesis of existing) {
+    const existingArea = extractAreaFromTitle(hypothesis.title)
+    const existingPattern = patternFromTitle(hypothesis.title)
+    if (existingArea === area && existingPattern === pattern) {
+      return true
+    }
+  }
+
+  const normalized = candidate.title.toLowerCase()
+  return existing.some(
+    (h) =>
+      h.title.toLowerCase() === normalized ||
+      h.title.toLowerCase().includes(normalized.slice(0, 40))
+  )
+}
+
+function hasNewEvidence(
+  candidate: HypothesisCandidate,
+  coveredEntryIds: Set<string>
+): boolean {
+  return candidate.entries.some((entry) => !coveredEntryIds.has(entry.id))
+}
+
 function textOf(entry: HealthEntry): string {
   return [entry.title, entry.description, entry.medications ?? ''].join(' ')
 }
@@ -68,8 +143,7 @@ function hasMedicationEntries(entries: HealthEntry[]): boolean {
 
 function hasImprovementSignals(entries: HealthEntry[]): boolean {
   return entries.some(
-    (e) =>
-      e.entryType === 'change' && IMPROVEMENT_RE.test(textOf(e))
+    (e) => e.entryType === 'change' && IMPROVEMENT_RE.test(textOf(e))
   )
 }
 
@@ -108,19 +182,7 @@ function resolveConfidence(
   return 'Exploratory'
 }
 
-function isDuplicateTitle(title: string, existing: Hypothesis[]): boolean {
-  const normalized = title.toLowerCase()
-  return existing.some(
-    (h) =>
-      h.title.toLowerCase() === normalized ||
-      h.title.toLowerCase().includes(normalized.slice(0, 40))
-  )
-}
-
-function buildCandidates(
-  cluster: ConditionCluster,
-  existing: Hypothesis[]
-): HypothesisCandidate[] {
+function buildCandidates(cluster: ConditionCluster): HypothesisCandidate[] {
   const { area, entries } = cluster
   const candidates: HypothesisCandidate[] = []
   const count = entries.length
@@ -135,6 +197,7 @@ function buildCandidates(
     candidates.push({
       area,
       entries,
+      pattern: 'urgent',
       title: `${area}: clinical attention may be needed based on urgent journal signals`,
       confidence: resolveConfidence(count, true),
       score: 100 + count,
@@ -144,6 +207,7 @@ function buildCandidates(
   if (meds && improved) {
     candidates.push({
       area,
+      pattern: 'treatment_improvement',
       entries: entries.filter(
         (e) =>
           e.entryType === 'medication' ||
@@ -152,8 +216,9 @@ function buildCandidates(
       ),
       title: `${area}: treatment may be contributing to reported improvement`,
       confidence: resolveConfidence(
-        entries.filter((e) => e.entryType === 'medication' || e.entryType === 'change')
-          .length,
+        entries.filter(
+          (e) => e.entryType === 'medication' || e.entryType === 'change'
+        ).length,
         true
       ),
       score: 80 + count,
@@ -166,6 +231,7 @@ function buildCandidates(
     )
     candidates.push({
       area,
+      pattern: 'worsening',
       entries: relevant.length > 0 ? relevant : entries,
       title: `${area}: symptoms may be worsening over the tracked period`,
       confidence: resolveConfidence(relevant.length || count, worsening),
@@ -176,6 +242,7 @@ function buildCandidates(
   if (symptomCount >= 2) {
     candidates.push({
       area,
+      pattern: 'recurring',
       entries: entries.filter((e) =>
         ['symptom', 'change', 'other'].includes(e.entryType)
       ),
@@ -188,6 +255,7 @@ function buildCandidates(
   if (meds && !improved) {
     candidates.push({
       area,
+      pattern: 'treatment_unclear',
       entries: entries.filter((e) =>
         ['medication', 'doctor_visit'].includes(e.entryType)
       ),
@@ -199,45 +267,101 @@ function buildCandidates(
 
   candidates.push({
     area,
+    pattern: 'general',
     entries,
     title: `${area}: health pattern worth tracking based on ${count} journal ${count === 1 ? 'entry' : 'entries'}`,
     confidence: resolveConfidence(count, false),
     score: 10 + count,
   })
 
-  return candidates.filter((c) => !isDuplicateTitle(c.title, existing))
+  return candidates
 }
 
-export function generateHypothesisFromUserData(
+function filterActionableCandidates(
+  candidates: HypothesisCandidate[],
+  existing: Hypothesis[],
+  coveredEntryIds: Set<string>
+): HypothesisCandidate[] {
+  return candidates.filter(
+    (candidate) =>
+      !isDuplicateCandidate(candidate, existing) &&
+      hasNewEvidence(candidate, coveredEntryIds)
+  )
+}
+
+export function analyzeHypothesisGeneration(
   entries: HealthEntry[],
   existingHypotheses: Hypothesis[]
-): Hypothesis {
+): HypothesisGenerationResult {
   if (entries.length === 0) {
-    throw new Error(
-      'Add at least one journal entry before generating a hypothesis.'
-    )
+    return {
+      status: 'no_journal_data',
+      message:
+        'Add at least one journal entry before generating a hypothesis.',
+    }
   }
+
+  const coveredEntryIds = getCoveredEntryIds(existingHypotheses)
+  const allEntryIds = entries.map((e) => e.id)
+  const hasUncoveredEntries = allEntryIds.some((id) => !coveredEntryIds.has(id))
 
   const clusters = clusterByCondition(entries)
-  const allCandidates = clusters.flatMap((c) =>
-    buildCandidates(c, existingHypotheses)
+  const allCandidates = clusters.flatMap((cluster) => buildCandidates(cluster))
+  const actionable = filterActionableCandidates(
+    allCandidates,
+    existingHypotheses,
+    coveredEntryIds
   )
 
-  if (allCandidates.length === 0) {
-    throw new Error(
-      'Could not form a new hypothesis — existing hypotheses may already cover your data. Add more journal entries or try again later.'
-    )
+  if (actionable.length === 0) {
+    if (existingHypotheses.length > 0 && !hasUncoveredEntries) {
+      return {
+        status: 'no_new_data',
+        message:
+          'All journal data has already been analyzed. No new hypotheses were generated. Add more journal entries to analyze new patterns.',
+      }
+    }
+
+    if (existingHypotheses.length > 0) {
+      return {
+        status: 'no_new_data',
+        message:
+          'Your existing hypotheses already cover the current journal data. No new hypotheses were generated. Log new symptoms, changes, or treatments to unlock more analysis.',
+      }
+    }
+
+    return {
+      status: 'no_new_data',
+      message:
+        'Could not derive a new hypothesis from the current data. Add more detailed journal entries and try again.',
+    }
   }
 
-  allCandidates.sort((a, b) => b.score - a.score)
-  const best = allCandidates[0]
+  actionable.sort((a, b) => b.score - a.score)
+  const best = actionable[0]
   const evidenceEntries =
     best.entries.length > 0 ? best.entries : clusters[0].entries
 
   return {
-    id: crypto.randomUUID(),
-    title: best.title,
-    confidence: best.confidence,
-    evidenceIds: collectEvidenceIds(evidenceEntries),
+    status: 'created',
+    message: `New hypothesis created for ${best.area}.`,
+    hypothesis: {
+      id: crypto.randomUUID(),
+      title: best.title,
+      confidence: best.confidence,
+      evidenceIds: collectEvidenceIds(evidenceEntries),
+    },
   }
+}
+
+/** @deprecated Use analyzeHypothesisGeneration — kept for tests if any */
+export function generateHypothesisFromUserData(
+  entries: HealthEntry[],
+  existingHypotheses: Hypothesis[]
+): Hypothesis {
+  const result = analyzeHypothesisGeneration(entries, existingHypotheses)
+  if (result.status !== 'created' || !result.hypothesis) {
+    throw new Error(result.message)
+  }
+  return result.hypothesis
 }

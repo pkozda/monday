@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit",
     "pr:description": "node scripts/generate-pr-description.mjs",
+    "clear-journal": "node scripts/clear-journal.mjs",
     "setup:hooks": "git config core.hooksPath .githooks",
     "prepare": "git config core.hooksPath .githooks"
   },

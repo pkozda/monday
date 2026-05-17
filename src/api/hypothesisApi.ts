@@ -1,15 +1,28 @@
+import { db } from '@/db/database'
 import { getHealthEntries } from '@/api/healthApi'
 import { getHypotheses, saveHypothesis } from '@/api/mockApi'
-import { generateHypothesisFromUserData } from '@/services/hypothesisGenerator'
-import type { Hypothesis } from '@/models/types'
+import {
+  analyzeHypothesisGeneration,
+  type HypothesisGenerationResult,
+} from '@/services/hypothesisGenerator'
 
-export async function generateAndSaveHypothesis(): Promise<Hypothesis> {
+export type { HypothesisGenerationResult }
+
+export async function clearAllHypotheses(): Promise<void> {
+  await db.hypotheses.clear()
+}
+
+export async function tryGenerateHypothesis(): Promise<HypothesisGenerationResult> {
   const [entries, existing] = await Promise.all([
     getHealthEntries(),
     getHypotheses(),
   ])
 
-  const hypothesis = generateHypothesisFromUserData(entries, existing)
-  await saveHypothesis(hypothesis)
-  return hypothesis
+  const result = analyzeHypothesisGeneration(entries, existing)
+
+  if (result.status === 'created' && result.hypothesis) {
+    await saveHypothesis(result.hypothesis)
+  }
+
+  return result
 }

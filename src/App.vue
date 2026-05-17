@@ -5,7 +5,7 @@
     <nav class="app-nav">
       <div class="nav-container">
         <router-link to="/" class="nav-logo-link">
-          <img :src="logoUrl" alt="Monday" class="nav-logo-img" />
+          <img :src="logoSrc" alt="Monday" class="nav-logo-img" />
         </router-link>
         <div class="nav-end">
           <div class="nav-links">
@@ -27,8 +27,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
-import logoUrl from '@assets/logo.png'
+import { useTheme } from '@/composables/useTheme'
+import logoLight from '@assets/logo.png'
+import logoDark from '@assets/logo-dark.png'
 import backgroundUrl from '@assets/background.png'
+
+const { theme } = useTheme()
+
+const logoSrc = computed(() => (theme.value === 'dark' ? logoDark : logoLight))
 
 const bgStyle = computed(() => ({
   '--app-bg-image': `url(${backgroundUrl})`,
@@ -77,19 +83,23 @@ body {
   transition: background-image 0.3s ease;
 }
 
-.app-nav,
 .app-main {
   position: relative;
   z-index: 1;
+  flex: 1;
 }
 
 .app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   background: var(--bg-nav);
   border-bottom: 1px solid var(--border);
   padding: 1rem 0;
-  transition: background-color 0.2s, border-color 0.2s;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 1px 0 var(--border);
 }
 
 .nav-container {
@@ -103,18 +113,20 @@ body {
 }
 
 .nav-logo-link {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
+  display: block;
   flex-shrink: 0;
+  text-decoration: none;
+  /* Same aspect ratio as logo assets (1024×375) */
+  height: 52px;
+  width: 142px;
 }
 
 .nav-logo-img {
-  height: 52px;
-  width: auto;
-  max-width: 220px;
-  object-fit: contain;
   display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .nav-end {
@@ -146,7 +158,6 @@ body {
 }
 
 .app-main {
-  flex: 1;
   padding: 2rem 0;
 }
 
@@ -161,8 +172,9 @@ body {
     justify-content: space-between;
   }
 
-  .nav-logo-img {
+  .nav-logo-link {
     height: 44px;
+    width: 120px;
   }
 }
 </style>
