@@ -2,6 +2,27 @@ export type TimelineEventType = 'diagnosis' | 'imaging' | 'symptom' | 'treatment
 
 export type HypothesisConfidence = 'Exploratory' | 'Supported' | 'Strongly Supported'
 
+export type HypothesisPattern =
+  | 'urgent'
+  | 'treatment_improvement'
+  | 'worsening'
+  | 'recurring'
+  | 'treatment_unclear'
+  | 'general'
+
+export type HypothesisHistoryKind = 'created' | 'updated'
+
+export interface HypothesisHistoryEntry {
+  id: string
+  at: string
+  kind: HypothesisHistoryKind
+  title: string
+  confidence: HypothesisConfidence
+  journalEntryCount: number
+  newJournalEntryIds: string[]
+  note: string
+}
+
 export interface ClinicalFactor {
   id: string
   name: string
@@ -28,6 +49,58 @@ export interface Hypothesis {
   title: string
   confidence: HypothesisConfidence
   evidenceIds: string[]
+  conditionArea: string
+  pattern: HypothesisPattern
+  createdAt: string
+  updatedAt: string
+  history: HypothesisHistoryEntry[]
+}
+
+export type DiagnosisCertainty = 'high' | 'moderate' | 'low'
+
+export type DiagnosisMatchFlagKind =
+  | 'body_area'
+  | 'keyword'
+  | 'medication'
+  | 'named_condition'
+  | 'hypothesis'
+  | 'urgency'
+  | 'journal_flag'
+  | 'cross_body'
+
+export interface DiagnosisMatchFlag {
+  kind: DiagnosisMatchFlagKind
+  label: string
+  detail: string
+  sourceArea?: string
+}
+
+export interface DiagnosisVariant {
+  id: string
+  /** Medical disease / condition name */
+  diseaseName: string
+  label: string
+  percentage: number
+  conditionArea: string
+  rationale: string
+  /** @deprecated use matchFlags — kept for compact summaries */
+  matchedSignals: string[]
+  matchFlags: DiagnosisMatchFlag[]
+  primaryJournalCount: number
+  crossBodyJournalCount: number
+  hypothesisId?: string
+  pattern?: HypothesisPattern
+  confidence?: HypothesisConfidence
+}
+
+export interface DiagnosisReport {
+  conditionArea: string
+  certainty: DiagnosisCertainty
+  certaintyLabel: string
+  variants: DiagnosisVariant[]
+  updatedAt: string
+  /** True when journal entries from other body areas influenced scoring */
+  usesCrossBodyJournal: boolean
 }
 
 export type HealthEntryType =

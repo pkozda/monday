@@ -14,6 +14,11 @@
     >
       <div class="hypothesis-header">
         <h3 class="hypothesis-title">{{ hypothesis.title }}</h3>
+        <p class="hypothesis-meta">
+          {{ patternLabel }} · {{ evidenceCount }} journal
+          {{ evidenceCount === 1 ? 'entry' : 'entries' }}
+          <span v-if="revisionCount > 1"> · {{ revisionCount }} revisions</span>
+        </p>
         <div class="hypothesis-badges">
           <span v-if="detail.isCritical" class="critical-badge">Needs clinician</span>
           <span class="hypothesis-confidence" :class="confidenceClass">
@@ -42,6 +47,30 @@
         <ul class="recommendations-list">
           <li v-for="(rec, i) in detail.recommendations" :key="i">{{ rec }}</li>
         </ul>
+      </section>
+
+      <section v-if="historyNewestFirst.length" class="hypothesis-section">
+        <h4 class="section-label">History</h4>
+        <ol class="history-list">
+          <li
+            v-for="item in historyNewestFirst"
+            :key="item.id"
+            class="history-item"
+            :class="`history-item--${item.kind}`"
+          >
+            <div class="history-item-head">
+              <time :datetime="item.at">{{ formatHistoryDate(item.at) }}</time>
+              <span class="history-kind">{{ historyKindLabel(item.kind) }}</span>
+            </div>
+            <p class="history-item-title">{{ item.title }}</p>
+            <p class="history-item-note">{{ item.note }}</p>
+            <p v-if="item.newJournalEntryIds.length" class="history-item-entries">
+              +{{ item.newJournalEntryIds.length }} journal
+              {{ item.newJournalEntryIds.length === 1 ? 'entry' : 'entries' }}
+              · {{ item.confidence }}
+            </p>
+          </li>
+        </ol>
       </section>
 
       <section v-if="detail.evidenceEntries.length" class="hypothesis-section">
@@ -73,13 +102,20 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { format, parseISO } from 'date-fns'
 import DoctorNotesModal from '@/components/DoctorNotesModal.vue'
 import { generateDoctorNotes } from '@/services/doctorNotes'
+import { PATTERN_LABELS } from '@/services/hypothesisGenerator'
 import {
   buildHypothesisDetail,
   formatEvidenceLine,
 } from '@/services/hypothesisDetail'
-import type { HealthEntry, Hypothesis, PatientProfile } from '@/models/types'
+import type {
+  HealthEntry,
+  Hypothesis,
+  HypothesisHistoryKind,
+  PatientProfile,
+} from '@/models/types'
 
 const props = defineProps<{
   hypothesis: Hypothesis
@@ -110,6 +146,32 @@ const confidenceClass = computed(() => {
   }
   return map[props.hypothesis.confidence] || ''
 })
+
+const patternLabel = computed(
+  () => PATTERN_LABELS[props.hypothesis.pattern] ?? 'Health pattern'
+)
+
+const evidenceCount = computed(() => detail.value.evidenceEntries.length)
+
+const revisionCount = computed(() => props.hypothesis.history?.length ?? 0)
+
+const historyNewestFirst = computed(() =>
+  [...(props.hypothesis.history ?? [])].sort(
+    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
+  )
+)
+
+function formatHistoryDate(iso: string): string {
+  try {
+    return format(parseISO(iso), 'MMM d, yyyy · h:mm a')
+  } catch {
+    return iso
+  }
+}
+
+function historyKindLabel(kind: HypothesisHistoryKind): string {
+  return kind === 'created' ? 'Created' : 'Updated'
+}
 
 function openDoctorNotes() {
   doctorNotesOpen.value = true
@@ -156,9 +218,16 @@ function openDoctorNotes() {
 .hypothesis-title {
   font-size: 1.05rem;
   font-weight: 600;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.35rem;
   color: var(--text-primary);
   line-height: 1.35;
+}
+
+.hypothesis-meta {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  line-height: 1.4;
 }
 
 .hypothesis-badges {
@@ -235,8 +304,74 @@ function openDoctorNotes() {
 }
 
 .hypothesis-body {
-  padding: 0 1.25rem 1.25rem;
+  padding: 0 1.35rem 1.35rem;
   border-top: 1px solid var(--border);
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.history-item {
+  padding: 0.75rem 0.85rem 0.75rem 1rem;
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 6px 6px 0;
+  background: var(--bg-muted);
+}
+
+.history-item--created {
+  border-left-color: var(--accent);
+}
+
+.history-item--updated {
+  border-left-color: var(--confidence-supported-text);
+}
+
+.history-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.history-item-head time {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+
+.history-kind {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.history-item-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.history-item-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.history-item-entries {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-faint);
 }
 
 .hypothesis-section {

@@ -157,6 +157,17 @@
         </p>
       </section>
 
+      <section class="dashboard-section">
+        <SectionHeader
+          title="Possible conditions"
+          subtitle="Medical disease names inferred from your journal — ranked by likelihood %"
+        />
+        <DiagnosisPanel
+          :reports="diagnosisReports"
+          :show-disclaimer="true"
+        />
+      </section>
+
       <section class="dashboard-section hypotheses-section">
         <div class="hypotheses-section-header">
           <SectionHeader
@@ -207,6 +218,7 @@ import { format, parseISO } from 'date-fns'
 import SectionHeader from '@/components/SectionHeader.vue'
 import MedicalCard from '@/components/MedicalCard.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
+import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
 import PatientProfileCard from '@/components/dashboard/PatientProfileCard.vue'
 import HealthRecommendationsCard from '@/components/dashboard/HealthRecommendationsCard.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
@@ -216,6 +228,7 @@ import SeverityLineChart from '@/components/dashboard/SeverityLineChart.vue'
 import { getClinicalModel } from '@/api/clinicalModelApi'
 import { getHypotheses, getTimeline } from '@/api/mockApi'
 import { tryGenerateHypothesis } from '@/api/hypothesisApi'
+import { buildDiagnosisReports } from '@/services/diagnosisGenerator'
 import { getHealthEntries } from '@/api/healthApi'
 import { getPatientProfile } from '@/api/patientApi'
 import { buildDashboardStats } from '@/services/dashboardStats'
@@ -224,6 +237,7 @@ import type {
   ClinicalModel,
   DashboardStats,
   HealthEntry,
+  DiagnosisReport,
   Hypothesis,
   PatientProfile,
 } from '@/models/types'
@@ -233,6 +247,7 @@ const patient = ref<PatientProfile | null>(null)
 const stats = ref<DashboardStats | null>(null)
 const clinicalModel = ref<ClinicalModel | null>(null)
 const hypotheses = ref<Hypothesis[]>([])
+const diagnosisReports = ref<DiagnosisReport[]>([])
 const journalEntryCount = ref(0)
 const journalEntries = ref<HealthEntry[]>([])
 const generatingHypothesis = ref(false)
@@ -262,6 +277,7 @@ onMounted(async () => {
     patient.value = profile
     clinicalModel.value = model
     hypotheses.value = hyps
+    diagnosisReports.value = buildDiagnosisReports(hyps, entries)
     journalEntries.value = entries
     journalEntryCount.value = entries.length
     stats.value = buildDashboardStats(profile, entries, timeline, hyps)
@@ -279,6 +295,7 @@ async function refreshStats() {
     getClinicalModel(),
   ])
   hypotheses.value = hyps
+  diagnosisReports.value = buildDiagnosisReports(hyps, entries)
   clinicalModel.value = model
   journalEntries.value = entries
   journalEntryCount.value = entries.length
@@ -300,6 +317,9 @@ async function onGenerateHypothesis() {
     if (result.status === 'created' && result.hypothesis) {
       hypothesisMessageType.value = 'success'
       hypothesisMessage.value = `New hypothesis created: “${result.hypothesis.title}” (${result.hypothesis.confidence}).`
+    } else if (result.status === 'updated' && result.hypothesis) {
+      hypothesisMessageType.value = 'success'
+      hypothesisMessage.value = `Hypothesis updated: “${result.hypothesis.title}” now reflects your latest journal records.`
     } else {
       hypothesisMessageType.value = 'info'
       hypothesisMessage.value = result.message

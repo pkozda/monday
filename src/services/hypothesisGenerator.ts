@@ -2,6 +2,8 @@ import type {
   HealthEntry,
   Hypothesis,
   HypothesisConfidence,
+  HypothesisHistoryEntry,
+  HypothesisPattern,
 } from '@/models/types'
 
 const IMPROVEMENT_RE =
@@ -9,16 +11,10 @@ const IMPROVEMENT_RE =
 const WORSENING_RE =
   /\b(worse|worsen|deteriorat|declin|spreading|intensif|unbearable|severe)\w*/i
 
-export type HypothesisPattern =
-  | 'urgent'
-  | 'treatment_improvement'
-  | 'worsening'
-  | 'recurring'
-  | 'treatment_unclear'
-  | 'general'
+export type { HypothesisPattern }
 
 export interface HypothesisGenerationResult {
-  status: 'created' | 'no_new_data' | 'no_journal_data'
+  status: 'created' | 'updated' | 'no_new_data' | 'no_journal_data'
   hypothesis?: Hypothesis
   message: string
 }
@@ -67,11 +63,19 @@ function collectEvidenceIds(entries: HealthEntry[]): string[] {
   return [...ids]
 }
 
-function getCoveredEntryIds(hypotheses: Hypothesis[]): Set<string> {
+function getCoveredJournalEntryIds(
+  hypotheses: Hypothesis[],
+  journalEntryIds: Set<string>
+): Set<string> {
   const covered = new Set<string>()
   for (const hypothesis of hypotheses) {
     for (const id of hypothesis.evidenceIds) {
-      covered.add(id)
+      if (journalEntryIds.has(id)) covered.add(id)
+    }
+    for (const revision of hypothesis.history ?? []) {
+      for (const id of revision.newJournalEntryIds) {
+        covered.add(id)
+      }
     }
   }
   return covered
@@ -79,8 +83,8 @@ function getCoveredEntryIds(hypotheses: Hypothesis[]): Set<string> {
 
 export function extractAreaFromTitle(title: string): string {
   const idx = title.indexOf(':')
-  if (idx === -1) return title.trim().toLowerCase()
-  return title.slice(0, idx).trim().toLowerCase()
+  if (idx === -1) return title.trim()
+  return title.slice(0, idx).trim()
 }
 
 export function patternFromTitle(title: string): HypothesisPattern {
@@ -97,34 +101,43 @@ export function patternFromTitle(title: string): HypothesisPattern {
   return 'general'
 }
 
-function isDuplicateCandidate(
+export const PATTERN_LABELS: Record<HypothesisPattern, string> = {
+  urgent: 'Clinical attention',
+  treatment_improvement: 'Treatment response',
+  worsening: 'Worsening trend',
+  recurring: 'Recurring symptoms',
+  treatment_unclear: 'Treatment unclear',
+  general: 'General pattern',
+}
+
+function areasMatch(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase()
+}
+
+function findMatchingHypothesis(
   candidate: HypothesisCandidate,
   existing: Hypothesis[]
-): boolean {
-  const area = candidate.area.toLowerCase()
-  const pattern = candidate.pattern
-
-  for (const hypothesis of existing) {
-    const existingArea = extractAreaFromTitle(hypothesis.title)
-    const existingPattern = patternFromTitle(hypothesis.title)
-    if (existingArea === area && existingPattern === pattern) {
-      return true
-    }
-  }
-
-  const normalized = candidate.title.toLowerCase()
-  return existing.some(
+): Hypothesis | undefined {
+  return existing.find(
     (h) =>
-      h.title.toLowerCase() === normalized ||
-      h.title.toLowerCase().includes(normalized.slice(0, 40))
+      areasMatch(h.conditionArea, candidate.area) && h.pattern === candidate.pattern
   )
 }
 
-function hasNewEvidence(
+function getNewJournalEntryIds(
   candidate: HypothesisCandidate,
-  coveredEntryIds: Set<string>
+  coveredJournalIds: Set<string>
+): string[] {
+  return candidate.entries
+    .map((e) => e.id)
+    .filter((id) => !coveredJournalIds.has(id))
+}
+
+function candidateHasNewJournalEvidence(
+  candidate: HypothesisCandidate,
+  coveredJournalIds: Set<string>
 ): boolean {
-  return candidate.entries.some((entry) => !coveredEntryIds.has(entry.id))
+  return getNewJournalEntryIds(candidate, coveredJournalIds).length > 0
 }
 
 function textOf(entry: HealthEntry): string {
@@ -277,16 +290,89 @@ function buildCandidates(cluster: ConditionCluster): HypothesisCandidate[] {
   return candidates
 }
 
-function filterActionableCandidates(
-  candidates: HypothesisCandidate[],
-  existing: Hypothesis[],
-  coveredEntryIds: Set<string>
-): HypothesisCandidate[] {
-  return candidates.filter(
-    (candidate) =>
-      !isDuplicateCandidate(candidate, existing) &&
-      hasNewEvidence(candidate, coveredEntryIds)
-  )
+function buildUpdateNote(
+  previous: Hypothesis,
+  candidate: HypothesisCandidate,
+  newJournalIds: string[]
+): string {
+  const parts = [
+    `Incorporated ${newJournalIds.length} new journal ${newJournalIds.length === 1 ? 'record' : 'records'}.`,
+  ]
+
+  if (previous.confidence !== candidate.confidence) {
+    parts.push(
+      `Confidence updated from ${previous.confidence} to ${candidate.confidence}.`
+    )
+  }
+
+  if (previous.title !== candidate.title) {
+    parts.push('Summary label refreshed from your latest journal data.')
+  }
+
+  return parts.join(' ')
+}
+
+function createHypothesisFromCandidate(
+  candidate: HypothesisCandidate,
+  clusterEntries: HealthEntry[]
+): Hypothesis {
+  const now = new Date().toISOString()
+  const journalIds = clusterEntries.map((e) => e.id)
+
+  const historyEntry: HypothesisHistoryEntry = {
+    id: crypto.randomUUID(),
+    at: now,
+    kind: 'created',
+    title: candidate.title,
+    confidence: candidate.confidence,
+    journalEntryCount: journalIds.length,
+    newJournalEntryIds: journalIds,
+    note: `Initial hypothesis from ${journalIds.length} journal ${journalIds.length === 1 ? 'entry' : 'entries'}.`,
+  }
+
+  return {
+    id: crypto.randomUUID(),
+    title: candidate.title,
+    confidence: candidate.confidence,
+    evidenceIds: collectEvidenceIds(clusterEntries),
+    conditionArea: candidate.area,
+    pattern: candidate.pattern,
+    createdAt: now,
+    updatedAt: now,
+    history: [historyEntry],
+  }
+}
+
+function updateHypothesisFromCandidate(
+  existing: Hypothesis,
+  candidate: HypothesisCandidate,
+  clusterEntries: HealthEntry[],
+  newJournalIds: string[]
+): Hypothesis {
+  const now = new Date().toISOString()
+  const journalIds = clusterEntries.map((e) => e.id)
+
+  const historyEntry: HypothesisHistoryEntry = {
+    id: crypto.randomUUID(),
+    at: now,
+    kind: 'updated',
+    title: candidate.title,
+    confidence: candidate.confidence,
+    journalEntryCount: journalIds.length,
+    newJournalEntryIds: newJournalIds,
+    note: buildUpdateNote(existing, candidate, newJournalIds),
+  }
+
+  return {
+    ...existing,
+    title: candidate.title,
+    confidence: candidate.confidence,
+    evidenceIds: collectEvidenceIds(clusterEntries),
+    conditionArea: candidate.area,
+    pattern: candidate.pattern,
+    updatedAt: now,
+    history: [...(existing.history ?? []), historyEntry],
+  }
 }
 
 export function analyzeHypothesisGeneration(
@@ -301,67 +387,86 @@ export function analyzeHypothesisGeneration(
     }
   }
 
-  const coveredEntryIds = getCoveredEntryIds(existingHypotheses)
-  const allEntryIds = entries.map((e) => e.id)
-  const hasUncoveredEntries = allEntryIds.some((id) => !coveredEntryIds.has(id))
+  const journalIds = new Set(entries.map((e) => e.id))
+  const coveredJournalIds = getCoveredJournalEntryIds(
+    existingHypotheses,
+    journalIds
+  )
+  const hasUncoveredJournal = [...journalIds].some(
+    (id) => !coveredJournalIds.has(id)
+  )
 
   const clusters = clusterByCondition(entries)
   const allCandidates = clusters.flatMap((cluster) => buildCandidates(cluster))
-  const actionable = filterActionableCandidates(
-    allCandidates,
-    existingHypotheses,
-    coveredEntryIds
+
+  const withNewJournal = allCandidates.filter((c) =>
+    candidateHasNewJournalEvidence(c, coveredJournalIds)
   )
 
-  if (actionable.length === 0) {
-    if (existingHypotheses.length > 0 && !hasUncoveredEntries) {
-      return {
-        status: 'no_new_data',
-        message:
-          'All journal data has already been analyzed. No new hypotheses were generated. Add more journal entries to analyze new patterns.',
-      }
-    }
+  const updateOptions = withNewJournal
+    .map((candidate) => ({
+      candidate,
+      existing: findMatchingHypothesis(candidate, existingHypotheses),
+      cluster: clusters.find((c) => areasMatch(c.area, candidate.area)),
+    }))
+    .filter((x): x is typeof x & { existing: Hypothesis } => Boolean(x.existing))
 
-    if (existingHypotheses.length > 0) {
-      return {
-        status: 'no_new_data',
-        message:
-          'Your existing hypotheses already cover the current journal data. No new hypotheses were generated. Log new symptoms, changes, or treatments to unlock more analysis.',
-      }
-    }
+  if (updateOptions.length > 0) {
+    updateOptions.sort((a, b) => b.candidate.score - a.candidate.score)
+    const { candidate, existing, cluster } = updateOptions[0]
+    const clusterEntries = cluster?.entries ?? candidate.entries
+    const newJournalIds = getNewJournalEntryIds(candidate, coveredJournalIds)
+    const updated = updateHypothesisFromCandidate(
+      existing,
+      candidate,
+      clusterEntries,
+      newJournalIds
+    )
 
+    return {
+      status: 'updated',
+      message: `Updated existing hypothesis for ${candidate.area} with ${newJournalIds.length} new journal ${newJournalIds.length === 1 ? 'record' : 'records'}.`,
+      hypothesis: updated,
+    }
+  }
+
+  const newOptions = withNewJournal.filter(
+    (c) => !findMatchingHypothesis(c, existingHypotheses)
+  )
+
+  if (newOptions.length > 0) {
+    newOptions.sort((a, b) => b.score - a.score)
+    const best = newOptions[0]
+    const cluster = clusters.find((c) => areasMatch(c.area, best.area))
+    const clusterEntries = cluster?.entries ?? best.entries
+    const created = createHypothesisFromCandidate(best, clusterEntries)
+
+    return {
+      status: 'created',
+      message: `New hypothesis created for ${best.area}.`,
+      hypothesis: created,
+    }
+  }
+
+  if (existingHypotheses.length > 0 && !hasUncoveredJournal) {
     return {
       status: 'no_new_data',
       message:
-        'Could not derive a new hypothesis from the current data. Add more detailed journal entries and try again.',
+        'All journal records are already reflected in your hypotheses. Add new journal entries, then generate again.',
     }
   }
 
-  actionable.sort((a, b) => b.score - a.score)
-  const best = actionable[0]
-  const evidenceEntries =
-    best.entries.length > 0 ? best.entries : clusters[0].entries
+  if (existingHypotheses.length > 0) {
+    return {
+      status: 'no_new_data',
+      message:
+        'No new journal records match an existing hypothesis pattern. Log more detail for a tracked condition, or add entries for a new body area.',
+    }
+  }
 
   return {
-    status: 'created',
-    message: `New hypothesis created for ${best.area}.`,
-    hypothesis: {
-      id: crypto.randomUUID(),
-      title: best.title,
-      confidence: best.confidence,
-      evidenceIds: collectEvidenceIds(evidenceEntries),
-    },
+    status: 'no_new_data',
+    message:
+      'Could not derive a hypothesis from the current data. Add more detailed journal entries and try again.',
   }
-}
-
-/** @deprecated Use analyzeHypothesisGeneration — kept for tests if any */
-export function generateHypothesisFromUserData(
-  entries: HealthEntry[],
-  existingHypotheses: Hypothesis[]
-): Hypothesis {
-  const result = analyzeHypothesisGeneration(entries, existingHypotheses)
-  if (result.status !== 'created' || !result.hypothesis) {
-    throw new Error(result.message)
-  }
-  return result.hypothesis
 }

@@ -1,42 +1,116 @@
 <template>
   <div class="hypotheses-view">
     <SectionHeader
-      title="Hypotheses"
-      subtitle="Evidence-based health hypotheses and analysis"
+      title="Hypotheses & diagnoses"
+      :subtitle="pageSubtitle"
     />
 
-    <div v-if="loading" class="loading">Loading hypotheses…</div>
+    <div v-if="loading" class="loading">Loading…</div>
 
-    <div v-else-if="hypotheses.length === 0" class="empty-state">
-      <p>No hypotheses yet. Generate hypotheses from the Dashboard after adding journal entries.</p>
-      <router-link to="/" class="link-cta">Go to Dashboard</router-link>
-    </div>
+    <template v-else>
+      <div class="hypotheses-tabs" role="tablist" aria-label="Hypotheses and diagnoses">
+        <button
+          type="button"
+          role="tab"
+          class="hypotheses-tab"
+          :class="{ 'hypotheses-tab--active': activeTab === 'diagnoses' }"
+          :aria-selected="activeTab === 'diagnoses'"
+          @click="activeTab = 'diagnoses'"
+        >
+          Diagnoses
+          <span v-if="diagnosisReports.length" class="tab-count">{{
+            diagnosisReports.length
+          }}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="hypotheses-tab"
+          :class="{ 'hypotheses-tab--active': activeTab === 'hypotheses' }"
+          :aria-selected="activeTab === 'hypotheses'"
+          @click="activeTab = 'hypotheses'"
+        >
+          Hypotheses
+          <span v-if="hypotheses.length" class="tab-count">{{ hypotheses.length }}</span>
+        </button>
+      </div>
 
-    <div v-else class="hypotheses-container">
-      <HypothesisCard
-        v-for="hypothesis in hypotheses"
-        :key="hypothesis.id"
-        :hypothesis="hypothesis"
-        :journal-entries="journalEntries"
-        :patient="patient"
-      />
-    </div>
+      <div
+        v-show="activeTab === 'diagnoses'"
+        role="tabpanel"
+        class="tab-panel"
+        aria-label="Diagnoses"
+      >
+        <DiagnosisPanel
+          :reports="diagnosisReports"
+          :full-view="diagnosisFullView"
+          show-toolbar
+          @toggle-view="diagnosisFullView = !diagnosisFullView"
+        />
+      </div>
+
+      <div
+        v-show="activeTab === 'hypotheses'"
+        role="tabpanel"
+        class="tab-panel"
+        aria-label="Hypotheses"
+      >
+        <div v-if="hypotheses.length === 0" class="empty-state">
+          <p>
+            No hypotheses yet. Add journal entries on the Dashboard, then click
+            <strong>Generate hypothesis</strong>.
+          </p>
+          <router-link to="/" class="link-cta">Go to Dashboard</router-link>
+        </div>
+
+        <div v-else class="hypotheses-container">
+          <HypothesisCard
+            v-for="hypothesis in hypotheses"
+            :key="hypothesis.id"
+            :hypothesis="hypothesis"
+            :journal-entries="journalEntries"
+            :patient="patient"
+          />
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import SectionHeader from '@/components/SectionHeader.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
+import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
 import { getHypotheses } from '@/api/mockApi'
+import { buildDiagnosisReports } from '@/services/diagnosisGenerator'
 import { getHealthEntries } from '@/api/healthApi'
 import { getPatientProfile } from '@/api/patientApi'
-import type { HealthEntry, Hypothesis, PatientProfile } from '@/models/types'
+import type {
+  DiagnosisReport,
+  HealthEntry,
+  Hypothesis,
+  PatientProfile,
+} from '@/models/types'
 
+type TabId = 'diagnoses' | 'hypotheses'
+
+const route = useRoute()
+const router = useRouter()
 const loading = ref(true)
+const activeTab = ref<TabId>('diagnoses')
+const diagnosisFullView = ref(false)
 const hypotheses = ref<Hypothesis[]>([])
+const diagnosisReports = ref<DiagnosisReport[]>([])
 const journalEntries = ref<HealthEntry[]>([])
 const patient = ref<PatientProfile | null>(null)
+
+const pageSubtitle = computed(() =>
+  activeTab.value === 'diagnoses'
+    ? 'Possible medical conditions from your journal, ranked by likelihood'
+    : 'Evidence-based hypotheses and analysis from your health data'
+)
 
 onMounted(async () => {
   try {
@@ -48,9 +122,21 @@ onMounted(async () => {
     hypotheses.value = hyps
     journalEntries.value = entries
     patient.value = profile
+    diagnosisReports.value = buildDiagnosisReports(hyps, entries)
+
+    const tab = route.query.tab
+    if (tab === 'hypotheses' || tab === 'diagnoses') {
+      activeTab.value = tab
+    } else if (diagnosisReports.value.length === 0 && hyps.length > 0) {
+      activeTab.value = 'hypotheses'
+    }
   } finally {
     loading.value = false
   }
+})
+
+watch(activeTab, (tab) => {
+  router.replace({ query: { tab } })
 })
 </script>
 
@@ -67,10 +153,71 @@ onMounted(async () => {
   color: var(--text-muted);
 }
 
+.hypotheses-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.hypotheses-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.hypotheses-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-muted);
+}
+
+.hypotheses-tab--active {
+  background: var(--accent-strong);
+  color: #fff;
+}
+
+.hypotheses-tab--active .tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.tab-count {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-panel {
+  min-height: 120px;
+}
+
 .empty-state {
   text-align: center;
   padding: 3rem;
   color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
 }
 
 .link-cta {

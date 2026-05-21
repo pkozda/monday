@@ -5,11 +5,14 @@ import {
   analyzeHypothesisGeneration,
   type HypothesisGenerationResult,
 } from '@/services/hypothesisGenerator'
+import { normalizeHypothesis } from '@/services/hypothesisNormalize'
 
 export type { HypothesisGenerationResult }
 
-export async function clearAllHypotheses(): Promise<void> {
+export async function clearAllHypotheses(): Promise<number> {
+  const count = await db.hypotheses.count()
   await db.hypotheses.clear()
+  return count
 }
 
 export async function tryGenerateHypothesis(): Promise<HypothesisGenerationResult> {
@@ -20,8 +23,11 @@ export async function tryGenerateHypothesis(): Promise<HypothesisGenerationResul
 
   const result = analyzeHypothesisGeneration(entries, existing)
 
-  if (result.status === 'created' && result.hypothesis) {
-    await saveHypothesis(result.hypothesis)
+  if (
+    (result.status === 'created' || result.status === 'updated') &&
+    result.hypothesis
+  ) {
+    await saveHypothesis(normalizeHypothesis(result.hypothesis))
   }
 
   return result
