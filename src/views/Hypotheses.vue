@@ -232,6 +232,49 @@ watch(activeTab, (tab) => {
   cursor: not-allowed;
 }
 
+.insights-toolbar {
+  margin-bottom: 1.25rem;
+}
+
+.btn-regenerate {
+  padding: 0.6rem 1.1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: var(--accent-strong);
+  color: #fff;
+  font-family: inherit;
+}
+
+.btn-regenerate:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-regenerate:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.regenerate-feedback {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.regenerate-feedback.success {
+  color: var(--success-text, #2e7d32);
+}
+
+.regenerate-feedback.error {
+  color: var(--error-text);
+}
+
+.regenerate-feedback.info {
+  color: var(--text-muted);
+}
+
 .hypotheses-tabs {
   display: flex;
   gap: 0.25rem;
