@@ -10,10 +10,9 @@
         <div class="nav-end">
           <div class="nav-links">
             <router-link to="/" class="nav-link">Dashboard</router-link>
-            <router-link to="/timeline" class="nav-link">Timeline</router-link>
             <router-link to="/hypotheses" class="nav-link">Hypotheses</router-link>
-            <router-link to="/journal" class="nav-link">Journal</router-link>
             <router-link to="/appointments" class="nav-link">Appointments</router-link>
+            <router-link to="/journal" class="nav-link">Journal</router-link>
           </div>
           <ThemeToggle />
         </div>
@@ -48,6 +47,7 @@ const bgStyle = computed(() => ({
 
 <style>
 @import '@/styles/themes.css';
+@import '@/styles/page-layout.css';
 
 * {
   box-sizing: border-box;
@@ -139,6 +139,11 @@ body:has(.app-main--fill) {
   width: 142px;
 }
 
+[data-theme='dark'] .nav-logo-link {
+  background: var(--bg-nav);
+  border-radius: 6px;
+}
+
 .nav-logo-img {
   display: block;
   width: 100%;
@@ -172,7 +177,11 @@ body:has(.app-main--fill) {
 }
 
 .nav-link.router-link-active {
-  color: var(--accent);
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-strong) 14%, transparent);
+  padding: 0.35rem 0.65rem;
+  margin: -0.35rem -0.65rem;
+  border-radius: 6px;
 }
 
 .app-main {

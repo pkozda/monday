@@ -1,6 +1,13 @@
 import { MEDICAL_DISEASE_CATALOG } from '@/data/medicalDiseaseCatalog'
 import {
+  areasMatch,
   collectConditionAreas,
+  detectAllBodyAreasFromText,
+  entriesForDiagnosisArea,
+  isGeneralHealthArea,
+  sortDiagnosisReportsByArea,
+} from '@/services/bodyAreaDetection'
+import {
   inferDiseasesForArea,
   type InferredDisease,
 } from '@/services/diseaseInference'
@@ -119,17 +126,17 @@ function buildAreaReport(
   hypotheses: Hypothesis[],
   sharedHistory: MedicalHistoryContext
 ): DiagnosisReport | null {
-  const areaHypotheses = hypotheses.filter((h) => {
-    const hArea =
-      h.conditionArea?.trim() || h.title.split(':')[0]?.trim() || ''
-    return hArea.toLowerCase() === area.toLowerCase()
-  })
+  const areaHypotheses = hypotheses.filter((h) => hypothesisRelatesToArea(h, area))
 
-  const areaEntries = entries.filter(
-    (e) => e.conditionArea.trim().toLowerCase() === area.toLowerCase()
-  )
+  const areaEntries = entriesForDiagnosisArea(area, entries)
 
-  if (areaEntries.length === 0 && areaHypotheses.length === 0) return null
+  if (
+    !isGeneralHealthArea(area) &&
+    areaEntries.length === 0 &&
+    areaHypotheses.length === 0
+  ) {
+    return null
+  }
 
   const inferred = inferDiseasesForArea(
     area,
@@ -234,11 +241,16 @@ export function buildDiagnosisReports(
     .map((area) => buildAreaReport(area, entries, hypotheses, sharedHistory))
     .filter((r): r is DiagnosisReport => Boolean(r))
 
-  return reports.sort((a, b) => {
-    const topA = a.variants[0]?.percentage ?? 0
-    const topB = b.variants[0]?.percentage ?? 0
-    return topB - topA
-  })
+  return sortDiagnosisReportsByArea(reports)
+}
+
+function hypothesisRelatesToArea(hypothesis: Hypothesis, area: string): boolean {
+  if (isGeneralHealthArea(area)) return true
+  const hArea =
+    hypothesis.conditionArea?.trim() || hypothesis.title.split(':')[0]?.trim() || ''
+  if (hArea && areasMatch(hArea, area)) return true
+  const text = [hypothesis.conditionArea, hypothesis.title].join(' ')
+  return detectAllBodyAreasFromText(text).some((detected) => areasMatch(detected, area))
 }
 
 export function findReportForArea(

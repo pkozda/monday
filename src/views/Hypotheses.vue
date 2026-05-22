@@ -1,32 +1,44 @@
 <template>
-  <div class="hypotheses-view">
-    <SectionHeader
+  <div class="page hypotheses-view">
+    <PageHeader
+      eyebrow="Clinical insights"
       title="Hypotheses & diagnoses"
-      :subtitle="pageSubtitle"
-    />
-
-    <div v-if="loading" class="loading">Loading…</div>
-
-    <template v-else>
-      <div class="insights-toolbar">
+      subtitle="Regenerate pulls the latest journal data into possible conditions and hypotheses."
+    >
+      <template #actions>
         <button
           type="button"
           class="btn-regenerate"
-          :disabled="regenerating || journalEntries.length === 0"
+          :disabled="loading || regenerating || journalEntries.length === 0"
+          :title="
+            journalEntries.length === 0
+              ? 'Add journal entries first'
+              : 'Regenerate from current journal'
+          "
           @click="onRegenerateInsights"
         >
           {{
             regenerating
-              ? 'Regenerating from journal…'
+              ? 'Regenerating…'
               : 'Regenerate hypotheses & conditions'
           }}
         </button>
-        <p v-if="regenerateMessage" class="regenerate-feedback" :class="regenerateMessageType">
-          {{ regenerateMessage }}
-        </p>
-      </div>
+      </template>
+    </PageHeader>
 
-      <div class="hypotheses-tabs" role="tablist" aria-label="Hypotheses and diagnoses">
+    <div
+      v-if="regenerateMessage"
+      class="page-banner regenerate-feedback"
+      :class="`page-banner--${regenerateBannerVariant}`"
+      role="status"
+    >
+      {{ regenerateMessage }}
+    </div>
+
+    <div v-if="loading" class="page-loading">Loading insights…</div>
+
+    <template v-else>
+      <div class="hypotheses-tabs page-panel page-panel--compact" role="tablist" aria-label="Hypotheses and diagnoses">
         <button
           type="button"
           role="tab"
@@ -56,27 +68,23 @@
       <div
         v-show="activeTab === 'diagnoses'"
         role="tabpanel"
-        class="tab-panel"
+        class="tab-panel page-panel"
         aria-label="Diagnoses"
       >
-        <DiagnosisPanel
-          :reports="diagnosisReports"
-          :full-view="diagnosisFullView"
-          show-toolbar
-          @toggle-view="diagnosisFullView = !diagnosisFullView"
-        />
+        <DiagnosisPanel :reports="diagnosisReports" />
       </div>
 
       <div
         v-show="activeTab === 'hypotheses'"
         role="tabpanel"
-        class="tab-panel"
+        class="tab-panel page-panel"
         aria-label="Hypotheses"
       >
-        <div v-if="hypotheses.length === 0" class="empty-state">
+        <div v-if="hypotheses.length === 0" class="page-empty">
+          <span class="page-empty__title">No hypotheses yet</span>
           <p>
-            No hypotheses yet. Add journal entries, then use
-            <strong>Regenerate hypotheses &amp; conditions</strong> above.
+            Add journal entries, then use
+            <strong>Regenerate hypotheses &amp; conditions</strong> in the header.
           </p>
           <router-link to="/" class="link-cta">Go to Dashboard</router-link>
         </div>
@@ -98,7 +106,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import SectionHeader from '@/components/SectionHeader.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
 import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
 import { regenerateAllHypothesesFromJournal } from '@/api/hypothesisApi'
@@ -119,7 +127,6 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(true)
 const activeTab = ref<TabId>('diagnoses')
-const diagnosisFullView = ref(false)
 const hypotheses = ref<Hypothesis[]>([])
 const diagnosisReports = ref<DiagnosisReport[]>([])
 const journalEntries = ref<HealthEntry[]>([])
@@ -140,11 +147,12 @@ async function loadInsights() {
   diagnosisReports.value = buildDiagnosisReports(hyps, entries)
 }
 
-const pageSubtitle = computed(() =>
-  activeTab.value === 'diagnoses'
-    ? 'Possible medical conditions from your journal, ranked by likelihood'
-    : 'Evidence-based hypotheses and analysis from your health data'
-)
+const regenerateBannerVariant = computed(() => {
+  const t = regenerateMessageType.value
+  if (t === 'success') return 'success'
+  if (t === 'error') return 'error'
+  return 'info'
+})
 
 onMounted(async () => {
   try {
@@ -197,16 +205,31 @@ watch(activeTab, (tab) => {
 </script>
 
 <style scoped>
-.hypotheses-view {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
+.regenerate-feedback {
+  margin: -0.5rem 0 1.25rem;
 }
 
-.loading {
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-muted);
+.btn-regenerate {
+  flex-shrink: 0;
+  padding: 0.65rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--accent-strong);
+  color: #fff;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-regenerate:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-regenerate:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .insights-toolbar {
@@ -256,11 +279,9 @@ watch(activeTab, (tab) => {
   display: flex;
   gap: 0.25rem;
   margin-bottom: 1.25rem;
-  padding: 0.25rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 0.35rem;
   width: fit-content;
+  box-shadow: none;
 }
 
 .hypotheses-tab {
@@ -308,15 +329,6 @@ watch(activeTab, (tab) => {
 
 .tab-panel {
   min-height: 120px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-muted);
-  background: var(--bg-surface);
-  border: 1px dashed var(--border-strong);
-  border-radius: 8px;
 }
 
 .link-cta {

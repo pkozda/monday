@@ -1,5 +1,7 @@
 import {
+  addDays,
   addMonths,
+  differenceInCalendarDays,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
@@ -8,6 +10,7 @@ import {
   isSameMonth,
   isToday,
   parseISO,
+  startOfDay,
   startOfMonth,
   startOfWeek,
   subMonths,
@@ -126,18 +129,59 @@ export function shiftMonth(month: Date, delta: number): Date {
   return delta < 0 ? subMonths(month, -delta) : addMonths(month, delta)
 }
 
-export function reminderLeadText(iso: string, now = new Date()): string {
+export interface AppointmentScheduleSummary {
+  dateTimeText: string
+  relativeText: string
+  daysUntil: number
+  badgeHeadline: string
+}
+
+export function appointmentDaysUntil(iso: string, now = new Date()): number {
+  const d = parseISO(iso)
+  if (Number.isNaN(d.getTime())) return 0
+  return Math.max(0, differenceInCalendarDays(startOfDay(d), startOfDay(now)))
+}
+
+export function appointmentRelativeText(daysUntil: number): string {
+  if (daysUntil === 0) return 'today'
+  if (daysUntil === 1) return 'in 1 day'
+  return `in ${daysUntil} days`
+}
+
+export function appointmentBadgeHeadline(daysUntil: number): string {
+  if (daysUntil === 0) return 'Today'
+  if (daysUntil === 1) return 'Tomorrow'
+  return `In ${daysUntil} days`
+}
+
+export function appointmentDateTimeText(iso: string, now = new Date()): string {
   const d = parseISO(iso)
   if (Number.isNaN(d.getTime())) return formatAppointmentDateTime(iso)
   if (isSameDay(d, now)) {
     return `Today at ${format(d, 'h:mm a')}`
   }
-  const tomorrow = new Date(now)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  if (isSameDay(d, tomorrow)) {
+  if (isSameDay(d, addDays(now, 1))) {
     return `Tomorrow at ${format(d, 'h:mm a')}`
   }
   return format(d, "EEE, MMM d 'at' h:mm a")
+}
+
+export function appointmentScheduleSummary(
+  iso: string,
+  now = new Date()
+): AppointmentScheduleSummary {
+  const daysUntil = appointmentDaysUntil(iso, now)
+  return {
+    dateTimeText: appointmentDateTimeText(iso, now),
+    relativeText: appointmentRelativeText(daysUntil),
+    daysUntil,
+    badgeHeadline: appointmentBadgeHeadline(daysUntil),
+  }
+}
+
+export function reminderLeadText(iso: string, now = new Date()): string {
+  const { dateTimeText, relativeText } = appointmentScheduleSummary(iso, now)
+  return `${dateTimeText} · ${relativeText}`
 }
 
 export function combineDateAndTime(date: string, time: string): string {

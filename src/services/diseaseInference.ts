@@ -47,26 +47,4 @@ export function inferDiseasesForArea(
   }))
 }
 
-export function collectConditionAreas(
-  entries: HealthEntry[],
-  hypotheses: Hypothesis[]
-): string[] {
-  const map = new Map<string, string>()
-
-  for (const entry of entries) {
-    const area = entry.conditionArea.trim()
-    if (!area) continue
-    map.set(area.toLowerCase(), area)
-  }
-
-  for (const hypothesis of hypotheses) {
-    const area =
-      hypothesis.conditionArea?.trim() ||
-      hypothesis.title.split(':')[0]?.trim() ||
-      ''
-    if (!area) continue
-    map.set(area.toLowerCase(), area)
-  }
-
-  return [...map.values()]
-}
+export { collectConditionAreas } from '@/services/bodyAreaDetection'

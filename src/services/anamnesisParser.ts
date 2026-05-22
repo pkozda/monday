@@ -9,7 +9,7 @@ import type { HealthEntryInput, HealthEntryType } from '@/models/types'
 import { extractSeverityFromText } from '@/services/entrySeverity'
 import { inferEntryTypeFromText } from '@/services/healthAnalysis'
 import { buildJournalShortTitle } from '@/services/journalEntryText'
-import { isWeightRelatedText } from '@/services/weightEntry'
+import { detectConditionArea } from '@/services/bodyAreaDetection'
 
 export interface ParsedAnamnesisRecord {
   eventDate: string
@@ -20,32 +20,6 @@ export interface ParsedAnamnesisRecord {
   medications?: string
   severity?: number
 }
-
-const BODY_AREA_RULES: { pattern: RegExp; area: string }[] = [
-  { pattern: /\b(left|right)\s+leg\b/i, area: 'Left leg' },
-  { pattern: /\b(left|right)\s+knee\b/i, area: 'Knee' },
-  { pattern: /\b(left|right)\s+arm\b/i, area: 'Arm' },
-  { pattern: /\b(left|right)\s+shoulder\b/i, area: 'Shoulder' },
-  { pattern: /\b(left|right)\s+hip\b/i, area: 'Hip' },
-  { pattern: /\b(left|right)\s+foot\b/i, area: 'Foot' },
-  { pattern: /\b(left|right)\s+ankle\b/i, area: 'Ankle' },
-  { pattern: /\blower\s+back\b/i, area: 'Lower back' },
-  { pattern: /\bupper\s+back\b/i, area: 'Upper back' },
-  { pattern: /\bback\b/i, area: 'Back' },
-  { pattern: /\bneck\b/i, area: 'Neck' },
-  { pattern: /\bspine\b/i, area: 'Spine' },
-  { pattern: /\bknees?\b/i, area: 'Knee' },
-  { pattern: /\blegs?\b/i, area: 'Legs' },
-  { pattern: /\bhips?\b/i, area: 'Hip' },
-  { pattern: /\bshoulders?\b/i, area: 'Shoulder' },
-  { pattern: /\barms?\b/i, area: 'Arm' },
-  { pattern: /\bhands?\b/i, area: 'Hand' },
-  { pattern: /\bfeet|foot\b/i, area: 'Foot' },
-  { pattern: /\bjoints?\b/i, area: 'Joints' },
-  { pattern: /\bchest\b/i, area: 'Chest' },
-  { pattern: /\babdomen|stomach\b/i, area: 'Abdomen' },
-  { pattern: /\bhead\b/i, area: 'Head' },
-]
 
 const MONTH_NAMES: Record<string, number> = {
   january: 0,
@@ -159,14 +133,6 @@ function parseDateFromSegment(text: string, reference = new Date()): string {
   }
 
   return clampDate(reference)
-}
-
-function detectConditionArea(text: string, fallback: string): string {
-  if (isWeightRelatedText(text)) return 'Body weight'
-  for (const rule of BODY_AREA_RULES) {
-    if (rule.pattern.test(text)) return rule.area
-  }
-  return fallback.trim() || 'General health'
 }
 
 function extractMedications(text: string): string | undefined {

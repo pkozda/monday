@@ -1,18 +1,23 @@
 <template>
   <div class="appointments-view">
     <div class="appointments-top">
-      <header class="appointments-page-header">
-        <SectionHeader
-          title="Doctor appointments"
-          subtitle="Calendar plus upcoming and past visits."
-          class="page-header"
-        />
-        <button type="button" class="btn-add-appointment" @click="addModalOpen = true">
-          Add appointment
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="Scheduling"
+        title="Doctor appointments"
+        subtitle="Calendar plus upcoming and past visits."
+      >
+        <template #actions>
+          <button type="button" class="btn-add-appointment" @click="addModalOpen = true">
+            Add appointment
+          </button>
+        </template>
+      </PageHeader>
 
-      <div v-if="successMessage" class="success-banner" role="status">
+      <div
+        v-if="successMessage"
+        class="page-banner page-banner--success success-banner"
+        role="status"
+      >
         {{ successMessage }}
       </div>
     </div>
@@ -23,7 +28,7 @@
           <SectionHeader
             title="Calendar"
             subtitle="Tap a day to see visits on that date."
-            class="column-header"
+            class="column-header page-section-title"
           />
         </div>
         <div class="appointments-column-scroll">
@@ -41,7 +46,7 @@
             id="upcoming-heading"
             title="Upcoming"
             subtitle="Soonest first."
-            class="column-header"
+            class="column-header page-section-title"
           />
         </div>
         <div class="appointments-column-scroll" role="region" aria-label="Upcoming appointments">
@@ -70,7 +75,7 @@
             id="past-heading"
             title="Past visits"
             subtitle="Newest first."
-            class="column-header"
+            class="column-header page-section-title"
           />
         </div>
         <div class="appointments-column-scroll" role="region" aria-label="Past appointments">
@@ -101,6 +106,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import PageHeader from '@/components/PageHeader.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import AppointmentFormModal from '@/components/AppointmentFormModal.vue'
 import AppointmentCard from '@/components/AppointmentCard.vue'
@@ -182,16 +188,14 @@ async function onRemove(id: string) {
   flex-shrink: 0;
 }
 
-.appointments-page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+.appointments-top :deep(.page-header) {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: none;
 }
 
-.page-header :deep(.section-header) {
-  margin-bottom: 0;
+.success-banner {
+  margin: 0;
 }
 
 .btn-add-appointment {
@@ -209,16 +213,6 @@ async function onRemove(id: string) {
 
 .btn-add-appointment:hover {
   background: var(--accent-hover);
-}
-
-.success-banner {
-  margin: 0.35rem 0 0;
-  padding: 0.6rem 0.85rem;
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-  border-radius: 6px;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
 }
 
 .appointments-content {
@@ -353,11 +347,6 @@ async function onRemove(id: string) {
 @media (max-width: 600px) {
   .appointments-view {
     padding: 1rem;
-  }
-
-  .appointments-page-header {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   .btn-add-appointment {

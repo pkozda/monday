@@ -37,6 +37,8 @@
   --hint-border: #64b5f6;
 
   --shadow: rgba(0, 0, 0, 0.25);
+  --radius-md: 10px;
+  --radius-lg: 12px;
 
   --chart-track: #2a2a2a;
   --donut-hole: #1e1e1e;
@@ -105,6 +107,8 @@
   --hint-border: #1976d2;
 
   --shadow: rgba(0, 0, 0, 0.08);
+  --radius-md: 10px;
+  --radius-lg: 12px;
 
   --chart-track: #e8eaed;
   --donut-hole: #ffffff;
