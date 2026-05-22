@@ -10,6 +10,10 @@ import {
   type MedicalHistoryContext,
 } from '@/services/medicalHistoryContext'
 import { patternFromTitle } from '@/services/hypothesisGenerator'
+import {
+  areasForEntry,
+  areasMatch as bodyAreasMatch,
+} from '@/services/bodyAreaDetection'
 import type {
   DiagnosisCriterion,
   DiagnosisMatchFlag,
@@ -56,7 +60,7 @@ const AREA_EXPANSIONS: { pattern: RegExp; hints: RegExp[] }[] = [
 ]
 
 function areasMatch(a: string, b: string): boolean {
-  return a.trim().toLowerCase() === b.trim().toLowerCase()
+  return bodyAreasMatch(a, b)
 }
 
 function areaMatchesDisease(primaryArea: string, disease: DiseaseDefinition): boolean {
@@ -140,7 +144,9 @@ function countKeywordHitsPerEntry(
 
   for (const entry of history.entries) {
     const text = entryText(entry)
-    const isPrimary = areasMatch(entry.conditionArea, primaryArea)
+    const isPrimary = areasForEntry(entry).some((detected) =>
+      areasMatch(detected, primaryArea)
+    )
     let entryStrong = false
     let entryWeak = false
 

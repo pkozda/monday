@@ -1,15 +1,12 @@
 <template>
   <article
     class="diagnosis-card"
-    :class="{
-      'diagnosis-card--expanded': expanded,
-      'diagnosis-card--full': forceExpanded,
-    }"
+    :class="{ 'diagnosis-card--expanded': expanded }"
   >
     <button
       type="button"
       class="diagnosis-card-trigger"
-      :aria-expanded="expanded || forceExpanded"
+      :aria-expanded="expanded"
       @click="onToggle"
     >
       <div class="diagnosis-card-compact">
@@ -24,36 +21,34 @@
         </div>
 
         <p
-          v-if="!expanded && !forceExpanded && report.suggestedClinician"
+          v-if="!expanded && report.suggestedClinician"
           class="diagnosis-specialist-compact"
         >
           See: {{ report.suggestedClinician }}
         </p>
 
-        <p v-if="!expanded && !forceExpanded" class="diagnosis-inline">
-          <template
-            v-for="(variant, index) in report.variants"
+        <ul v-if="!expanded" class="diagnosis-variant-rows">
+          <li
+            v-for="(variant, index) in compactVariants"
             :key="variant.id"
+            class="diagnosis-variant-row"
+            :class="{ 'diagnosis-variant-row--lead': index === 0 }"
           >
-            <span v-if="index > 0" class="diagnosis-sep">·</span>
-            <span class="diagnosis-inline-item">
-              <strong>{{ variant.percentage }}%</strong>
-              {{ variant.diseaseName }}
-            </span>
-          </template>
+            <span class="diagnosis-variant-row__pct">{{ variant.percentage }}%</span>
+            <span class="diagnosis-variant-row__name">{{ variant.diseaseName }}</span>
+          </li>
+        </ul>
+        <p v-if="moreCompactCount > 0 && !expanded" class="diagnosis-variant-more">
+          +{{ moreCompactCount }} more — expand to see all
         </p>
       </div>
       <span
-        v-if="!forceExpanded"
         class="diagnosis-chevron"
         :class="{ 'diagnosis-chevron--open': expanded }"
       />
     </button>
 
-    <div
-      v-show="expanded || forceExpanded"
-      class="diagnosis-card-body"
-    >
+    <div v-show="expanded" class="diagnosis-card-body">
       <p v-if="report.specialistVisitAdvice" class="diagnosis-specialist">
         <strong>Who to see:</strong> {{ report.specialistVisitAdvice }}
       </p>
@@ -69,7 +64,7 @@
 
       <div class="diagnosis-variants">
         <DiagnosisVariantCard
-          v-for="(variant, index) in report.variants"
+          v-for="(variant, index) in topVariants"
           :key="variant.id"
           :variant="variant"
           :lead="index === 0"
@@ -80,16 +75,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import DiagnosisVariantCard from '@/components/DiagnosisVariantCard.vue'
 import type { DiagnosisReport } from '@/models/types'
 
 const props = defineProps<{
   report: DiagnosisReport
-  forceExpanded?: boolean
 }>()
 
+const MAX_VARIANTS = 8
+const MAX_VARIANTS_COMPACT = 3
+
 const expanded = ref(false)
+
+const sortedVariants = computed(() =>
+  [...props.report.variants].sort((a, b) => b.percentage - a.percentage)
+)
+
+const topVariants = computed(() => sortedVariants.value.slice(0, MAX_VARIANTS))
+
+const compactVariants = computed(() =>
+  topVariants.value.slice(0, MAX_VARIANTS_COMPACT)
+)
+
+const moreCompactCount = computed(() =>
+  Math.max(0, topVariants.value.length - compactVariants.value.length)
+)
 
 const certaintyShort = computed(() => {
   switch (props.report.certainty) {
@@ -102,16 +113,7 @@ const certaintyShort = computed(() => {
   }
 })
 
-watch(
-  () => props.forceExpanded,
-  (full) => {
-    if (full) expanded.value = true
-  },
-  { immediate: true }
-)
-
 function onToggle() {
-  if (props.forceExpanded) return
   expanded.value = !expanded.value
 }
 
@@ -139,8 +141,7 @@ function onToggle() {
   font-family: inherit;
 }
 
-.diagnosis-card--expanded .diagnosis-card-trigger,
-.diagnosis-card--full .diagnosis-card-trigger {
+.diagnosis-card--expanded .diagnosis-card-trigger {
   border-bottom: 1px solid var(--border);
 }
 
@@ -209,25 +210,54 @@ function onToggle() {
   color: var(--urgency-monitor-text);
 }
 
-.diagnosis-inline {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.diagnosis-variant-rows {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0 0 0.15rem;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
-.diagnosis-inline-item strong {
+.diagnosis-variant-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.diagnosis-variant-row__pct {
+  font-size: 0.82rem;
   font-weight: 700;
-  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+  color: var(--accent-strong);
 }
 
-.diagnosis-sep {
-  margin: 0 0.25rem;
+.diagnosis-variant-row--lead .diagnosis-variant-row__pct {
+  font-size: 0.9rem;
+}
+
+.diagnosis-variant-row__name {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.diagnosis-variant-row--lead .diagnosis-variant-row__name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.diagnosis-variant-more {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
   color: var(--text-faint);
 }
 
@@ -270,7 +300,17 @@ function onToggle() {
 
 .diagnosis-variants {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 0.65rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.25rem;
+  scrollbar-width: thin;
+}
+
+.diagnosis-variants :deep(.variant-card) {
+  flex: 0 0 min(300px, 88vw);
+  max-width: 300px;
 }
 </style>

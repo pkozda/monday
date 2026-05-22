@@ -1,0 +1,138 @@
+/* Shared page structure — use with .page wrapper on each view */
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.75rem 2rem 2.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.page-section {
+  margin-bottom: 1.75rem;
+}
+
+.page-section:last-child {
+  margin-bottom: 0;
+}
+
+.page-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.25rem 1.5rem 1.5rem;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.page-panel--compact {
+  padding: 1rem 1.25rem;
+}
+
+.page-panel--flat {
+  box-shadow: none;
+}
+
+.page-section-title :deep(.section-header) {
+  margin-bottom: 0.85rem;
+}
+
+.page-section-title :deep(.section-title) {
+  font-size: 1.15rem;
+}
+
+.page-section-title :deep(.section-subtitle) {
+  font-size: 0.85rem;
+}
+
+.page-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3.5rem 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg, 12px);
+}
+
+.page-loading::before {
+  content: '';
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-strong);
+  border-radius: 50%;
+  animation: page-spin 0.7s linear infinite;
+}
+
+@keyframes page-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.page-empty {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg, 12px);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.page-empty__title {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.page-banner {
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md, 10px);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+
+.page-banner--success {
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
+}
+
+.page-banner--info {
+  background: var(--hint-bg);
+  border-color: var(--hint-border);
+  color: var(--text-secondary);
+}
+
+.page-banner--error {
+  background: var(--error-bg);
+  border-color: var(--error-border);
+  color: var(--error-text);
+}
+
+.page-hint {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--hint-bg);
+  border-left: 3px solid var(--accent-strong);
+  border-radius: 0 var(--radius-md, 10px) var(--radius-md, 10px) 0;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 1.25rem 1rem 2rem;
+  }
+}
