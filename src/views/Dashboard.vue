@@ -73,9 +73,12 @@
         <div class="chart-panel">
           <SectionHeader
             title="Severity trend"
-            subtitle="Self-reported severity over time"
+            :subtitle="severityTrendSubtitle"
           />
-          <SeverityLineChart :points="stats?.severityTrend ?? []" />
+          <SeverityLineChart
+            :points="stats?.severityTrend ?? []"
+            :empty-text="severityTrendEmptyText"
+          />
         </div>
         <div class="chart-panel">
           <SectionHeader
@@ -259,6 +262,31 @@ const hasJournalData = computed(() => journalEntryCount.value > 0)
 const avgSeverityLabel = computed(() => {
   const avg = stats.value?.averageSeverity
   return avg !== null && avg !== undefined ? `${avg} / 10` : '—'
+})
+
+const severityTrendSubtitle = computed(() => {
+  const base =
+    'By event date (when symptoms happened), not when you logged the entry.'
+  const info = stats.value?.severityTrendInfo
+  if (!info) return base
+  if (info.urgencyEstimatedCount > 0 && info.explicitCount === 0) {
+    return `${base} Estimated from entry urgency until you add 1–10 ratings.`
+  }
+  if (info.urgencyEstimatedCount > 0) {
+    return `${base} Some points use urgency when no rating was logged.`
+  }
+  if (info.textInferredCount > 0 && info.explicitCount === 0) {
+    return `${base} Parsed from pain scores in your notes (e.g. 7/10).`
+  }
+  return base
+})
+
+const severityTrendEmptyText = computed(() => {
+  const total = stats.value?.totalJournalEntries ?? 0
+  if (total === 0) {
+    return 'Add journal entries to see severity trends.'
+  }
+  return `You have ${total} journal ${total === 1 ? 'entry' : 'entries'}, but none have a severity rating or text we can read (e.g. "pain 7/10"). Use the severity slider when logging.`
 })
 
 const recommendations = computed(() =>

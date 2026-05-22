@@ -1,11 +1,17 @@
 import type { HypothesisPattern } from '@/models/types'
 
+import { EXTENDED_DISEASE_CATALOG } from '@/data/medicalDiseaseCatalogExtended'
+
 export interface DiseaseDefinition {
   id: string
   /** Display name of the medical condition */
   name: string
+  /** High-specificity terms (weighted more in scoring) */
+  strongKeywords?: RegExp[]
   /** Keywords / phrases in journal text */
   keywords: RegExp[]
+  /** Terms that reduce score if present without strong matches */
+  negativeKeywords?: RegExp[]
   /** Condition-area labels this disease applies to (substring match, case-insensitive) */
   areaHints: RegExp[]
   /** Hypothesis patterns that increase plausibility */
@@ -14,11 +20,18 @@ export interface DiseaseDefinition {
   medicationHints?: RegExp[]
 }
 
-export const MEDICAL_DISEASE_CATALOG: DiseaseDefinition[] = [
+const CORE_DISEASE_CATALOG: DiseaseDefinition[] = [
   // —— Head / neurological ——
   {
     id: 'migraine',
     name: 'Migraine',
+    negativeKeywords: [/\bband-?like\b/i, /\btension\s+headache\b/i],
+    strongKeywords: [
+      /\bmigraine\b/i,
+      /\bthrobbing\s+headache\b/i,
+      /\bphotophobia\b/i,
+      /\baura\b/i,
+    ],
     keywords: [
       /\bmigraine\b/i,
       /\bthrobbing\s+headache\b/i,
@@ -34,6 +47,7 @@ export const MEDICAL_DISEASE_CATALOG: DiseaseDefinition[] = [
   {
     id: 'tension_headache',
     name: 'Tension-type headache',
+    negativeKeywords: [/\bphotophobia\b/i, /\baura\b/i, /\bnausea\s+with\s+headache\b/i],
     keywords: [
       /\btension\s+headache\b/i,
       /\bheadache\b/i,
@@ -200,6 +214,11 @@ export const MEDICAL_DISEASE_CATALOG: DiseaseDefinition[] = [
   {
     id: 'lumbar_disc_herniation',
     name: 'Lumbar disc herniation',
+    strongKeywords: [
+      /\bsciatica\b/i,
+      /\bherniat/i,
+      /\bslipped\s+disc\b/i,
+    ],
     keywords: [
       /\bherniat/i,
       /\bslipped\s+disc\b/i,
@@ -544,4 +563,9 @@ export const MEDICAL_DISEASE_CATALOG: DiseaseDefinition[] = [
     areaHints: [/foot/i, /leg/i, /hand/i, /nerve/i],
     relatedPatterns: ['recurring', 'worsening'],
   },
+]
+
+export const MEDICAL_DISEASE_CATALOG: DiseaseDefinition[] = [
+  ...CORE_DISEASE_CATALOG,
+  ...EXTENDED_DISEASE_CATALOG,
 ]

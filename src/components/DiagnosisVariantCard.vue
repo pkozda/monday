@@ -7,6 +7,9 @@
       <span class="variant-percent">{{ variant.percentage }}%</span>
       <div class="variant-title-block">
         <h4 class="variant-disease">{{ variant.diseaseName }}</h4>
+        <p class="variant-precision">
+          History fit {{ variant.precisionScore }}/100
+        </p>
         <div
           class="variant-bar"
           role="presentation"
@@ -20,8 +23,54 @@
       <p class="variant-summary">{{ variant.rationale }}</p>
     </section>
 
+    <section v-if="variant.confirmCriteria.length" class="variant-section">
+      <h5 class="variant-section-title">Criteria that support this diagnosis</h5>
+      <ul class="criteria-list">
+        <li
+          v-for="item in variant.confirmCriteria"
+          :key="item.id"
+          class="criteria-item"
+          :class="`criteria-item--${item.status}`"
+        >
+          <span class="criteria-icon" aria-hidden="true">{{ criteriaIcon(item) }}</span>
+          <div class="criteria-body">
+            <span class="criteria-text">{{ item.text }}</span>
+            <span v-if="item.detail" class="criteria-detail">{{ item.detail }}</span>
+            <span v-else-if="item.status === 'not_met'" class="criteria-hint">
+              Not yet documented — discuss with your clinician
+            </span>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section v-if="variant.excludeCriteria.length" class="variant-section">
+      <h5 class="variant-section-title">Criteria that argue against it</h5>
+      <ul class="criteria-list">
+        <li
+          v-for="item in variant.excludeCriteria"
+          :key="item.id"
+          class="criteria-item"
+          :class="`criteria-item--${item.status}`"
+        >
+          <span class="criteria-icon" aria-hidden="true">{{ criteriaIcon(item) }}</span>
+          <div class="criteria-body">
+            <span class="criteria-text">{{ item.text }}</span>
+            <span v-if="item.detail" class="criteria-detail">{{ item.detail }}</span>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section v-if="variant.suggestedWorkup.length" class="variant-section">
+      <h5 class="variant-section-title">Suggested workup to confirm or exclude</h5>
+      <ul class="workup-list">
+        <li v-for="(step, wi) in variant.suggestedWorkup" :key="wi">{{ step }}</li>
+      </ul>
+    </section>
+
     <section v-if="variant.matchFlags.length" class="variant-section">
-      <h5 class="variant-section-title">Matching flags</h5>
+      <h5 class="variant-section-title">Evidence from your journal</h5>
       <ul class="flag-list">
         <li
           v-for="(flag, fi) in variant.matchFlags"
@@ -56,6 +105,7 @@
 <script setup lang="ts">
 import { PATTERN_LABELS } from '@/services/hypothesisGenerator'
 import type {
+  DiagnosisCriterion,
   DiagnosisMatchFlagKind,
   DiagnosisVariant,
   HypothesisPattern,
@@ -84,6 +134,13 @@ function flagKindLabel(kind: DiagnosisMatchFlagKind): string {
 function patternLabel(pattern: HypothesisPattern | undefined): string {
   if (!pattern) return ''
   return PATTERN_LABELS[pattern]
+}
+
+function criteriaIcon(item: DiagnosisCriterion): string {
+  if (item.role === 'confirm') {
+    return item.status === 'met' ? '✓' : '○'
+  }
+  return item.status === 'exclusion_present' ? '✗' : '✓'
 }
 </script>
 
@@ -125,11 +182,18 @@ function patternLabel(pattern: HypothesisPattern | undefined): string {
 }
 
 .variant-disease {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.2rem;
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
+}
+
+.variant-precision {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .variant-bar {
@@ -168,6 +232,77 @@ function patternLabel(pattern: HypothesisPattern | undefined): string {
   line-height: 1.45;
 }
 
+.criteria-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.criteria-item {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  background: var(--bg-surface);
+  border-left: 3px solid var(--border-strong);
+}
+
+.criteria-item--met {
+  border-left-color: var(--success-text, #2d6a4f);
+}
+
+.criteria-item--not_met {
+  border-left-color: var(--text-faint);
+  opacity: 0.92;
+}
+
+.criteria-item--exclusion_present {
+  border-left-color: var(--urgency-urgent-text, #c45c26);
+  background: var(--urgency-monitor-bg);
+}
+
+.criteria-icon {
+  flex-shrink: 0;
+  width: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.criteria-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.criteria-text {
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.criteria-detail,
+.criteria-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.workup-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.workup-list li {
+  margin-bottom: 0.25rem;
+}
+
 .flag-list {
   list-style: none;
   margin: 0;
@@ -192,30 +327,14 @@ function patternLabel(pattern: HypothesisPattern | undefined): string {
   border-left-color: var(--accent);
 }
 
-.flag-item--urgency {
-  border-left-color: var(--urgency-urgent-text, #c45c26);
-}
-
-.flag-item--journal_flag {
-  border-left-color: var(--urgency-monitor-text, #8a6d3b);
-}
-
-.flag-item--hypothesis {
-  border-left-color: var(--success-text, #2d6a4f);
-}
-
 .flag-kind {
-  grid-column: 1;
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
   color: var(--text-faint);
-  white-space: nowrap;
 }
 
 .flag-label {
-  grid-column: 2;
   font-weight: 500;
   color: var(--text-primary);
 }
@@ -223,7 +342,6 @@ function patternLabel(pattern: HypothesisPattern | undefined): string {
 .flag-detail {
   grid-column: 1 / -1;
   color: var(--text-muted);
-  line-height: 1.35;
 }
 
 .variant-footer {

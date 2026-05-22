@@ -75,17 +75,33 @@ export interface DiagnosisMatchFlag {
   sourceArea?: string
 }
 
+export type DiagnosisCriterionStatus = 'met' | 'not_met' | 'exclusion_present'
+
+export interface DiagnosisCriterion {
+  id: string
+  text: string
+  role: 'confirm' | 'exclude'
+  status: DiagnosisCriterionStatus
+  detail?: string
+}
+
 export interface DiagnosisVariant {
   id: string
   /** Medical disease / condition name */
   diseaseName: string
   label: string
   percentage: number
+  /** Internal 0–100 fit score from history (before normalization to %) */
+  precisionScore: number
   conditionArea: string
   rationale: string
   /** @deprecated use matchFlags — kept for compact summaries */
   matchedSignals: string[]
   matchFlags: DiagnosisMatchFlag[]
+  confirmCriteria: DiagnosisCriterion[]
+  excludeCriteria: DiagnosisCriterion[]
+  /** Tests or findings that would help confirm or rule out */
+  suggestedWorkup: string[]
   primaryJournalCount: number
   crossBodyJournalCount: number
   hypothesisId?: string
@@ -176,6 +192,12 @@ export interface SeverityPoint {
   label: string
 }
 
+export interface SeverityTrendInfo {
+  explicitCount: number
+  textInferredCount: number
+  urgencyEstimatedCount: number
+}
+
 export type HealthRecommendationCategory =
   | 'screening'
   | 'preventive'
@@ -206,5 +228,6 @@ export interface DashboardStats {
   entriesByType: ChartSegment[]
   urgencyBreakdown: ChartSegment[]
   severityTrend: SeverityPoint[]
+  severityTrendInfo: SeverityTrendInfo
   hypothesesByConfidence: ChartSegment[]
 }

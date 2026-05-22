@@ -23,7 +23,7 @@ const CERTAINTY_LABELS: Record<DiagnosisCertainty, string> = {
 
 const MIN_VARIANT_PERCENT = 3
 const MAX_VARIANTS = 8
-const MIN_SCORE_FRACTION = 0.3
+const MIN_PRECISION_FRACTION = 0.35
 
 function normalizePercentages(weights: number[]): number[] {
   if (weights.length === 0) return []
@@ -72,6 +72,13 @@ function findLinkedHypothesis(
 }
 
 function buildRationale(disease: InferredDisease, primaryArea: string): string {
+  const confirmMet = disease.confirmCriteria.filter((c) => c.status === 'met')
+    .length
+  const confirmTotal = disease.confirmCriteria.length
+  const exclusions = disease.excludeCriteria.filter(
+    (c) => c.status === 'exclusion_present'
+  ).length
+
   const parts: string[] = []
   if (disease.primaryJournalCount > 0) {
     parts.push(
@@ -80,12 +87,21 @@ function buildRationale(disease: InferredDisease, primaryArea: string): string {
   }
   if (disease.crossBodyJournalCount > 0) {
     parts.push(
-      `${disease.crossBodyJournalCount} related ${disease.crossBodyJournalCount === 1 ? 'entry' : 'entries'} from other body areas`
+      `${disease.crossBodyJournalCount} cross-area ${disease.crossBodyJournalCount === 1 ? 'entry' : 'entries'}`
     )
   }
   const scope =
-    parts.length > 0 ? parts.join(' and ') : 'your full journal'
-  return `Monday weighed ${scope}, plus matching keywords and clinical flags. This is a possibility, not a confirmed diagnosis.`
+    parts.length > 0 ? parts.join(' and ') : 'your full medical history'
+
+  let criteriaNote = ''
+  if (confirmTotal > 0) {
+    criteriaNote = ` ${confirmMet} of ${confirmTotal} supporting criteria met in your journal.`
+  }
+  if (exclusions > 0) {
+    criteriaNote += ` ${exclusions} exclusion ${exclusions === 1 ? 'factor' : 'factors'} present.`
+  }
+
+  return `Precision score ${disease.precisionScore}/100 from ${scope}, symptom patterns, and clinical criteria.${criteriaNote} Not a confirmed diagnosis — use confirm/exclude criteria below with your clinician.`
 }
 
 function buildAreaReport(
@@ -109,13 +125,14 @@ function buildAreaReport(
   const usesCrossBody = inferred.some((d) => d.crossBodyJournalCount > 0)
   if (inferred.length === 0) return null
 
-  const topScore = inferred[0].score
+  const topPrecision = inferred[0].precisionScore
   const candidates = inferred.filter(
     (d, index) =>
-      index < MAX_VARIANTS && d.score >= topScore * MIN_SCORE_FRACTION
+      index < MAX_VARIANTS &&
+      d.precisionScore >= topPrecision * MIN_PRECISION_FRACTION
   )
 
-  const weights = candidates.map((d) => d.score)
+  const weights = candidates.map((d) => d.precisionScore)
   const percentages = normalizePercentages(weights)
 
   const variants: DiagnosisVariant[] = candidates
@@ -131,10 +148,14 @@ function buildAreaReport(
         diseaseName: disease.diseaseName,
         label: disease.diseaseName,
         percentage: percentages[index] ?? 0,
+        precisionScore: disease.precisionScore,
         conditionArea: area,
         rationale: buildRationale(disease, area),
         matchedSignals: disease.matchedSignals,
         matchFlags: disease.matchFlags,
+        confirmCriteria: disease.confirmCriteria,
+        excludeCriteria: disease.excludeCriteria,
+        suggestedWorkup: disease.suggestedWorkup,
         primaryJournalCount: disease.primaryJournalCount,
         crossBodyJournalCount: disease.crossBodyJournalCount,
         hypothesisId: linked?.id,
