@@ -23,6 +23,13 @@
           </span>
         </div>
 
+        <p
+          v-if="!expanded && !forceExpanded && report.suggestedClinician"
+          class="diagnosis-specialist-compact"
+        >
+          See: {{ report.suggestedClinician }}
+        </p>
+
         <p v-if="!expanded && !forceExpanded" class="diagnosis-inline">
           <template
             v-for="(variant, index) in report.variants"
@@ -47,6 +54,10 @@
       v-show="expanded || forceExpanded"
       class="diagnosis-card-body"
     >
+      <p v-if="report.specialistVisitAdvice" class="diagnosis-specialist">
+        <strong>Who to see:</strong> {{ report.specialistVisitAdvice }}
+      </p>
+
       <p v-if="report.usesCrossBodyJournal" class="diagnosis-cross-note">
         Scoring includes journal entries from other body areas when they may relate to
         the same condition.
@@ -170,6 +181,27 @@ function onToggle() {
 .certainty-badge--moderate {
   background: var(--hint-bg);
   color: var(--text-secondary);
+}
+
+.diagnosis-specialist {
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--hint-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+}
+
+.diagnosis-specialist strong {
+  color: var(--text-primary);
+}
+
+.diagnosis-specialist-compact {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 0.8rem;
+  color: var(--accent);
 }
 
 .certainty-badge--low {

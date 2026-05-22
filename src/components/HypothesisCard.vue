@@ -79,8 +79,11 @@
         </h4>
         <ul class="evidence-list">
           <li v-for="entry in detail.evidenceEntries" :key="entry.id">
-            <span class="evidence-line">{{ formatEvidenceLine(entry) }}</span>
-            <span class="evidence-desc">{{ entry.description }}</span>
+            <span class="evidence-line">{{ formatJournalEntryHeader(entry) }}</span>
+            <span
+              v-if="evidenceDescriptionVisible(entry)"
+              class="evidence-desc"
+            >{{ entry.description }}</span>
           </li>
         </ul>
       </section>
@@ -106,10 +109,11 @@ import { format, parseISO } from 'date-fns'
 import DoctorNotesModal from '@/components/DoctorNotesModal.vue'
 import { generateDoctorNotes } from '@/services/doctorNotes'
 import { PATTERN_LABELS } from '@/services/hypothesisGenerator'
+import { buildHypothesisDetail } from '@/services/hypothesisDetail'
 import {
-  buildHypothesisDetail,
-  formatEvidenceLine,
-} from '@/services/hypothesisDetail'
+  formatJournalEntryHeader,
+  journalDescriptionAddsDetail,
+} from '@/services/journalEntryText'
 import type {
   HealthEntry,
   Hypothesis,
@@ -150,6 +154,10 @@ const confidenceClass = computed(() => {
 const patternLabel = computed(
   () => PATTERN_LABELS[props.hypothesis.pattern] ?? 'Health pattern'
 )
+
+function evidenceDescriptionVisible(entry: HealthEntry): boolean {
+  return journalDescriptionAddsDetail(entry.title, entry.description)
+}
 
 const evidenceCount = computed(() => detail.value.evidenceEntries.length)
 

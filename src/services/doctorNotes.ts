@@ -1,30 +1,12 @@
-import { format, parseISO } from 'date-fns'
-import { buildHypothesisDetail, formatEvidenceLine } from '@/services/hypothesisDetail'
-import { getEntryClassificationLabel } from '@/services/healthAnalysis'
+import { format } from 'date-fns'
+import { buildHypothesisDetail } from '@/services/hypothesisDetail'
+import { formatJournalEntryClinicianLines } from '@/services/journalEntryText'
+import { buildPatientVisitBasicsLines } from '@/services/patientVisitBasics'
+import {
+  formatSpecialistVisitAdvice,
+  suggestSpecialist,
+} from '@/services/specialistSuggestion'
 import type { HealthEntry, Hypothesis, PatientProfile } from '@/models/types'
-
-function formatPatientLine(profile: PatientProfile | null): string[] {
-  if (!profile) return ['Patient: (profile not completed)']
-  const lines = [`Patient: ${profile.displayName}`]
-  if (profile.dateOfBirth) {
-    lines.push(
-      `Date of birth: ${format(parseISO(profile.dateOfBirth), 'MMMM d, yyyy')}`
-    )
-  }
-  if (profile.biologicalSex) {
-    const sexLabels: Record<string, string> = {
-      female: 'Female',
-      male: 'Male',
-      other: 'Other',
-      prefer_not_to_say: 'Prefer not to say',
-    }
-    lines.push(`Biological sex: ${sexLabels[profile.biologicalSex] ?? profile.biologicalSex}`)
-  }
-  if (profile.bloodType) {
-    lines.push(`Blood type: ${profile.bloodType}`)
-  }
-  return lines
-}
 
 export function generateDoctorNotes(
   hypothesis: Hypothesis,
@@ -45,18 +27,37 @@ export function generateDoctorNotes(
   const entriesForNotes =
     areaEntries.length > 0 ? areaEntries : detail.evidenceEntries
 
+  const journalContext = entriesForNotes
+    .map((e) => [e.title, e.description, e.medications ?? ''].join(' '))
+    .join('\n')
+  const specialist = suggestSpecialist(area, journalContext)
+
   const lines: string[] = [
     'SUMMARY FOR CLINICIAN',
     'Prepared with Monday Health Journal',
     `Generated: ${today}`,
     '',
-    ...formatPatientLine(profile),
+    'PATIENT BASELINE',
+    ...buildPatientVisitBasicsLines(profile, allJournalEntries).map(
+      (line) => `  ${line}`
+    ),
     '',
     '—'.repeat(60),
     '',
     'REASON FOR THIS SUMMARY',
     hypothesis.title,
     '',
+  ]
+
+  if (specialist) {
+    lines.push(
+      'SUGGESTED TYPE OF DOCTOR',
+      `  ${formatSpecialistVisitAdvice(specialist, area)}`,
+      ''
+    )
+  }
+
+  lines.push(
     'PATIENT-REPORTED CONTEXT',
     detail.summary,
     '',
@@ -67,20 +68,16 @@ export function generateDoctorNotes(
     '',
     `HEALTH JOURNAL — ${area.toUpperCase()}`,
     `(${entriesForNotes.length} ${entriesForNotes.length === 1 ? 'entry' : 'entries'}, chronological)`,
-    '',
-  ]
+    ''
+  )
 
   if (entriesForNotes.length === 0) {
     lines.push('(No journal entries found for this area.)', '')
   } else {
     for (const entry of entriesForNotes) {
-      lines.push(formatEvidenceLine(entry))
-      lines.push(`  ${entry.description.trim()}`)
-      if (entry.medications?.trim()) {
-        lines.push(`  Medications: ${entry.medications.trim()}`)
-      }
+      lines.push(...formatJournalEntryClinicianLines(entry))
       lines.push(
-        `  Classification: ${getEntryClassificationLabel(entry)} · Confidence in pattern: ${hypothesis.confidence}`
+        `  Pattern confidence: ${hypothesis.confidence}`
       )
       lines.push('')
     }

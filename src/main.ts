@@ -6,9 +6,19 @@ import {
   consolidateDuplicateHypotheses,
   migrateHypothesesSchemaV2,
 } from '@/db/migrateHypotheses'
-import { clearAllHypotheses } from '@/api/hypothesisApi'
+import { dedupeHealthJournalEntries } from '@/db/dedupeHealthEntries'
+import {
+  migrateHealthEntryClassifications,
+  migrateJournalEntryTitles,
+} from '@/db/migrateHealthEntries'
+import { migrateJournalAppointmentsToCalendar } from '@/api/appointmentsApi'
+import {
+  clearAllHypotheses,
+  regenerateAllHypothesesFromJournal,
+} from '@/api/hypothesisApi'
 import { clearAllJournalRecords } from '@/api/healthApi'
 import { initTheme } from '@/composables/useTheme'
+import { scheduleIdleWork } from '@/utils/scheduleIdleWork'
 
 const HYPOTHESIS_RESET_KEY = 'monday-hypothesis-reset-v1'
 
@@ -74,7 +84,55 @@ async function runClearJournalFromQuery(): Promise<void> {
   cleanupUrl()
 }
 
-async function bootstrap() {
+async function runRegenerateInsightsFromQuery(): Promise<void> {
+  const params = new URLSearchParams(window.location.search)
+  if (!params.has('regenerateInsights')) return
+
+  const isLocal =
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  const skipConfirm = isLocal && params.get('confirm') === '1'
+
+  const cleanupUrl = () => {
+    window.history.replaceState({}, '', window.location.pathname)
+  }
+
+  if (
+    !skipConfirm &&
+    !window.confirm(
+      'Replace all hypotheses with new ones generated from your current journal? Possible conditions will refresh from the same records.'
+    )
+  ) {
+    cleanupUrl()
+    return
+  }
+
+  const result = await regenerateAllHypothesesFromJournal()
+  window.alert(result.message)
+  cleanupUrl()
+  window.location.reload()
+}
+
+function exposeDevClearHelpers(): void {
+  ;(
+    window as Window & {
+      clearMondayJournal?: typeof clearAllJournalRecords
+      clearMondayHypotheses?: typeof clearAllHypotheses
+      regenerateMondayInsights?: typeof regenerateAllHypothesesFromJournal
+    }
+  ).clearMondayJournal = clearAllJournalRecords
+  ;(
+    window as Window & { clearMondayHypotheses?: typeof clearAllHypotheses }
+  ).clearMondayHypotheses = clearAllHypotheses
+  ;(
+    window as Window & {
+      regenerateMondayInsights?: typeof regenerateAllHypothesesFromJournal
+    }
+  ).regenerateMondayInsights = regenerateAllHypothesesFromJournal
+}
+
+/** Fast migrations so IndexedDB is not busy during the first dashboard paint. */
+async function runEssentialStartupMigrations(): Promise<void> {
   await purgeSeedMockData()
   await seedDatabaseIfEmpty()
 
@@ -96,23 +154,70 @@ async function bootstrap() {
       `[Monday] Consolidated hypotheses: kept ${kept}, removed ${removed} duplicate record(s).`
     )
   }
+}
 
+/** Heavy journal work — deferred until after the UI is interactive. */
+async function runDeferredStartupMigrations(): Promise<void> {
+  const { total: journalTotal, updated: journalUpdated } =
+    await migrateHealthEntryClassifications()
+  if (import.meta.env.DEV && journalUpdated > 0) {
+    console.info(
+      `[Monday] Reclassified ${journalUpdated} of ${journalTotal} journal entries from note text.`
+    )
+  }
+
+  const { total: titleTotal, updated: titlesUpdated } =
+    await migrateJournalEntryTitles()
+  if (import.meta.env.DEV && titlesUpdated > 0) {
+    console.info(
+      `[Monday] Shortened ${titlesUpdated} of ${titleTotal} journal titles (details kept in description).`
+    )
+  }
+
+  const {
+    removed: journalDupesRemoved,
+    groupsMerged: journalDupesGroups,
+  } = await dedupeHealthJournalEntries()
+  if (import.meta.env.DEV && journalDupesRemoved > 0) {
+    console.info(
+      `[Monday] Removed ${journalDupesRemoved} duplicate journal ${journalDupesRemoved === 1 ? 'entry' : 'entries'} (${journalDupesGroups} merged groups).`
+    )
+  }
+
+  const {
+    synced: apptSynced,
+    skipped: apptSkipped,
+    duplicatesRemoved: apptDeduped,
+  } = await migrateJournalAppointmentsToCalendar()
+  if (import.meta.env.DEV && (apptSynced > 0 || apptDeduped > 0)) {
+    console.info(
+      `[Monday] Journal appointments: ${apptSynced} synced, ${apptSkipped} skipped, ${apptDeduped} duplicate(s) removed.`
+    )
+  }
+}
+
+async function runStartupMigrations(): Promise<void> {
+  await runEssentialStartupMigrations()
   await runClearHypothesesFromQuery()
   await runClearJournalFromQuery()
+  await runRegenerateInsightsFromQuery()
 
+  scheduleIdleWork(() => {
+    void runDeferredStartupMigrations().catch((err) => {
+      console.error('[Monday] Deferred migrations failed:', err)
+    })
+  })
+}
+
+function bootstrap(): void {
   const app = createApp(App)
   app.use(router)
   app.mount('#app')
+  exposeDevClearHelpers()
 
-  ;(
-    window as Window & {
-      clearMondayJournal?: typeof clearAllJournalRecords
-      clearMondayHypotheses?: typeof clearAllHypotheses
-    }
-  ).clearMondayJournal = clearAllJournalRecords
-  ;(
-    window as Window & { clearMondayHypotheses?: typeof clearAllHypotheses }
-  ).clearMondayHypotheses = clearAllHypotheses
+  void runStartupMigrations().catch((err) => {
+    console.error('[Monday] Startup migrations failed:', err)
+  })
 }
 
 bootstrap()

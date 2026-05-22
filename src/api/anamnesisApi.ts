@@ -1,9 +1,14 @@
 import { createHealthEntry } from '@/api/healthApi'
+import { db } from '@/db/database'
 import {
   parseAnamnesis,
   toHealthEntryInput,
   type ParsedAnamnesisRecord,
 } from '@/services/anamnesisParser'
+import {
+  journalEntryFingerprint,
+  journalEntryFingerprintFromInput,
+} from '@/services/journalEntryDedup'
 import type { HealthEntry } from '@/models/types'
 
 export type { ParsedAnamnesisRecord } from '@/services/anamnesisParser'
@@ -11,6 +16,7 @@ export type { ParsedAnamnesisRecord } from '@/services/anamnesisParser'
 export interface AnamnesisImportResult {
   recordsParsed: number
   entriesCreated: number
+  duplicatesSkipped: number
   preview: ParsedAnamnesisRecord[]
   entries: HealthEntry[]
 }
@@ -34,14 +40,28 @@ export async function importAnamnesis(
     )
   }
 
+  const existing = await db.healthEntries.toArray()
+  const seen = new Set(existing.map((e) => journalEntryFingerprint(e)))
+
   const entries: HealthEntry[] = []
+  let duplicatesSkipped = 0
+
   for (const record of preview) {
-    entries.push(await createHealthEntry(toHealthEntryInput(record)))
+    const input = toHealthEntryInput(record)
+    const fp = journalEntryFingerprintFromInput(input)
+    if (seen.has(fp)) {
+      duplicatesSkipped += 1
+      continue
+    }
+    const entry = await createHealthEntry(input)
+    seen.add(fp)
+    entries.push(entry)
   }
 
   return {
     recordsParsed: preview.length,
     entriesCreated: entries.length,
+    duplicatesSkipped,
     preview,
     entries,
   }

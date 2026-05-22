@@ -1,10 +1,14 @@
 <template>
   <div class="diagnosis-panel">
-    <p v-if="reports.length === 0" class="diagnosis-empty">
+    <p v-if="loading" class="diagnosis-empty">
+      Analyzing your journal for possible conditions…
+    </p>
+
+    <p v-else-if="reports.length === 0" class="diagnosis-empty">
       {{ emptyText }}
     </p>
 
-    <template v-else>
+    <template v-else-if="!loading">
       <div v-if="showToolbar" class="diagnosis-toolbar">
         <button
           type="button"
@@ -39,12 +43,14 @@ import type { DiagnosisReport } from '@/models/types'
 withDefaults(
   defineProps<{
     reports: DiagnosisReport[]
+    loading?: boolean
     fullView?: boolean
     showToolbar?: boolean
     showDisclaimer?: boolean
     emptyText?: string
   }>(),
   {
+    loading: false,
     fullView: false,
     showToolbar: false,
     showDisclaimer: true,

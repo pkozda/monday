@@ -167,7 +167,11 @@ async function onImport() {
   try {
     const result = await importAnamnesis(text.value, primaryArea.value)
     preview.value = result.preview
-    success.value = `Added ${result.entriesCreated} journal ${result.entriesCreated === 1 ? 'entry' : 'entries'} to your timeline.`
+    const skipped =
+      result.duplicatesSkipped > 0
+        ? ` (${result.duplicatesSkipped} duplicate${result.duplicatesSkipped === 1 ? '' : 's'} skipped — already in your journal)`
+        : ''
+    success.value = `Added ${result.entriesCreated} journal ${result.entriesCreated === 1 ? 'entry' : 'entries'} to your timeline.${skipped}`
     emit('imported', result.entriesCreated)
     setTimeout(() => {
       text.value = ''
@@ -385,21 +389,13 @@ async function onImport() {
 }
 
 .btn-primary {
-  background: #42a5f5;
+  background: var(--accent-strong);
   color: #fff;
   transition: background-color 0.2s;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #64b5f6;
-}
-
-[data-theme='dark'] .btn-primary {
-  background: #4da3e8;
-}
-
-[data-theme='dark'] .btn-primary:hover:not(:disabled) {
-  background: #6eb5f0;
+  background: var(--accent-hover);
 }
 
 .btn-secondary {

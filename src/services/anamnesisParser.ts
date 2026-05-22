@@ -7,6 +7,9 @@ import {
 } from 'date-fns'
 import type { HealthEntryInput, HealthEntryType } from '@/models/types'
 import { extractSeverityFromText } from '@/services/entrySeverity'
+import { inferEntryTypeFromText } from '@/services/healthAnalysis'
+import { buildJournalShortTitle } from '@/services/journalEntryText'
+import { isWeightRelatedText } from '@/services/weightEntry'
 
 export interface ParsedAnamnesisRecord {
   eventDate: string
@@ -87,6 +90,24 @@ function parseDateFromSegment(text: string, reference = new Date()): string {
     if (isValid(d)) return clampDate(d)
   }
 
+  const yearMonthDay = text.match(
+    /\b(20\d{2}|19\d{2})-(\d{1,2})-(\d{1,2})\b/
+  )
+  if (yearMonthDay) {
+    const d = new Date(
+      Number(yearMonthDay[1]),
+      Number(yearMonthDay[2]) - 1,
+      Number(yearMonthDay[3])
+    )
+    if (isValid(d)) return clampDate(d)
+  }
+
+  const yearMonth = text.match(/\b(20\d{2}|19\d{2})-(\d{1,2})\b/)
+  if (yearMonth) {
+    const d = new Date(Number(yearMonth[1]), Number(yearMonth[2]) - 1, 15)
+    if (isValid(d)) return clampDate(d)
+  }
+
   const slashDate = text.match(/\b(\d{1,2})[./](\d{1,2})[./](20\d{2}|19\d{2})\b/)
   if (slashDate) {
     const [, day, month, year] = slashDate
@@ -141,56 +162,11 @@ function parseDateFromSegment(text: string, reference = new Date()): string {
 }
 
 function detectConditionArea(text: string, fallback: string): string {
+  if (isWeightRelatedText(text)) return 'Body weight'
   for (const rule of BODY_AREA_RULES) {
     if (rule.pattern.test(text)) return rule.area
   }
   return fallback.trim() || 'General health'
-}
-
-function detectEntryType(text: string): HealthEntryType {
-  const lower = text.toLowerCase()
-
-  if (
-    /\b(mri|ct\s+scan|x-?ray|ultrasound|sonograph|imaging|scan\s+showed|test\s+results?|blood\s+work|lab\s+results?)\b/i.test(
-      lower
-    )
-  ) {
-    return 'imaging'
-  }
-
-  if (
-    /\b(surgery|surgical|operation|operated|underwent|post-?op|pre-?op|hospitalized|hospitalization|admitted|inpatient|discharged|surgeon)\b/i.test(
-      lower
-    )
-  ) {
-    return 'doctor_visit'
-  }
-
-  if (
-    /\b(doctor|physician|specialist|hospital|clinic|er\s|emergency\s+room|diagnosed|diagnosis|appointment|referred|consult)\b/i.test(
-      lower
-    )
-  ) {
-    return 'doctor_visit'
-  }
-
-  if (
-    /\b(prescribed|prescription|medication|medicine|taking\s+\w+|started\s+\w+|mg\b|tablet|ibuprofen|aspirin|antibiotic|injection|dose)\b/i.test(
-      lower
-    )
-  ) {
-    return 'medication'
-  }
-
-  if (
-    /\b(improved|improving|better|worse|worsening|flare|relapse|recovered|deteriorat|declin)\b/i.test(
-      lower
-    )
-  ) {
-    return 'change'
-  }
-
-  return 'symptom'
 }
 
 function extractMedications(text: string): string | undefined {
@@ -202,27 +178,28 @@ function extractMedications(text: string): string | undefined {
   return medLine?.trim().slice(0, 240) || undefined
 }
 
-function buildTitle(text: string, entryType: HealthEntryType): string {
-  const cleaned = text.replace(/\s+/g, ' ').trim()
-  const sentence = cleaned.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() ?? cleaned
-  const base = sentence.length > 90 ? `${sentence.slice(0, 87)}…` : sentence
+const DATED_LINE_START =
+  /^(?:(?:20|19)\d{2})(?:-\d{1,2}(?:-\d{1,2})?)?\s*[—–\-:]/i
 
-  if (base.length >= 12) return base
-
-  const labels: Record<HealthEntryType, string> = {
-    symptom: 'Symptom history',
-    medication: 'Medication history',
-    change: 'Condition change',
-    doctor_visit: 'Clinical encounter',
-    imaging: 'Test or imaging',
-    other: 'Health history note',
+function splitDatedLines(normalized: string): string[] | null {
+  const lines = normalized
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 8)
+  if (lines.length < 2) return null
+  const dated = lines.filter((line) => DATED_LINE_START.test(line))
+  if (dated.length >= 2 && dated.length >= Math.ceil(lines.length / 2)) {
+    return dated
   }
-  return labels[entryType]
+  return null
 }
 
 function splitIntoSegments(text: string): string[] {
   const normalized = text.replace(/\r\n/g, '\n').trim()
   if (!normalized) return []
+
+  const datedLines = splitDatedLines(normalized)
+  if (datedLines) return datedLines
 
   const segments: string[] = []
   let current: string[] = []
@@ -276,9 +253,10 @@ function segmentToRecord(
   segment: string,
   primaryConditionArea: string
 ): ParsedAnamnesisRecord {
-  const entryType = detectEntryType(segment)
-  const conditionArea = detectConditionArea(segment, primaryConditionArea)
   const eventDate = parseDateFromSegment(segment)
+  const isWeight = isWeightRelatedText(segment)
+  const entryType = isWeight ? 'change' : inferEntryTypeFromText(segment)
+  const conditionArea = detectConditionArea(segment, primaryConditionArea)
   const severity = extractSeverityFromText(segment)
   const medications =
     entryType === 'medication' ? extractMedications(segment) : undefined
@@ -287,7 +265,7 @@ function segmentToRecord(
     eventDate,
     conditionArea,
     entryType,
-    title: buildTitle(segment, entryType),
+    title: buildJournalShortTitle(segment, entryType, eventDate),
     description: segment.trim(),
     medications,
     severity,

@@ -5,6 +5,22 @@
       <div class="patient-info">
         <h2 class="patient-name">{{ profile.displayName }}</h2>
         <p v-if="ageLabel" class="patient-meta">{{ ageLabel }}</p>
+        <p v-if="weightSummary.currentLabel" class="patient-weight">
+          <span class="patient-weight__label">Current weight</span>
+          <span class="patient-weight__value">{{ weightSummary.currentLabel }}</span>
+          <span
+            v-if="weightSummary.trend"
+            class="patient-weight__arrow"
+            :class="`patient-weight__arrow--${weightSummary.trend}`"
+            :title="weightTrendTitle"
+            :aria-label="weightTrendTitle"
+          >
+            {{ weightArrow }}
+          </span>
+          <span v-if="weightDeltaText" class="patient-weight__delta">
+            {{ weightDeltaText }}
+          </span>
+        </p>
         <p v-if="trackingLabel" class="patient-meta">{{ trackingLabel }}</p>
       </div>
       <div class="patient-actions">
@@ -69,6 +85,20 @@
         <dt>Blood type</dt>
         <dd>{{ profile.bloodType }}</dd>
       </div>
+      <div v-if="weightSummary.currentLabel" class="detail">
+        <dt>Current weight</dt>
+        <dd class="detail-weight">
+          {{ weightSummary.currentLabel }}
+          <span
+            v-if="weightSummary.trend"
+            class="patient-weight__arrow patient-weight__arrow--inline"
+            :class="`patient-weight__arrow--${weightSummary.trend}`"
+            :title="weightTrendTitle"
+          >
+            {{ weightArrow }}
+          </span>
+        </dd>
+      </div>
       <div class="detail">
         <dt>Profile created</dt>
         <dd>{{ formattedCreated }}</dd>
@@ -82,10 +112,13 @@ import { computed, reactive, ref, watch } from 'vue'
 import { format, parseISO, differenceInYears } from 'date-fns'
 import { savePatientProfile } from '@/api/patientApi'
 import AnamnesisModal from '@/components/dashboard/AnamnesisModal.vue'
-import type { BiologicalSex, PatientProfile } from '@/models/types'
+import { formatFriendlyDayCount } from '@/services/formatDuration'
+import { summarizeWeightTrend } from '@/services/weightTrend'
+import type { BiologicalSex, HealthEntry, PatientProfile } from '@/models/types'
 
 const props = defineProps<{
   profile: PatientProfile
+  journalEntries: HealthEntry[]
   trackingSince: string | null
   daysTracked: number
 }>()
@@ -135,11 +168,59 @@ const ageLabel = computed(() => {
   return `${years} years old`
 })
 
+const weightSummary = computed(() =>
+  summarizeWeightTrend(props.journalEntries)
+)
+
+const weightArrow = computed(() => {
+  switch (weightSummary.value.trend) {
+    case 'down':
+      return '↓'
+    case 'up':
+      return '↑'
+    case 'flat':
+      return '→'
+    default:
+      return ''
+  }
+})
+
+const weightDeltaText = computed(() => {
+  const delta = weightSummary.value.deltaKg
+  if (delta === null || weightSummary.value.trend === null) return null
+  const abs = Math.abs(delta)
+  const formatted = Number.isInteger(abs) ? String(abs) : abs.toFixed(1)
+  if (weightSummary.value.trend === 'down') {
+    return `−${formatted} kg vs last log`
+  }
+  if (weightSummary.value.trend === 'up') {
+    return `+${formatted} kg vs last log`
+  }
+  return 'unchanged vs last log'
+})
+
+const weightTrendTitle = computed(() => {
+  const { trend, previousLabel, previousDate } = weightSummary.value
+  if (!trend || !previousLabel) return ''
+  const date = previousDate
+    ? format(parseISO(previousDate), 'MMM d, yyyy')
+    : 'previous entry'
+  if (trend === 'down') {
+    return `Down from ${previousLabel} (${date})`
+  }
+  if (trend === 'up') {
+    return `Up from ${previousLabel} (${date})`
+  }
+  return `Same as ${previousLabel} (${date})`
+})
+
 const trackingLabel = computed(() => {
   if (!props.trackingSince) {
     return 'Start your health journal to begin tracking'
   }
-  return `Health tracking for ${props.daysTracked} days · since ${format(parseISO(props.trackingSince), 'MMM d, yyyy')}`
+  const span = formatFriendlyDayCount(props.daysTracked)
+  const since = format(parseISO(props.trackingSince), 'MMM d, yyyy')
+  return `Health journal spans ${span} · records since ${since}`
 })
 
 const formattedDob = computed(() =>
@@ -228,6 +309,69 @@ async function save() {
   color: var(--text-muted);
 }
 
+.patient-weight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+}
+
+.patient-weight__label {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.patient-weight__value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.patient-weight__arrow {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.patient-weight__arrow--inline {
+  margin-left: 0.35rem;
+}
+
+.patient-weight__arrow--down {
+  color: #2e7d32;
+}
+
+.patient-weight__arrow--up {
+  color: #c62828;
+}
+
+.patient-weight__arrow--flat {
+  color: var(--text-faint);
+}
+
+[data-theme='dark'] .patient-weight__arrow--down {
+  color: #66bb6a;
+}
+
+[data-theme='dark'] .patient-weight__arrow--up {
+  color: #ef5350;
+}
+
+.patient-weight__delta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.detail-weight {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
 .patient-actions {
   display: flex;
   flex-wrap: wrap;
@@ -236,7 +380,7 @@ async function save() {
 }
 
 .anamnesis-btn {
-  background: #42a5f5;
+  background: var(--accent-strong);
   color: #fff;
   border: none;
   padding: 0.4rem 0.85rem;
@@ -250,15 +394,7 @@ async function save() {
 }
 
 .anamnesis-btn:hover {
-  background: #64b5f6;
-}
-
-[data-theme='dark'] .anamnesis-btn {
-  background: #4da3e8;
-}
-
-[data-theme='dark'] .anamnesis-btn:hover {
-  background: #6eb5f0;
+  background: var(--accent-hover);
 }
 
 .edit-toggle {

@@ -375,6 +375,43 @@ function updateHypothesisFromCandidate(
   }
 }
 
+/** Rebuild all hypotheses from current journal (one leading pattern per body area). */
+export function buildAllHypothesesFromJournal(
+  entries: HealthEntry[]
+): Hypothesis[] {
+  if (entries.length === 0) return []
+
+  const clusters = clusterByCondition(entries)
+  const hypotheses: Hypothesis[] = []
+
+  for (const cluster of clusters) {
+    const candidates = buildCandidates(cluster)
+    if (candidates.length === 0) continue
+
+    const byPattern = new Map<HypothesisPattern, HypothesisCandidate>()
+    for (const candidate of candidates) {
+      const prev = byPattern.get(candidate.pattern)
+      if (!prev || candidate.score > prev.score) {
+        byPattern.set(candidate.pattern, candidate)
+      }
+    }
+
+    const ordered = [...byPattern.values()].sort((a, b) => b.score - a.score)
+    for (const candidate of ordered) {
+      const evidenceEntries =
+        candidate.entries.length > 0 ? candidate.entries : cluster.entries
+      hypotheses.push(
+        createHypothesisFromCandidate(candidate, evidenceEntries)
+      )
+    }
+  }
+
+  return hypotheses.sort(
+    (a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  )
+}
+
 export function analyzeHypothesisGeneration(
   entries: HealthEntry[],
   existingHypotheses: Hypothesis[]

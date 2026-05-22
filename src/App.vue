@@ -13,12 +13,13 @@
             <router-link to="/timeline" class="nav-link">Timeline</router-link>
             <router-link to="/hypotheses" class="nav-link">Hypotheses</router-link>
             <router-link to="/journal" class="nav-link">Journal</router-link>
+            <router-link to="/appointments" class="nav-link">Appointments</router-link>
           </div>
           <ThemeToggle />
         </div>
       </div>
     </nav>
-    <main class="app-main">
+    <main class="app-main" :class="{ 'app-main--fill': fillViewport }">
       <router-view />
     </main>
   </div>
@@ -26,13 +27,17 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useTheme } from '@/composables/useTheme'
 import logoLight from '@assets/logo.png'
 import logoDark from '@assets/logo-dark.png'
 import backgroundUrl from '@assets/background.png'
 
+const route = useRoute()
 const { theme } = useTheme()
+
+const fillViewport = computed(() => route.meta.fillViewport === true)
 
 const logoSrc = computed(() => (theme.value === 'dark' ? logoDark : logoLight))
 
@@ -68,6 +73,19 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* Appointments: lock page scroll so only column panels scroll */
+html:has(.app-main--fill),
+body:has(.app-main--fill) {
+  overflow: hidden;
+  height: 100%;
+}
+
+#app:has(.app-main--fill) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 
 .app-bg {
@@ -159,6 +177,50 @@ body {
 
 .app-main {
   padding: 2rem 0;
+}
+
+.app-main--fill {
+  padding: 0.75rem 0 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.app-main--fill > :deep(*) {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 960px) {
+  html:has(.app-main--fill),
+  body:has(.app-main--fill) {
+    overflow: auto;
+    height: auto;
+  }
+
+  #app:has(.app-main--fill) {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .app-main--fill {
+    overflow: visible;
+    padding: 2rem 0;
+    flex: 1 1 auto;
+  }
+
+  .app-main--fill > :deep(*) {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+    display: block;
+  }
 }
 
 @media (max-width: 640px) {

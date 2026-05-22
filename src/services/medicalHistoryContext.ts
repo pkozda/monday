@@ -1,8 +1,16 @@
 import type { HealthEntry, HealthUrgency, PatientProfile } from '@/models/types'
+import {
+  buildClinicalAugmentText,
+  deriveWeightClinicalSignals,
+  type WeightClinicalSignal,
+} from '@/services/weightClinicalSignals'
 
 export interface MedicalHistoryContext {
   entries: HealthEntry[]
   allText: string
+  /** Synthetic symptom phrases (e.g. weight loss from logs) for diagnosis matching */
+  clinicalAugmentText: string
+  weightClinicalSignals: WeightClinicalSignal[]
   entryCount: number
   spanDays: number
   hasExplicitDiagnosis: boolean
@@ -33,7 +41,12 @@ export function buildMedicalHistoryContext(
     (a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()
   )
 
-  const allText = sorted.map(entryText).join('\n')
+  const weightClinicalSignals = deriveWeightClinicalSignals(sorted)
+  const clinicalAugmentText = buildClinicalAugmentText(weightClinicalSignals)
+  const baseText = sorted.map(entryText).join('\n')
+  const allText = clinicalAugmentText
+    ? `${baseText}\n${clinicalAugmentText}`
+    : baseText
   const first = sorted[0]?.eventDate
   const last = sorted[sorted.length - 1]?.eventDate
   const spanDays =
@@ -76,6 +89,8 @@ export function buildMedicalHistoryContext(
   return {
     entries: sorted,
     allText,
+    clinicalAugmentText,
+    weightClinicalSignals,
     entryCount: sorted.length,
     spanDays,
     hasExplicitDiagnosis: /\b(diagnosed|diagnosis|confirmed|icd|biopsy\s+showed)\b/i.test(
@@ -93,6 +108,14 @@ export function buildMedicalHistoryContext(
   }
 }
 
+function findWeightLogEntry(history: MedicalHistoryContext): HealthEntry | undefined {
+  for (let i = history.entries.length - 1; i >= 0; i--) {
+    const entry = history.entries[i]
+    if (/\b\d{2,3}\s*(?:kg|кг)\b/i.test(entryText(entry))) return entry
+  }
+  return undefined
+}
+
 export function findMatchingEntry(
   history: MedicalHistoryContext,
   patterns: RegExp[]
@@ -100,6 +123,15 @@ export function findMatchingEntry(
   for (const entry of history.entries) {
     const text = entryText(entry)
     if (patterns.some((p) => p.test(text))) return entry
+  }
+  if (
+    history.clinicalAugmentText &&
+    patterns.some((p) => p.test(history.clinicalAugmentText))
+  ) {
+    return (
+      findWeightLogEntry(history) ??
+      history.entries[history.entries.length - 1]
+    )
   }
   if (patterns.some((p) => p.test(history.allText))) {
     return history.entries[history.entries.length - 1]

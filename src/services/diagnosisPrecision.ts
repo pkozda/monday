@@ -168,7 +168,31 @@ function countKeywordHitsPerEntry(
     else result.crossIds.add(entry.id)
   }
 
+  applyClinicalAugmentToHits(disease, history, result)
   return result
+}
+
+function applyClinicalAugmentToHits(
+  disease: DiseaseDefinition,
+  history: MedicalHistoryContext,
+  result: EntryHitResult
+): void {
+  const augment = history.clinicalAugmentText
+  if (!augment) return
+
+  const strong = disease.strongKeywords ?? []
+  const weakOnly = disease.keywords.filter(
+    (k) => !strong.some((s) => s.source === k.source)
+  )
+
+  for (const pattern of strong) {
+    if (!pattern.test(augment)) continue
+    result.strongHits += 1
+  }
+  for (const pattern of weakOnly) {
+    if (!pattern.test(augment)) continue
+    result.weakHits += 1
+  }
 }
 
 function applyNegativeKeywords(
@@ -197,6 +221,9 @@ export function scoreDiseaseWithPrecision(
   const matchedSignals: string[] = []
 
   const hits = countKeywordHitsPerEntry(disease, history, primaryArea)
+  const weightLossSignal = history.weightClinicalSignals.find(
+    (s) => s.kind === 'weight_loss'
+  )
   const areaMatch = areaMatchesDisease(primaryArea, disease)
 
   const namedInHistory =
@@ -246,6 +273,16 @@ export function scoreDiseaseWithPrecision(
       kind: 'keyword',
       label: 'Only non-specific symptom words matched',
       detail: 'Add more specific symptoms or test results to improve accuracy',
+    })
+  }
+
+  if (weightLossSignal) {
+    evidence += 8
+    matchedSignals.push(weightLossSignal.label)
+    pushFlag(matchFlags, {
+      kind: 'keyword',
+      label: 'Weight loss used as clinical symptom signal',
+      detail: weightLossSignal.label,
     })
   }
 
@@ -397,11 +434,12 @@ export function inferDiseasesWithPrecision(
   area: string,
   allEntries: HealthEntry[],
   allHypotheses: Hypothesis[],
-  diseases: DiseaseDefinition[]
+  diseases: DiseaseDefinition[],
+  sharedHistory?: MedicalHistoryContext
 ): Array<
   PrecisionScoreResult & { diseaseId: string; diseaseName: string }
 > {
-  const history = buildMedicalHistoryContext(allEntries)
+  const history = sharedHistory ?? buildMedicalHistoryContext(allEntries)
 
   const scored = diseases
     .map((disease) => {
