@@ -5,6 +5,7 @@ import type {
   HealthUrgency,
   TimelineEventType,
 } from '@/models/types'
+import { WEIGHT_LOSS_EXPLICIT } from '@/services/weightClinicalSignals'
 
 const EMERGENCY_PATTERNS = [
   /\bchest\s+pain\b/i,
@@ -94,6 +95,32 @@ const IMPROVEMENT_PATTERNS =
 const DIAGNOSIS_PATTERNS =
   /\b(diagnosed|diagnosis|confirmed|found\s+to\s+have|tested\s+positive)\b/i
 
+const IMAGING_PATTERNS = [
+  /\bmri\b/i,
+  /\b(ct\s+scan|cat\s+scan|computed\s+tomography)\b/i,
+  /\b(x-?ray|radiograph)\b/i,
+  /\b(ultrasound|sonograph|echocardiogram)\b/i,
+  /\b(pet\s+scan|pet-?ct)\b/i,
+  /\b(mammogram|colonoscopy|endoscopy|arthroscop)\b/i,
+  /\b(imaging|scan\s+showed|scan\s+revealed|imaging\s+showed)\b/i,
+  /\b(test\s+results?|lab\s+results?|blood\s+work|blood\s+test)\b/i,
+  /\b(biopsy\s+results?|pathology\s+report)\b/i,
+  /\b(fluoroscopy|dexa|bone\s+density)\b/i,
+]
+
+const MEDICATION_CONTEXT_PATTERNS = [
+  /\b(prescribed|prescription|medication|medicine)\b/i,
+  /\b(started\s+taking|taking\s+\w+|switched\s+to)\b/i,
+  /\b(mg\b|mcg\b|tablet|capsule|injection|infusion|dose)\b/i,
+  /\b(ibuprofen|aspirin|antibiotic|pregabalin|gabapentin|opioid)\b/i,
+]
+
+const CLINICAL_VISIT_PATTERNS = [
+  /\b(doctor|physician|specialist|neurologist|orthopedist|surgeon)\b/i,
+  /\b(clinic|hospital|appointment|consult|referred|follow-?up\s+visit)\b/i,
+  /\b(er\s+visit|emergency\s+department)\b/i,
+]
+
 const ENTRY_TYPE_LABELS: Record<HealthEntryType, string> = {
   symptom: 'Symptom report',
   medication: 'Medication update',
@@ -123,12 +150,86 @@ function hasWorseningSignal(text: string): boolean {
   return WORSENING_PATTERNS.some((p) => p.test(text))
 }
 
-function isProcedureOrSurgery(text: string): boolean {
+export function isProcedureOrSurgery(text: string): boolean {
   return PROCEDURE_PATTERNS.some((p) => p.test(text))
 }
 
-function isHospitalCare(text: string): boolean {
+export function isHospitalCare(text: string): boolean {
   return HOSPITAL_CARE_PATTERNS.some((p) => p.test(text))
+}
+
+function isImagingStudy(text: string): boolean {
+  return IMAGING_PATTERNS.some((p) => p.test(text))
+}
+
+function isMedicationContext(text: string): boolean {
+  return MEDICATION_CONTEXT_PATTERNS.some((p) => p.test(text))
+}
+
+export function isClinicalVisit(text: string): boolean {
+  return CLINICAL_VISIT_PATTERNS.some((p) => p.test(text))
+}
+
+/** Infer record type from free text (used on save and when reclassifying imports). */
+export function inferEntryTypeFromText(text: string): HealthEntryType {
+  const lower = text.toLowerCase()
+
+  if (isImagingStudy(lower)) return 'imaging'
+
+  if (isProcedureOrSurgery(lower) || isHospitalCare(lower)) return 'doctor_visit'
+
+  if (isClinicalVisit(lower) || DIAGNOSIS_PATTERNS.test(lower)) {
+    return 'doctor_visit'
+  }
+
+  if (isMedicationContext(lower)) return 'medication'
+
+  if (WEIGHT_LOSS_EXPLICIT.test(lower)) {
+    return 'symptom'
+  }
+
+  if (
+    /\b(weight|weigh|weighed|body\s+weight|вес|масса\s+тела)\b/i.test(lower) &&
+    /\b\d{2,3}\s*(?:[–—-]\s*\d{2,3}\s*)?(?:kg|кг)\b/i.test(lower)
+  ) {
+    return 'change'
+  }
+
+  if (
+    /\b(improved|improving|better|worse|worsening|flare|relapse|recovered|deteriorat|declin)\b/i.test(
+      lower
+    )
+  ) {
+    return 'change'
+  }
+
+  return 'symptom'
+}
+
+export function combinedEntryText(input: {
+  title: string
+  description: string
+  medications?: string
+  conditionArea?: string
+}): string {
+  return [
+    input.title,
+    input.description,
+    input.medications ?? '',
+    input.conditionArea ?? '',
+  ].join(' ')
+}
+
+/** Prefer specific types inferred from note text over generic symptom/other. */
+export function resolveEntryType(
+  entryType: HealthEntryType,
+  combinedText: string
+): HealthEntryType {
+  const inferred = inferEntryTypeFromText(combinedText)
+  if (entryType === 'symptom' || entryType === 'other') {
+    if (inferred !== 'symptom' && inferred !== 'other') return inferred
+  }
+  return entryType
 }
 
 function classifyHealthEntry(
@@ -154,19 +255,34 @@ function classifyHealthEntry(
     return { urgency: 'monitor', label: 'Hospital / ER care' }
   }
 
-  if (input.entryType === 'imaging') {
+  if (isImagingStudy(combinedText) || input.entryType === 'imaging') {
     return { urgency: 'monitor', label: 'Test or imaging' }
   }
 
-  if (input.entryType === 'medication') {
+  if (
+    isMedicationContext(combinedText) ||
+    input.entryType === 'medication' ||
+    Boolean(input.medications?.trim())
+  ) {
     return { urgency: 'monitor', label: 'Medication update' }
   }
 
-  if (input.entryType === 'doctor_visit') {
+  if (input.entryType === 'doctor_visit' || isClinicalVisit(combinedText)) {
     if (DIAGNOSIS_PATTERNS.test(combinedText)) {
       return { urgency: 'monitor', label: 'Diagnosis / specialist visit' }
     }
     return { urgency: 'monitor', label: 'Clinical visit' }
+  }
+
+  if (WEIGHT_LOSS_EXPLICIT.test(combinedText)) {
+    return { urgency: 'monitor', label: 'Weight loss (symptom)' }
+  }
+
+  if (
+    /\b(weight|вес)\b/i.test(combinedText) &&
+    /\b\d{2,3}\s*(?:[–—-]\s*\d{2,3}\s*)?(?:kg|кг)\b/i.test(combinedText)
+  ) {
+    return { urgency: 'routine', label: 'Weight / body composition' }
   }
 
   if (input.entryType === 'change') {
@@ -198,7 +314,7 @@ function classifyHealthEntry(
   return { urgency: 'routine', label: 'Health record' }
 }
 
-/** Re-derive label for entries saved before classification existed. */
+/** Display label — always derived from text so MRI/surgery/etc. are not stuck as symptoms. */
 export function getEntryClassificationLabel(entry: {
   eventDate: string
   conditionArea: string
@@ -209,24 +325,21 @@ export function getEntryClassificationLabel(entry: {
   severity?: number
   analysis: HealthEntryAnalysis
 }): string {
-  if (entry.analysis.classification) return entry.analysis.classification
-
+  const combinedText = combinedEntryText({
+    title: entry.title,
+    description: entry.description,
+    medications: entry.medications,
+    conditionArea: entry.conditionArea,
+  })
   const input: HealthEntryInput = {
     eventDate: entry.eventDate,
     conditionArea: entry.conditionArea,
-    entryType: entry.entryType,
+    entryType: resolveEntryType(entry.entryType, combinedText),
     title: entry.title,
     description: entry.description,
     medications: entry.medications,
     severity: entry.severity,
   }
-  const combinedText = [
-    input.title,
-    input.description,
-    input.medications ?? '',
-    input.conditionArea,
-  ].join(' ')
-
   return classifyHealthEntry(input, combinedText).label
 }
 
@@ -299,17 +412,14 @@ function buildSummary(
 }
 
 export function analyzeHealthEntry(input: HealthEntryInput): HealthEntryAnalysis {
-  const combinedText = [
-    input.title,
-    input.description,
-    input.medications ?? '',
-    input.conditionArea,
-  ].join(' ')
+  const combinedText = combinedEntryText(input)
+  const resolvedType = resolveEntryType(input.entryType, combinedText)
+  const resolvedInput = { ...input, entryType: resolvedType }
 
-  const classification = classifyHealthEntry(input, combinedText)
-  const flags = buildFlags(input, combinedText, classification)
+  const classification = classifyHealthEntry(resolvedInput, combinedText)
+  const flags = buildFlags(resolvedInput, combinedText, classification)
 
-  let summary = buildSummary(input, classification)
+  let summary = buildSummary(resolvedInput, classification)
 
   if (classification.urgency === 'emergency') {
     summary += ' Consider seeking emergency care immediately.'

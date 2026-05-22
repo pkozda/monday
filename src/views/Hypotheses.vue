@@ -8,6 +8,24 @@
     <div v-if="loading" class="loading">Loading…</div>
 
     <template v-else>
+      <div class="insights-toolbar">
+        <button
+          type="button"
+          class="btn-regenerate"
+          :disabled="regenerating || journalEntries.length === 0"
+          @click="onRegenerateInsights"
+        >
+          {{
+            regenerating
+              ? 'Regenerating from journal…'
+              : 'Regenerate hypotheses & conditions'
+          }}
+        </button>
+        <p v-if="regenerateMessage" class="regenerate-feedback" :class="regenerateMessageType">
+          {{ regenerateMessage }}
+        </p>
+      </div>
+
       <div class="hypotheses-tabs" role="tablist" aria-label="Hypotheses and diagnoses">
         <button
           type="button"
@@ -57,8 +75,8 @@
       >
         <div v-if="hypotheses.length === 0" class="empty-state">
           <p>
-            No hypotheses yet. Add journal entries on the Dashboard, then click
-            <strong>Generate hypothesis</strong>.
+            No hypotheses yet. Add journal entries, then use
+            <strong>Regenerate hypotheses &amp; conditions</strong> above.
           </p>
           <router-link to="/" class="link-cta">Go to Dashboard</router-link>
         </div>
@@ -83,6 +101,7 @@ import { useRoute, useRouter } from 'vue-router'
 import SectionHeader from '@/components/SectionHeader.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
 import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
+import { regenerateAllHypothesesFromJournal } from '@/api/hypothesisApi'
 import { getHypotheses } from '@/api/mockApi'
 import { buildDiagnosisReports } from '@/services/diagnosisGenerator'
 import { getHealthEntries } from '@/api/healthApi'
@@ -105,6 +124,21 @@ const hypotheses = ref<Hypothesis[]>([])
 const diagnosisReports = ref<DiagnosisReport[]>([])
 const journalEntries = ref<HealthEntry[]>([])
 const patient = ref<PatientProfile | null>(null)
+const regenerating = ref(false)
+const regenerateMessage = ref('')
+const regenerateMessageType = ref<'success' | 'error' | 'info'>('success')
+
+async function loadInsights() {
+  const [hyps, entries, profile] = await Promise.all([
+    getHypotheses(),
+    getHealthEntries(),
+    getPatientProfile(),
+  ])
+  hypotheses.value = hyps
+  journalEntries.value = entries
+  patient.value = profile
+  diagnosisReports.value = buildDiagnosisReports(hyps, entries)
+}
 
 const pageSubtitle = computed(() =>
   activeTab.value === 'diagnoses'
@@ -114,26 +148,48 @@ const pageSubtitle = computed(() =>
 
 onMounted(async () => {
   try {
-    const [hyps, entries, profile] = await Promise.all([
-      getHypotheses(),
-      getHealthEntries(),
-      getPatientProfile(),
-    ])
-    hypotheses.value = hyps
-    journalEntries.value = entries
-    patient.value = profile
-    diagnosisReports.value = buildDiagnosisReports(hyps, entries)
+    await loadInsights()
 
     const tab = route.query.tab
     if (tab === 'hypotheses' || tab === 'diagnoses') {
       activeTab.value = tab
-    } else if (diagnosisReports.value.length === 0 && hyps.length > 0) {
+    } else if (diagnosisReports.value.length === 0 && hypotheses.value.length > 0) {
       activeTab.value = 'hypotheses'
     }
   } finally {
     loading.value = false
   }
 })
+
+async function onRegenerateInsights() {
+  if (
+    hypotheses.value.length > 0 &&
+    !window.confirm(
+      'Replace all hypotheses with new ones from your current journal? Possible conditions will be recalculated from the same records.'
+    )
+  ) {
+    return
+  }
+
+  regenerateMessage.value = ''
+  regenerating.value = true
+  try {
+    const result = await regenerateAllHypothesesFromJournal()
+    await loadInsights()
+    regenerateMessageType.value =
+      result.hypothesisCount > 0 ? 'success' : 'info'
+    regenerateMessage.value = result.message
+    if (result.hypothesisCount > 0 && diagnosisReports.value.length > 0) {
+      activeTab.value = 'diagnoses'
+    }
+  } catch (e) {
+    regenerateMessageType.value = 'error'
+    regenerateMessage.value =
+      e instanceof Error ? e.message : 'Regeneration failed.'
+  } finally {
+    regenerating.value = false
+  }
+}
 
 watch(activeTab, (tab) => {
   router.replace({ query: { tab } })
@@ -150,6 +206,49 @@ watch(activeTab, (tab) => {
 .loading {
   text-align: center;
   padding: 3rem;
+  color: var(--text-muted);
+}
+
+.insights-toolbar {
+  margin-bottom: 1.25rem;
+}
+
+.btn-regenerate {
+  padding: 0.6rem 1.1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: var(--accent-strong);
+  color: #fff;
+  font-family: inherit;
+}
+
+.btn-regenerate:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-regenerate:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.regenerate-feedback {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.regenerate-feedback.success {
+  color: var(--success-text, #2e7d32);
+}
+
+.regenerate-feedback.error {
+  color: var(--error-text);
+}
+
+.regenerate-feedback.info {
   color: var(--text-muted);
 }
 

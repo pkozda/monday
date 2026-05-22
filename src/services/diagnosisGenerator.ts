@@ -5,6 +5,15 @@ import {
   type InferredDisease,
 } from '@/services/diseaseInference'
 import { patternFromTitle } from '@/services/hypothesisGenerator'
+import {
+  formatSpecialistVisitAdvice,
+  suggestSpecialist,
+} from '@/services/specialistSuggestion'
+import { combinedEntryText } from '@/services/healthAnalysis'
+import {
+  buildMedicalHistoryContext,
+  type MedicalHistoryContext,
+} from '@/services/medicalHistoryContext'
 import type {
   DiagnosisCertainty,
   DiagnosisReport,
@@ -107,7 +116,8 @@ function buildRationale(disease: InferredDisease, primaryArea: string): string {
 function buildAreaReport(
   area: string,
   entries: HealthEntry[],
-  hypotheses: Hypothesis[]
+  hypotheses: Hypothesis[],
+  sharedHistory: MedicalHistoryContext
 ): DiagnosisReport | null {
   const areaHypotheses = hypotheses.filter((h) => {
     const hArea =
@@ -121,7 +131,12 @@ function buildAreaReport(
 
   if (areaEntries.length === 0 && areaHypotheses.length === 0) return null
 
-  const inferred = inferDiseasesForArea(area, entries, hypotheses)
+  const inferred = inferDiseasesForArea(
+    area,
+    entries,
+    hypotheses,
+    sharedHistory
+  )
   const usesCrossBody = inferred.some((d) => d.crossBodyJournalCount > 0)
   if (inferred.length === 0) return null
 
@@ -185,6 +200,12 @@ function buildAreaReport(
 
   const certainty = resolveCertainty(filtered.map((v) => v.percentage))
 
+  const journalContext = [
+    ...areaEntries.map((e) => combinedEntryText(e)),
+    ...areaHypotheses.map((h) => h.title),
+  ].join('\n')
+  const specialist = suggestSpecialist(area, journalContext)
+
   return {
     conditionArea: area,
     certainty,
@@ -192,6 +213,11 @@ function buildAreaReport(
     variants: filtered,
     updatedAt,
     usesCrossBodyJournal: usesCrossBody,
+    suggestedClinician: specialist?.clinicianTitle,
+    suggestedSpecialty: specialist?.specialty,
+    specialistVisitAdvice: specialist
+      ? formatSpecialistVisitAdvice(specialist, area)
+      : undefined,
   }
 }
 
@@ -202,9 +228,10 @@ export function buildDiagnosisReports(
 ): DiagnosisReport[] {
   if (hypotheses.length === 0 && entries.length === 0) return []
 
+  const sharedHistory = buildMedicalHistoryContext(entries)
   const areas = collectConditionAreas(entries, hypotheses)
   const reports = areas
-    .map((area) => buildAreaReport(area, entries, hypotheses))
+    .map((area) => buildAreaReport(area, entries, hypotheses, sharedHistory))
     .filter((r): r is DiagnosisReport => Boolean(r))
 
   return reports.sort((a, b) => {

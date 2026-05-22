@@ -11,6 +11,7 @@
       <section class="dashboard-section">
         <PatientProfileCard
           :profile="patient"
+          :journal-entries="journalEntries"
           :tracking-since="stats?.trackingSince ?? null"
           :days-tracked="stats?.daysTracked ?? 0"
           @updated="onPatientUpdated"
@@ -20,6 +21,10 @@
 
       <section class="dashboard-section">
         <HealthRecommendationsCard :recommendations="recommendations" />
+      </section>
+
+      <section v-if="nearestAppointment" class="dashboard-section">
+        <UpcomingAppointmentReminder :appointment="nearestAppointment" />
       </section>
 
       <section class="dashboard-section">
@@ -167,6 +172,7 @@
         />
         <DiagnosisPanel
           :reports="diagnosisReports"
+          :loading="diagnosesLoading"
           :show-disclaimer="true"
         />
       </section>
@@ -177,14 +183,24 @@
             title="Active hypotheses"
             subtitle="Generated from your journal entries and health data"
           />
-          <button
-            type="button"
-            class="btn-generate"
-            :disabled="generatingHypothesis || !hasJournalData"
-            @click="onGenerateHypothesis"
-          >
-            {{ generatingHypothesis ? 'Analyzing your data…' : 'Generate hypothesis' }}
-          </button>
+          <div class="hypotheses-actions">
+            <button
+              type="button"
+              class="btn-generate"
+              :disabled="generatingHypothesis || !hasJournalData"
+              @click="onGenerateHypothesis"
+            >
+              {{ generatingHypothesis ? 'Analyzing…' : 'Add one hypothesis' }}
+            </button>
+            <button
+              type="button"
+              class="btn-regenerate"
+              :disabled="generatingHypothesis || !hasJournalData"
+              @click="onRegenerateInsights"
+            >
+              {{ generatingHypothesis ? 'Regenerating…' : 'Regenerate all' }}
+            </button>
+          </div>
         </div>
 
         <p v-if="!hasJournalData" class="hypotheses-hint">
@@ -228,24 +244,33 @@ import StatCard from '@/components/dashboard/StatCard.vue'
 import BarChart from '@/components/dashboard/BarChart.vue'
 import DonutChart from '@/components/dashboard/DonutChart.vue'
 import SeverityLineChart from '@/components/dashboard/SeverityLineChart.vue'
+import UpcomingAppointmentReminder from '@/components/dashboard/UpcomingAppointmentReminder.vue'
 import { getClinicalModel } from '@/api/clinicalModelApi'
 import { getHypotheses, getTimeline } from '@/api/mockApi'
-import { tryGenerateHypothesis } from '@/api/hypothesisApi'
+import {
+  regenerateAllHypothesesFromJournal,
+  tryGenerateHypothesis,
+} from '@/api/hypothesisApi'
 import { buildDiagnosisReports } from '@/services/diagnosisGenerator'
 import { getHealthEntries } from '@/api/healthApi'
+import { getAppointments } from '@/api/appointmentsApi'
+import { findNearestUpcoming } from '@/services/appointmentUtils'
 import { getPatientProfile } from '@/api/patientApi'
 import { buildDashboardStats } from '@/services/dashboardStats'
 import { getHealthRecommendations } from '@/services/healthRecommendations'
+import { scheduleIdleWork } from '@/utils/scheduleIdleWork'
 import type {
   ClinicalModel,
   DashboardStats,
   HealthEntry,
   DiagnosisReport,
+  DoctorAppointment,
   Hypothesis,
   PatientProfile,
 } from '@/models/types'
 
 const loading = ref(true)
+const diagnosesLoading = ref(false)
 const patient = ref<PatientProfile | null>(null)
 const stats = ref<DashboardStats | null>(null)
 const clinicalModel = ref<ClinicalModel | null>(null)
@@ -253,6 +278,7 @@ const hypotheses = ref<Hypothesis[]>([])
 const diagnosisReports = ref<DiagnosisReport[]>([])
 const journalEntryCount = ref(0)
 const journalEntries = ref<HealthEntry[]>([])
+const nearestAppointment = ref<DoctorAppointment | null>(null)
 const generatingHypothesis = ref(false)
 const hypothesisMessage = ref('')
 const hypothesisMessageType = ref<'success' | 'error' | 'info'>('success')
@@ -293,22 +319,39 @@ const recommendations = computed(() =>
   getHealthRecommendations(patient.value, stats.value)
 )
 
+function loadDeferredDashboardInsights(
+  entries: HealthEntry[],
+  hyps: Hypothesis[]
+): void {
+  diagnosesLoading.value = true
+  scheduleIdleWork(() => {
+    diagnosisReports.value = buildDiagnosisReports(hyps, entries)
+    diagnosesLoading.value = false
+  })
+
+  scheduleIdleWork(() => {
+    void getClinicalModel(entries).then((model) => {
+      clinicalModel.value = model
+    })
+  })
+}
+
 onMounted(async () => {
   try {
-    const [profile, entries, timeline, model, hyps] = await Promise.all([
+    const entries = await getHealthEntries()
+    const [profile, timeline, hyps, appts] = await Promise.all([
       getPatientProfile(),
-      getHealthEntries(),
       getTimeline(),
-      getClinicalModel(),
-      getHypotheses(),
+      getHypotheses(entries),
+      getAppointments(),
     ])
     patient.value = profile
-    clinicalModel.value = model
     hypotheses.value = hyps
-    diagnosisReports.value = buildDiagnosisReports(hyps, entries)
     journalEntries.value = entries
     journalEntryCount.value = entries.length
     stats.value = buildDashboardStats(profile, entries, timeline, hyps)
+    nearestAppointment.value = findNearestUpcoming(appts)
+    loadDeferredDashboardInsights(entries, hyps)
   } finally {
     loading.value = false
   }
@@ -316,15 +359,13 @@ onMounted(async () => {
 
 async function refreshStats() {
   if (!patient.value) return
-  const [entries, timeline, hyps, model] = await Promise.all([
-    getHealthEntries(),
+  const entries = await getHealthEntries()
+  const [timeline, hyps, appts] = await Promise.all([
     getTimeline(),
-    getHypotheses(),
-    getClinicalModel(),
+    getHypotheses(entries),
+    getAppointments(),
   ])
   hypotheses.value = hyps
-  diagnosisReports.value = buildDiagnosisReports(hyps, entries)
-  clinicalModel.value = model
   journalEntries.value = entries
   journalEntryCount.value = entries.length
   stats.value = buildDashboardStats(
@@ -333,6 +374,8 @@ async function refreshStats() {
     timeline,
     hyps
   )
+  nearestAppointment.value = findNearestUpcoming(appts)
+  loadDeferredDashboardInsights(entries, hyps)
 }
 
 async function onGenerateHypothesis() {
@@ -356,6 +399,34 @@ async function onGenerateHypothesis() {
     hypothesisMessageType.value = 'error'
     hypothesisMessage.value =
       e instanceof Error ? e.message : 'Could not generate a hypothesis.'
+  } finally {
+    generatingHypothesis.value = false
+  }
+}
+
+async function onRegenerateInsights() {
+  if (
+    hypotheses.value.length > 0 &&
+    !window.confirm(
+      'Replace all hypotheses with new ones from your current journal? Possible conditions on the Diagnoses tab will refresh from the same records.'
+    )
+  ) {
+    return
+  }
+
+  hypothesisMessage.value = ''
+  generatingHypothesis.value = true
+  try {
+    const result = await regenerateAllHypothesesFromJournal()
+    await refreshStats()
+    hypothesisMessageType.value = result.hypothesisCount > 0 ? 'success' : 'info'
+    hypothesisMessage.value = result.message
+  } catch (e) {
+    hypothesisMessageType.value = 'error'
+    hypothesisMessage.value =
+      e instanceof Error
+        ? e.message
+        : 'Could not regenerate hypotheses and conditions.'
   } finally {
     generatingHypothesis.value = false
   }
@@ -539,6 +610,13 @@ function formatDate(iso: string): string {
   min-width: 200px;
 }
 
+.hypotheses-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .btn-generate {
   background: var(--accent-strong);
   color: #fff;
@@ -558,6 +636,28 @@ function formatDate(iso: string): string {
 }
 
 .btn-generate:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-regenerate {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  padding: 0.65rem 1.1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-regenerate:hover:not(:disabled) {
+  background: var(--border);
+}
+
+.btn-regenerate:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }

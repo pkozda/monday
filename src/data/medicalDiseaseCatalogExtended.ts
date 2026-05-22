@@ -138,7 +138,12 @@ export const EXTENDED_DISEASE_CATALOG: DiseaseDefinition[] = [
     id: 'ulcerative_colitis',
     name: 'Ulcerative colitis',
     strongKeywords: [/\bulcerative\s+colitis\b/i],
-    keywords: [/\bbloody\s+stool\b/i, /\btenesmus\b/i, /\bcolonoscopy\b/i],
+    keywords: [
+      /\bbloody\s+stool\b/i,
+      /\btenesmus\b/i,
+      /\bcolonoscopy\b/i,
+      /\bweight\s+loss\b/i,
+    ],
     areaHints: [/abdomen/i, /colon/i],
     relatedPatterns: ['recurring', 'worsening'],
   },

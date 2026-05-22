@@ -1,4 +1,8 @@
 import { differenceInYears, parseISO } from 'date-fns'
+import {
+  formatSpecialistVisitAdvice,
+  suggestSpecialist,
+} from '@/services/specialistSuggestion'
 import type {
   DashboardStats,
   HealthRecommendation,
@@ -235,6 +239,20 @@ export function getHealthRecommendations(
         category: 'journal',
         priority: 'medium',
       })
+
+      for (const condition of stats.conditions.slice(0, 6)) {
+        const area = condition.name
+        const specialist = suggestSpecialist(area)
+        if (!specialist) continue
+        const slug = area.toLowerCase().replace(/\s+/g, '-').slice(0, 40)
+        add(recs, {
+          id: `specialist-${slug}`,
+          title: `${area}: consider a ${specialist.clinicianTitle}`,
+          detail: formatSpecialistVisitAdvice(specialist, area),
+          category: 'journal',
+          priority: 'medium',
+        })
+      }
     }
   }
 

@@ -42,26 +42,36 @@
       </div>
 
       <div class="form-field form-field--full">
-        <label for="title">Short summary</label>
-        <input
-          id="title"
-          v-model="form.title"
-          type="text"
-          required
-          :placeholder="titlePlaceholder"
-          autocomplete="off"
-        />
-      </div>
-
-      <div class="form-field form-field--full">
-        <label for="description">Describe what you are experiencing</label>
+        <label for="description">Full details</label>
         <textarea
           id="description"
           v-model="form.description"
           required
           rows="5"
           :placeholder="descriptionPlaceholder"
+          @blur="maybeSuggestTitle"
         />
+        <p class="field-hint">
+          Write the full story here — what happened, when, and any test or
+          treatment details.
+        </p>
+      </div>
+
+      <div class="form-field form-field--full">
+        <label for="title">Short title</label>
+        <input
+          id="title"
+          v-model="form.title"
+          type="text"
+          required
+          maxlength="60"
+          :placeholder="titlePlaceholder"
+          autocomplete="off"
+        />
+        <p class="field-hint">
+          A few words for quick scanning (e.g. “MRI — knee”). We can shorten
+          this from your details when you save.
+        </p>
       </div>
 
       <div
@@ -118,6 +128,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { createHealthEntry } from '@/api/healthApi'
+import { buildJournalShortTitle } from '@/services/journalEntryText'
 import { entryNeedsTranslation } from '@/services/translation'
 import type { HealthEntry, HealthEntryInput, HealthEntryType } from '@/models/types'
 
@@ -159,12 +170,12 @@ const showMedications = computed(
 
 const titlePlaceholder = computed(() => {
   const map: Record<HealthEntryType, string> = {
-    symptom: 'e.g. Sharp pain when walking / острая боль при ходьбе',
-    change: 'e.g. Swelling reduced / отёк уменьшился',
-    medication: 'e.g. Started prescribed pills / начал принимать таблетки',
-    doctor_visit: 'e.g. Orthopedist follow-up / приём у ортопеда',
-    imaging: 'e.g. X-ray of left knee / рентген левого колена',
-    other: 'e.g. Sleep affected by pain / боль мешает спать',
+    symptom: 'e.g. Leg pain after walking',
+    change: 'e.g. Swelling reduced',
+    medication: 'e.g. Pregabalin started',
+    doctor_visit: 'e.g. Orthopedist · 2019',
+    imaging: 'e.g. MRI — knee',
+    other: 'e.g. Sleep and pain',
   }
   return map[form.entryType]
 })
@@ -172,20 +183,30 @@ const titlePlaceholder = computed(() => {
 const descriptionPlaceholder = computed(() => {
   const map: Record<HealthEntryType, string> = {
     symptom:
-      'What you feel, when it started… / Что чувствуете, когда началось…',
+      'What you feel, when it started, what makes it better or worse… / Что чувствуете, когда началось…',
     change:
-      'Better, worse, or new symptoms… / Стало лучше, хуже или новые симптомы…',
+      'How things changed compared to before… / Стало лучше, хуже или новые симптомы…',
     medication:
-      'Prescription, when started, side effects… / Назначение, когда начали, побочные эффекты…',
+      'Drug name, dose, when started, side effects… / Назначение, доза, побочные эффекты…',
     doctor_visit:
-      'What the doctor said, next steps… / Что сказал врач, рекомендации…',
+      'Who you saw, what was discussed, plan and follow-up… / Кто, что сказали, рекомендации…',
     imaging:
-      'What was done and results… / Что делали и результаты…',
+      'What was done, findings, and next steps… / Что делали, результаты, что дальше…',
     other:
-      'Anything relevant to your health… / Всё важное о вашем состоянии…',
+      'Full context for this note… / Всё важное о вашем состоянии…',
   }
   return map[form.entryType]
 })
+
+function maybeSuggestTitle() {
+  const description = form.description.trim()
+  if (!description || form.title.trim().length >= 8) return
+  form.title = buildJournalShortTitle(
+    description,
+    form.entryType,
+    form.eventDate
+  )
+}
 
 const submitLabel = computed(() => {
   if (!submitting.value) return 'Save health record'
@@ -212,7 +233,7 @@ async function handleSubmit() {
   error.value = ''
 
   if (!form.conditionArea.trim() || !form.title.trim() || !form.description.trim()) {
-    error.value = 'Please fill in the body area, summary, and description.'
+    error.value = 'Please fill in the body area, short title, and full details.'
     return
   }
 
@@ -283,6 +304,13 @@ defineExpose({ resetForm })
   font-weight: 500;
   color: var(--text-secondary);
   margin-bottom: 0.5rem;
+}
+
+.field-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 
 .severity-value {

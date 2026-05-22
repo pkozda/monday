@@ -3,14 +3,14 @@
     <header class="entry-header">
       <div class="entry-meta">
         <time :datetime="entry.eventDate">{{ formattedDate }}</time>
-        <span class="entry-type">{{ typeLabel }}</span>
+        <span class="entry-type">{{ classificationLabel }}</span>
         <span class="condition-area">{{ entry.conditionArea }}</span>
       </div>
       <span class="urgency-badge" :class="urgencyClass">{{ urgencyLabel }}</span>
     </header>
 
     <h3 class="entry-title">{{ entry.title }}</h3>
-    <p class="entry-description">{{ entry.description }}</p>
+    <p v-if="showFullDescription" class="entry-description">{{ entry.description }}</p>
 
     <p v-if="entry.medications" class="entry-medications">
       <strong>Medications:</strong> {{ entry.medications }}
@@ -40,32 +40,39 @@
 import { computed } from 'vue'
 import { format } from 'date-fns'
 import { getEntryClassificationLabel } from '@/services/healthAnalysis'
-import type { HealthEntry, HealthEntryType } from '@/models/types'
+import { journalDescriptionAddsDetail } from '@/services/journalEntryText'
+import type { HealthEntry } from '@/models/types'
 
 const props = defineProps<{
   entry: HealthEntry
 }>()
 
-const TYPE_LABELS: Record<HealthEntryType, string> = {
-  symptom: 'Symptoms',
-  medication: 'Medication',
-  change: 'Change',
-  doctor_visit: 'Doctor visit',
-  imaging: 'Test / imaging',
-  other: 'Note',
+const URGENCY_LABELS: Record<HealthEntry['analysis']['urgency'], string> = {
+  routine: 'Routine',
+  monitor: 'Monitor',
+  urgent: 'Urgent',
+  emergency: 'Emergency',
 }
 
 const formattedDate = computed(() =>
   format(new Date(props.entry.eventDate), 'MMM d, yyyy')
 )
 
-const typeLabel = computed(() => TYPE_LABELS[props.entry.entryType])
+const classificationLabel = computed(() =>
+  getEntryClassificationLabel(props.entry)
+)
+
+const showFullDescription = computed(() =>
+  journalDescriptionAddsDetail(props.entry.title, props.entry.description)
+)
 
 const urgencyClass = computed(
   () => `urgency--${props.entry.analysis.urgency}`
 )
 
-const urgencyLabel = computed(() => getEntryClassificationLabel(props.entry))
+const urgencyLabel = computed(
+  () => URGENCY_LABELS[props.entry.analysis.urgency]
+)
 
 function formatFlag(flag: string): string {
   return flag.replace(/_/g, ' ')

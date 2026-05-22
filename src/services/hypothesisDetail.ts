@@ -1,7 +1,11 @@
 import { format, parseISO } from 'date-fns'
 import { patternFromTitle } from '@/services/hypothesisGenerator'
 import type { HypothesisPattern } from '@/models/types'
-import { getEntryClassificationLabel } from '@/services/healthAnalysis'
+import { formatJournalEntryHeader } from '@/services/journalEntryText'
+import {
+  formatSpecialistBullet,
+  suggestSpecialist,
+} from '@/services/specialistSuggestion'
 import type { HealthEntry, Hypothesis } from '@/models/types'
 
 export interface HypothesisDetail {
@@ -67,9 +71,18 @@ function buildSummary(
 
 function buildRecommendations(
   pattern: HypothesisPattern,
-  entries: HealthEntry[]
+  entries: HealthEntry[],
+  conditionArea: string
 ): string[] {
   const recs: string[] = []
+
+  const journalContext = entries
+    .map((e) => [e.title, e.description, e.medications ?? ''].join(' '))
+    .join('\n')
+  const specialist = suggestSpecialist(conditionArea, journalContext)
+  if (specialist) {
+    recs.push(formatSpecialistBullet(specialist))
+  }
 
   switch (pattern) {
     case 'urgent':
@@ -149,7 +162,11 @@ export function buildHypothesisDetail(
       evidenceEntries,
       hypothesis.confidence
     ),
-    recommendations: buildRecommendations(pattern, evidenceEntries),
+    recommendations: buildRecommendations(
+      pattern,
+      evidenceEntries,
+      area
+    ),
     isCritical,
     criticalReason,
     evidenceEntries,
@@ -157,9 +174,5 @@ export function buildHypothesisDetail(
 }
 
 export function formatEvidenceLine(entry: HealthEntry): string {
-  const date = format(parseISO(entry.eventDate), 'MMM d, yyyy')
-  const label = getEntryClassificationLabel(entry)
-  const severity =
-    entry.severity !== undefined ? ` · severity ${entry.severity}/10` : ''
-  return `${date} · ${label}${severity} · ${entry.title}`
+  return formatJournalEntryHeader(entry)
 }

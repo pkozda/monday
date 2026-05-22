@@ -117,6 +117,10 @@ export interface DiagnosisReport {
   updatedAt: string
   /** True when journal entries from other body areas influenced scoring */
   usesCrossBodyJournal: boolean
+  /** Suggested clinician type from tracked body area (not a diagnosis) */
+  suggestedClinician?: string
+  suggestedSpecialty?: string
+  specialistVisitAdvice?: string
 }
 
 export type HealthEntryType =
@@ -159,6 +163,32 @@ export interface HealthEntryInput {
   description: string
   medications?: string
   severity?: number
+}
+
+export type DoctorAppointmentSource = 'manual' | 'journal'
+
+export interface DoctorAppointment {
+  id: string
+  createdAt: string
+  /** ISO datetime — when the visit is scheduled */
+  scheduledAt: string
+  doctorName: string
+  clinicName?: string
+  specialty: string
+  address: string
+  notes?: string
+  /** Set when created automatically from a journal entry */
+  linkedJournalEntryId?: string
+  source?: DoctorAppointmentSource
+}
+
+export interface DoctorAppointmentInput {
+  scheduledAt: string
+  doctorName: string
+  clinicName?: string
+  specialty: string
+  address: string
+  notes?: string
 }
 
 export type BiologicalSex = 'female' | 'male' | 'other' | 'prefer_not_to_say'

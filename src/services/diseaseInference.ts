@@ -1,5 +1,6 @@
 import { MEDICAL_DISEASE_CATALOG } from '@/data/medicalDiseaseCatalog'
 import { inferDiseasesWithPrecision } from '@/services/diagnosisPrecision'
+import type { MedicalHistoryContext } from '@/services/medicalHistoryContext'
 import type { DiagnosisCriterion, DiagnosisMatchFlag, HealthEntry, Hypothesis } from '@/models/types'
 
 export interface InferredDisease {
@@ -20,7 +21,8 @@ export interface InferredDisease {
 export function inferDiseasesForArea(
   area: string,
   allEntries: HealthEntry[],
-  allHypotheses: Hypothesis[] = []
+  allHypotheses: Hypothesis[] = [],
+  sharedHistory?: MedicalHistoryContext
 ): InferredDisease[] {
   if (allEntries.length === 0 && allHypotheses.length === 0) return []
 
@@ -28,7 +30,8 @@ export function inferDiseasesForArea(
     area,
     allEntries,
     allHypotheses,
-    MEDICAL_DISEASE_CATALOG
+    MEDICAL_DISEASE_CATALOG,
+    sharedHistory
   ).map((r) => ({
     diseaseId: r.diseaseId,
     diseaseName: r.diseaseName,

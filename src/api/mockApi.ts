@@ -1,5 +1,10 @@
 import { db } from '@/db/database'
-import type { TimelineEvent, Hypothesis, ClinicalModel } from '@/models/types'
+import type {
+  HealthEntry,
+  TimelineEvent,
+  Hypothesis,
+  ClinicalModel,
+} from '@/models/types'
 
 export async function getTimeline(): Promise<TimelineEvent[]> {
   const events = await db.timelineEvents.toArray()
@@ -11,10 +16,12 @@ export async function getTimeline(): Promise<TimelineEvent[]> {
 import { getHealthEntries } from '@/api/healthApi'
 import { normalizeHypothesis } from '@/services/hypothesisNormalize'
 
-export async function getHypotheses(): Promise<Hypothesis[]> {
+export async function getHypotheses(
+  cachedEntries?: HealthEntry[]
+): Promise<Hypothesis[]> {
   const [rows, entries] = await Promise.all([
     db.hypotheses.toArray(),
-    getHealthEntries(),
+    cachedEntries ? Promise.resolve(cachedEntries) : getHealthEntries(),
   ])
   return rows.map((row) => normalizeHypothesis(row, entries))
 }

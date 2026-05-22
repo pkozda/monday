@@ -124,6 +124,10 @@ const CRITERIA: DiseaseDiagnosisCriteria[] = [
           /\bfrequent\s+urination\b/i,
           /\bglucose\b/i,
           /\bhigh\s+blood\s+sugar\b/i,
+          /\bweight\s+loss\b/i,
+          /\bunexplained\s+weight\b/i,
+          /\b(losing|lost)\s+weight\b/i,
+          /\bweight\s+gain\b/i,
         ],
       },
       {

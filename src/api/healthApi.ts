@@ -3,16 +3,24 @@ import {
   analyzeHealthEntry,
   buildTimelineDescription,
   buildTimelineTitle,
+  combinedEntryText,
   entryTypeToTimelineType,
+  resolveEntryType,
 } from '@/services/healthAnalysis'
+import { polishJournalEntryInput } from '@/services/journalEntryText'
 import { normalizeHealthEntryInput } from '@/services/translation'
 import type { HealthEntry, HealthEntryInput, TimelineEvent } from '@/models/types'
 
 export async function createHealthEntry(
   input: HealthEntryInput
 ): Promise<HealthEntry> {
-  const englishInput = await normalizeHealthEntryInput(input)
-  const analysis = analyzeHealthEntry(englishInput)
+  const englishInput = polishJournalEntryInput(
+    await normalizeHealthEntryInput(input)
+  )
+  const combinedText = combinedEntryText(englishInput)
+  const entryType = resolveEntryType(englishInput.entryType, combinedText)
+  const resolvedInput = { ...englishInput, entryType }
+  const analysis = analyzeHealthEntry(resolvedInput)
   const id = crypto.randomUUID()
   const timelineEventId = crypto.randomUUID()
   const now = new Date().toISOString()
@@ -22,7 +30,7 @@ export async function createHealthEntry(
     createdAt: now,
     eventDate: englishInput.eventDate,
     conditionArea: englishInput.conditionArea.trim(),
-    entryType: englishInput.entryType,
+    entryType,
     title: englishInput.title.trim(),
     description: englishInput.description.trim(),
     medications: englishInput.medications?.trim() || undefined,
@@ -36,7 +44,7 @@ export async function createHealthEntry(
   const timelineEvent: TimelineEvent = {
     id: timelineEventId,
     date: englishInput.eventDate,
-    type: entryTypeToTimelineType(englishInput.entryType),
+    type: entryTypeToTimelineType(entryType),
     title: buildTimelineTitle(
       entry.conditionArea,
       entry.entryType,
@@ -53,9 +61,14 @@ export async function createHealthEntry(
     'rw',
     db.healthEntries,
     db.timelineEvents,
+    db.appointments,
     async () => {
       await db.healthEntries.add(entry)
       await db.timelineEvents.add(timelineEvent)
+      const { upsertAppointmentFromJournalEntry } = await import(
+        '@/api/appointmentsApi'
+      )
+      await upsertAppointmentFromJournalEntry(entry)
     }
   )
 

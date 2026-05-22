@@ -198,12 +198,12 @@ function printNotes() {
 }
 
 .btn-primary {
-  background: #42a5f5;
+  background: var(--accent-strong);
   color: #fff;
 }
 
 .btn-primary:hover {
-  background: #64b5f6;
+  background: var(--accent-hover);
 }
 
 .btn-secondary {
