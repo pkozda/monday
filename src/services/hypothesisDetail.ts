@@ -1,9 +1,6 @@
 import { format, parseISO } from 'date-fns'
-import {
-  extractAreaFromTitle,
-  patternFromTitle,
-  type HypothesisPattern,
-} from '@/services/hypothesisGenerator'
+import { patternFromTitle } from '@/services/hypothesisGenerator'
+import type { HypothesisPattern } from '@/models/types'
 import { getEntryClassificationLabel } from '@/services/healthAnalysis'
 import type { HealthEntry, Hypothesis } from '@/models/types'
 
@@ -123,8 +120,8 @@ export function buildHypothesisDetail(
   hypothesis: Hypothesis,
   allEntries: HealthEntry[]
 ): HypothesisDetail {
-  const pattern = patternFromTitle(hypothesis.title)
-  const area = extractAreaFromTitle(hypothesis.title)
+  const pattern = hypothesis.pattern ?? patternFromTitle(hypothesis.title)
+  const area = hypothesis.conditionArea || hypothesis.title.split(':')[0]?.trim() || 'General'
   const evidenceEntries = resolveEvidenceEntries(hypothesis, allEntries)
 
   const isUrgentPattern = pattern === 'urgent' || pattern === 'worsening'

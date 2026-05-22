@@ -73,9 +73,12 @@
         <div class="chart-panel">
           <SectionHeader
             title="Severity trend"
-            subtitle="Self-reported severity over time"
+            :subtitle="severityTrendSubtitle"
           />
-          <SeverityLineChart :points="stats?.severityTrend ?? []" />
+          <SeverityLineChart
+            :points="stats?.severityTrend ?? []"
+            :empty-text="severityTrendEmptyText"
+          />
         </div>
         <div class="chart-panel">
           <SectionHeader
@@ -157,6 +160,17 @@
         </p>
       </section>
 
+      <section class="dashboard-section">
+        <SectionHeader
+          title="Possible conditions"
+          subtitle="Medical disease names inferred from your journal — ranked by likelihood %"
+        />
+        <DiagnosisPanel
+          :reports="diagnosisReports"
+          :show-disclaimer="true"
+        />
+      </section>
+
       <section class="dashboard-section hypotheses-section">
         <div class="hypotheses-section-header">
           <SectionHeader
@@ -207,6 +221,7 @@ import { format, parseISO } from 'date-fns'
 import SectionHeader from '@/components/SectionHeader.vue'
 import MedicalCard from '@/components/MedicalCard.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
+import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
 import PatientProfileCard from '@/components/dashboard/PatientProfileCard.vue'
 import HealthRecommendationsCard from '@/components/dashboard/HealthRecommendationsCard.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
@@ -216,6 +231,7 @@ import SeverityLineChart from '@/components/dashboard/SeverityLineChart.vue'
 import { getClinicalModel } from '@/api/clinicalModelApi'
 import { getHypotheses, getTimeline } from '@/api/mockApi'
 import { tryGenerateHypothesis } from '@/api/hypothesisApi'
+import { buildDiagnosisReports } from '@/services/diagnosisGenerator'
 import { getHealthEntries } from '@/api/healthApi'
 import { getPatientProfile } from '@/api/patientApi'
 import { buildDashboardStats } from '@/services/dashboardStats'
@@ -224,6 +240,7 @@ import type {
   ClinicalModel,
   DashboardStats,
   HealthEntry,
+  DiagnosisReport,
   Hypothesis,
   PatientProfile,
 } from '@/models/types'
@@ -233,6 +250,7 @@ const patient = ref<PatientProfile | null>(null)
 const stats = ref<DashboardStats | null>(null)
 const clinicalModel = ref<ClinicalModel | null>(null)
 const hypotheses = ref<Hypothesis[]>([])
+const diagnosisReports = ref<DiagnosisReport[]>([])
 const journalEntryCount = ref(0)
 const journalEntries = ref<HealthEntry[]>([])
 const generatingHypothesis = ref(false)
@@ -244,6 +262,31 @@ const hasJournalData = computed(() => journalEntryCount.value > 0)
 const avgSeverityLabel = computed(() => {
   const avg = stats.value?.averageSeverity
   return avg !== null && avg !== undefined ? `${avg} / 10` : '—'
+})
+
+const severityTrendSubtitle = computed(() => {
+  const base =
+    'By event date (when symptoms happened), not when you logged the entry.'
+  const info = stats.value?.severityTrendInfo
+  if (!info) return base
+  if (info.urgencyEstimatedCount > 0 && info.explicitCount === 0) {
+    return `${base} Estimated from entry urgency until you add 1–10 ratings.`
+  }
+  if (info.urgencyEstimatedCount > 0) {
+    return `${base} Some points use urgency when no rating was logged.`
+  }
+  if (info.textInferredCount > 0 && info.explicitCount === 0) {
+    return `${base} Parsed from pain scores in your notes (e.g. 7/10).`
+  }
+  return base
+})
+
+const severityTrendEmptyText = computed(() => {
+  const total = stats.value?.totalJournalEntries ?? 0
+  if (total === 0) {
+    return 'Add journal entries to see severity trends.'
+  }
+  return `You have ${total} journal ${total === 1 ? 'entry' : 'entries'}, but none have a severity rating or text we can read (e.g. "pain 7/10"). Use the severity slider when logging.`
 })
 
 const recommendations = computed(() =>
@@ -262,6 +305,7 @@ onMounted(async () => {
     patient.value = profile
     clinicalModel.value = model
     hypotheses.value = hyps
+    diagnosisReports.value = buildDiagnosisReports(hyps, entries)
     journalEntries.value = entries
     journalEntryCount.value = entries.length
     stats.value = buildDashboardStats(profile, entries, timeline, hyps)
@@ -279,6 +323,7 @@ async function refreshStats() {
     getClinicalModel(),
   ])
   hypotheses.value = hyps
+  diagnosisReports.value = buildDiagnosisReports(hyps, entries)
   clinicalModel.value = model
   journalEntries.value = entries
   journalEntryCount.value = entries.length
@@ -300,6 +345,9 @@ async function onGenerateHypothesis() {
     if (result.status === 'created' && result.hypothesis) {
       hypothesisMessageType.value = 'success'
       hypothesisMessage.value = `New hypothesis created: “${result.hypothesis.title}” (${result.hypothesis.confidence}).`
+    } else if (result.status === 'updated' && result.hypothesis) {
+      hypothesisMessageType.value = 'success'
+      hypothesisMessage.value = `Hypothesis updated: “${result.hypothesis.title}” now reflects your latest journal records.`
     } else {
       hypothesisMessageType.value = 'info'
       hypothesisMessage.value = result.message

@@ -8,8 +8,15 @@ export async function getTimeline(): Promise<TimelineEvent[]> {
   )
 }
 
+import { getHealthEntries } from '@/api/healthApi'
+import { normalizeHypothesis } from '@/services/hypothesisNormalize'
+
 export async function getHypotheses(): Promise<Hypothesis[]> {
-  return db.hypotheses.toArray()
+  const [rows, entries] = await Promise.all([
+    db.hypotheses.toArray(),
+    getHealthEntries(),
+  ])
+  return rows.map((row) => normalizeHypothesis(row, entries))
 }
 
 export async function saveClinicalModel(model: ClinicalModel): Promise<void> {

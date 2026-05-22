@@ -1,58 +1,40 @@
 <template>
-  <div class="severity-chart">
+  <div class="severity-trend">
     <div v-if="points.length === 0" class="chart-empty">{{ emptyText }}</div>
-    <svg
-      v-else
-      viewBox="0 0 400 160"
-      class="severity-svg"
-      preserveAspectRatio="xMidYMid meet"
-      role="img"
-      :aria-label="ariaLabel"
-    >
-      <line
-        v-for="tick in yTicks"
-        :key="tick"
-        x1="40"
-        :x2="380"
-        :y1="yForSeverity(tick)"
-        :y2="yForSeverity(tick)"
-        class="grid-line"
-      />
-      <text
-        v-for="tick in yTicks"
-        :key="`label-${tick}`"
-        x="34"
-        :y="yForSeverity(tick) + 4"
-        class="axis-label"
-        text-anchor="end"
+    <template v-else>
+      <p v-if="rangeCaption" class="range-caption">{{ rangeCaption }}</p>
+      <div
+        class="severity-rows"
+        :class="{ 'severity-rows--scroll': displayRows.length > 7 }"
+        role="list"
+        :aria-label="ariaLabel"
       >
-        {{ tick }}
-      </text>
-      <polyline :points="linePoints" class="severity-line" fill="none" />
-      <circle
-        v-for="(p, i) in plotPoints"
-        :key="i"
-        :cx="p.x"
-        :cy="p.y"
-        r="4"
-        class="severity-dot"
-      />
-      <text
-        v-for="(p, i) in plotPoints"
-        :key="`x-${i}`"
-        :x="p.x"
-        y="155"
-        class="axis-label"
-        text-anchor="middle"
-      >
-        {{ p.label }}
-      </text>
-    </svg>
+        <div
+          v-for="row in displayRows"
+          :key="row.date"
+          class="severity-row"
+          role="listitem"
+        >
+          <time class="severity-date" :datetime="row.date">{{ row.shortLabel }}</time>
+          <div
+            class="severity-track"
+            :title="`${row.shortLabel}: ${formatSeverity(row.severity)} / 10`"
+          >
+            <div
+              class="severity-fill"
+              :style="{ width: barPercent(row.severity) }"
+            />
+          </div>
+          <span class="severity-value">{{ formatSeverity(row.severity) }}</span>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { format, parseISO } from 'date-fns'
 import type { SeverityPoint } from '@/models/types'
 
 const props = withDefaults(
@@ -63,37 +45,57 @@ const props = withDefaults(
   { emptyText: 'Log severity ratings in the journal to see trends' }
 )
 
-const yTicks = [2, 4, 6, 8, 10]
-const padding = { left: 40, right: 20, top: 16, bottom: 28 }
-const width = 400
-const height = 160
+const MAX_ROWS = 12
 
-function yForSeverity(severity: number): number {
-  const chartH = height - padding.top - padding.bottom
-  return padding.top + chartH * (1 - (severity - 1) / 9)
+function formatSeverity(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
 
-const plotPoints = computed(() => {
-  const chartW = width - padding.left - padding.right
-  const n = props.points.length
-  return props.points.map((p, i) => ({
-    x: padding.left + (n === 1 ? chartW / 2 : (i / (n - 1)) * chartW),
-    y: yForSeverity(p.severity),
-    label: p.label,
+function barPercent(severity: number): string {
+  const clamped = Math.min(10, Math.max(1, severity))
+  return `${(clamped / 10) * 100}%`
+}
+
+function shortDateLabel(isoDay: string, compact: boolean): string {
+  const d = parseISO(isoDay)
+  if (Number.isNaN(d.getTime())) return isoDay.slice(5) || isoDay
+  return compact ? format(d, 'M/d') : format(d, 'MMM d')
+}
+
+const displayRows = computed(() => {
+  const recent = props.points.slice(-MAX_ROWS)
+  const compact = recent.length > 6
+  return [...recent].reverse().map((p) => ({
+    ...p,
+    shortLabel: shortDateLabel(p.date, compact),
   }))
 })
 
-const linePoints = computed(() =>
-  plotPoints.value.map((p) => `${p.x},${p.y}`).join(' ')
-)
+const rangeCaption = computed(() => {
+  if (props.points.length < 2) return null
+  const first = props.points[0]
+  const last = props.points[props.points.length - 1]
+  const start = parseISO(first.date)
+  const end = parseISO(last.date)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null
+  const spanYears = end.getFullYear() !== start.getFullYear()
+  const fmt = spanYears ? 'MMM d, yyyy' : 'MMM d'
+  const range = `${format(start, fmt)} – ${format(end, fmt)}`
+  if (props.points.length > MAX_ROWS) {
+    return `${range} · showing latest ${MAX_ROWS} days`
+  }
+  return range
+})
 
 const ariaLabel = computed(() =>
-  props.points.map((p) => `${p.label}: ${p.severity}/10`).join(', ')
+  displayRows.value
+    .map((p) => `${p.shortLabel}: ${formatSeverity(p.severity)} out of 10`)
+    .join(', ')
 )
 </script>
 
 <style scoped>
-.severity-chart {
+.severity-trend {
   width: 100%;
 }
 
@@ -104,31 +106,65 @@ const ariaLabel = computed(() =>
   font-size: 0.9rem;
 }
 
-.severity-svg {
-  width: 100%;
-  max-height: 200px;
-  display: block;
+.range-caption {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-faint);
 }
 
-.grid-line {
-  stroke: var(--border);
-  stroke-width: 1;
+.severity-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
 }
 
-.axis-label {
-  fill: var(--text-faint);
-  font-size: 10px;
+.severity-rows--scroll {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
-.severity-line {
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-linejoin: round;
+.severity-row {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr 2.25rem;
+  align-items: center;
+  gap: 0.65rem;
 }
 
-.severity-dot {
-  fill: var(--accent);
-  stroke: var(--donut-hole);
-  stroke-width: 2;
+.severity-date {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.severity-track {
+  height: 12px;
+  background: var(--bg-muted);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.severity-fill {
+  height: 100%;
+  min-width: 4px;
+  border-radius: 6px;
+  background: var(--accent);
+  transition: width 0.35s ease;
+}
+
+.severity-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 520px) {
+  .severity-row {
+    grid-template-columns: 2.75rem 1fr 2rem;
+    gap: 0.5rem;
+  }
 }
 </style>

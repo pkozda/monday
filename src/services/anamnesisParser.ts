@@ -6,6 +6,7 @@ import {
   isValid,
 } from 'date-fns'
 import type { HealthEntryInput, HealthEntryType } from '@/models/types'
+import { extractSeverityFromText } from '@/services/entrySeverity'
 
 export interface ParsedAnamnesisRecord {
   eventDate: string
@@ -192,22 +193,6 @@ function detectEntryType(text: string): HealthEntryType {
   return 'symptom'
 }
 
-function extractSeverity(text: string): number | undefined {
-  const slash = text.match(/\b(\d{1,2})\s*\/\s*10\b/)
-  if (slash) {
-    const n = Number(slash[1])
-    if (n >= 1 && n <= 10) return n
-  }
-
-  const painLevel = text.match(/\b(?:pain|severity)\s*(?:level|score)?\s*[:is]?\s*(\d{1,2})\b/i)
-  if (painLevel) {
-    const n = Number(painLevel[1])
-    if (n >= 1 && n <= 10) return n
-  }
-
-  return undefined
-}
-
 function extractMedications(text: string): string | undefined {
   const medLine = text
     .split(/[.!?\n]/)
@@ -294,7 +279,7 @@ function segmentToRecord(
   const entryType = detectEntryType(segment)
   const conditionArea = detectConditionArea(segment, primaryConditionArea)
   const eventDate = parseDateFromSegment(segment)
-  const severity = extractSeverity(segment)
+  const severity = extractSeverityFromText(segment)
   const medications =
     entryType === 'medication' ? extractMedications(segment) : undefined
 

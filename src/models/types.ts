@@ -2,6 +2,27 @@ export type TimelineEventType = 'diagnosis' | 'imaging' | 'symptom' | 'treatment
 
 export type HypothesisConfidence = 'Exploratory' | 'Supported' | 'Strongly Supported'
 
+export type HypothesisPattern =
+  | 'urgent'
+  | 'treatment_improvement'
+  | 'worsening'
+  | 'recurring'
+  | 'treatment_unclear'
+  | 'general'
+
+export type HypothesisHistoryKind = 'created' | 'updated'
+
+export interface HypothesisHistoryEntry {
+  id: string
+  at: string
+  kind: HypothesisHistoryKind
+  title: string
+  confidence: HypothesisConfidence
+  journalEntryCount: number
+  newJournalEntryIds: string[]
+  note: string
+}
+
 export interface ClinicalFactor {
   id: string
   name: string
@@ -28,6 +49,74 @@ export interface Hypothesis {
   title: string
   confidence: HypothesisConfidence
   evidenceIds: string[]
+  conditionArea: string
+  pattern: HypothesisPattern
+  createdAt: string
+  updatedAt: string
+  history: HypothesisHistoryEntry[]
+}
+
+export type DiagnosisCertainty = 'high' | 'moderate' | 'low'
+
+export type DiagnosisMatchFlagKind =
+  | 'body_area'
+  | 'keyword'
+  | 'medication'
+  | 'named_condition'
+  | 'hypothesis'
+  | 'urgency'
+  | 'journal_flag'
+  | 'cross_body'
+
+export interface DiagnosisMatchFlag {
+  kind: DiagnosisMatchFlagKind
+  label: string
+  detail: string
+  sourceArea?: string
+}
+
+export type DiagnosisCriterionStatus = 'met' | 'not_met' | 'exclusion_present'
+
+export interface DiagnosisCriterion {
+  id: string
+  text: string
+  role: 'confirm' | 'exclude'
+  status: DiagnosisCriterionStatus
+  detail?: string
+}
+
+export interface DiagnosisVariant {
+  id: string
+  /** Medical disease / condition name */
+  diseaseName: string
+  label: string
+  percentage: number
+  /** Internal 0–100 fit score from history (before normalization to %) */
+  precisionScore: number
+  conditionArea: string
+  rationale: string
+  /** @deprecated use matchFlags — kept for compact summaries */
+  matchedSignals: string[]
+  matchFlags: DiagnosisMatchFlag[]
+  confirmCriteria: DiagnosisCriterion[]
+  excludeCriteria: DiagnosisCriterion[]
+  /** Tests or findings that would help confirm or rule out */
+  suggestedWorkup: string[]
+  primaryJournalCount: number
+  crossBodyJournalCount: number
+  hypothesisId?: string
+  pattern?: HypothesisPattern
+  confidence?: HypothesisConfidence
+}
+
+export interface DiagnosisReport {
+  conditionArea: string
+  certainty: DiagnosisCertainty
+  certaintyLabel: string
+  variants: DiagnosisVariant[]
+  updatedAt: string
+  /** True when journal entries from other body areas influenced scoring */
+  usesCrossBodyJournal: boolean
 }
 
 export type HealthEntryType =
@@ -103,6 +192,12 @@ export interface SeverityPoint {
   label: string
 }
 
+export interface SeverityTrendInfo {
+  explicitCount: number
+  textInferredCount: number
+  urgencyEstimatedCount: number
+}
+
 export type HealthRecommendationCategory =
   | 'screening'
   | 'preventive'
@@ -133,5 +228,6 @@ export interface DashboardStats {
   entriesByType: ChartSegment[]
   urgencyBreakdown: ChartSegment[]
   severityTrend: SeverityPoint[]
+  severityTrendInfo: SeverityTrendInfo
   hypothesesByConfidence: ChartSegment[]
 }

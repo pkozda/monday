@@ -1,5 +1,6 @@
 import { differenceInDays, format, parseISO, subDays } from 'date-fns'
 import { getEntryClassificationLabel } from '@/services/healthAnalysis'
+import { resolveEntrySeverity } from '@/services/entrySeverity'
 import type {
   ChartSegment,
   ConditionSummary,
@@ -10,6 +11,7 @@ import type {
   HypothesisConfidence,
   PatientProfile,
   SeverityPoint,
+  SeverityTrendInfo,
   TimelineEvent,
 } from '@/models/types'
 
@@ -104,19 +106,74 @@ function buildConditions(entries: HealthEntry[]): ConditionSummary[] {
     .sort((a, b) => b.entryCount - a.entryCount)
 }
 
+function eventDay(isoDate: string): string {
+  const parsed = parseISO(isoDate)
+  if (Number.isNaN(parsed.getTime())) return isoDate.slice(0, 10)
+  return format(parsed, 'yyyy-MM-dd')
+}
+
+function severityLabelForChart(dayIso: string, spanDays: number): string {
+  const d = parseISO(dayIso)
+  if (Number.isNaN(d.getTime())) return dayIso
+  if (spanDays > 365) return format(d, 'MMM d, yyyy')
+  if (spanDays > 45) return format(d, 'MMM d, yy')
+  return format(d, 'MMM d')
+}
+
+function buildSeverityTrendInfo(entries: HealthEntry[]): SeverityTrendInfo {
+  const info: SeverityTrendInfo = {
+    explicitCount: 0,
+    textInferredCount: 0,
+    urgencyEstimatedCount: 0,
+  }
+  for (const entry of entries) {
+    const resolved = resolveEntrySeverity(entry)
+    if (!resolved) continue
+    if (resolved.source === 'reported') info.explicitCount += 1
+    else if (resolved.source === 'text') info.textInferredCount += 1
+    else info.urgencyEstimatedCount += 1
+  }
+  return info
+}
+
+/** Severity by when symptoms occurred (eventDate), not when the record was saved. */
 function buildSeverityTrend(entries: HealthEntry[]): SeverityPoint[] {
-  return entries
-    .filter((e) => e.severity !== undefined)
-    .sort(
-      (a, b) =>
-        new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()
-    )
-    .slice(-12)
-    .map((e) => ({
-      date: e.eventDate,
-      severity: e.severity!,
-      label: format(parseISO(e.eventDate), 'MMM d'),
-    }))
+  const rated = entries.filter((e) => {
+    if (!e.eventDate?.trim()) return false
+    return resolveEntrySeverity(e) !== null
+  })
+  if (rated.length === 0) return []
+
+  const byDay = new Map<string, { sum: number; count: number }>()
+  for (const entry of rated) {
+    const resolved = resolveEntrySeverity(entry)!
+    const day = eventDay(entry.eventDate)
+    const bucket = byDay.get(day) ?? { sum: 0, count: 0 }
+    bucket.sum += resolved.value
+    bucket.count += 1
+    byDay.set(day, bucket)
+  }
+
+  const days = [...byDay.keys()].sort()
+  const firstDay = days[0]
+  const lastDay = days[days.length - 1]
+  const spanDays =
+    firstDay && lastDay
+      ? Math.max(
+          1,
+          differenceInDays(parseISO(lastDay), parseISO(firstDay)) + 1
+        )
+      : 1
+
+  return days.slice(-24).map((day) => {
+    const bucket = byDay.get(day)!
+    const severity = Math.round((bucket.sum / bucket.count) * 10) / 10
+    return {
+      date: day,
+      severity,
+      label: severityLabelForChart(day, spanDays),
+    }
+  })
 }
 
 function countHypotheses(hypotheses: Hypothesis[]): ChartSegment[] {
@@ -159,12 +216,14 @@ export function buildDashboardStats(
     (e) => parseISO(e.eventDate) >= thirtyDaysAgo
   ).length
 
-  const withSeverity = entries.filter((e) => e.severity !== undefined)
+  const resolvedSeverities = entries
+    .map((e) => resolveEntrySeverity(e)?.value)
+    .filter((v): v is number => v !== undefined)
   const averageSeverity =
-    withSeverity.length > 0
+    resolvedSeverities.length > 0
       ? Math.round(
-          (withSeverity.reduce((sum, e) => sum + e.severity!, 0) /
-            withSeverity.length) *
+          (resolvedSeverities.reduce((sum, v) => sum + v, 0) /
+            resolvedSeverities.length) *
             10
         ) / 10
       : null
@@ -186,6 +245,7 @@ export function buildDashboardStats(
     entriesByType: countByType(entries),
     urgencyBreakdown: countByClassification(entries),
     severityTrend: buildSeverityTrend(entries),
+    severityTrendInfo: buildSeverityTrendInfo(entries),
     hypothesesByConfidence: countHypotheses(hypotheses),
   }
 }
