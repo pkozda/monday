@@ -10,11 +10,11 @@
     >
       <div class="appointment-modal-dialog">
         <header class="appointment-modal-header">
-          <h2 id="appointment-modal-title">Add appointment</h2>
+          <h2 id="appointment-modal-title">{{ t('appointmentsPage.addModalTitle') }}</h2>
           <button
             type="button"
             class="appointment-modal-close"
-            aria-label="Close"
+            :aria-label="t('common.close')"
             @click="close"
           >
             ×
@@ -22,7 +22,7 @@
         </header>
 
         <p class="appointment-modal-intro">
-          Doctor, clinic, specialty, address, date and time.
+          {{ t('appointmentsPage.modalIntro') }}
         </p>
 
         <AppointmentForm ref="formRef" @submitted="onSubmitted" />
@@ -33,7 +33,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AppointmentForm from '@/components/AppointmentForm.vue'
+
+const { t } = useI18n()
 import type { DoctorAppointment } from '@/models/types'
 
 const props = defineProps<{

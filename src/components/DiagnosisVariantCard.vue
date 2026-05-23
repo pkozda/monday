@@ -6,9 +6,11 @@
     <header class="variant-card-header">
       <span class="variant-percent">{{ variant.percentage }}%</span>
       <div class="variant-title-block">
-        <h4 class="variant-disease">{{ variant.diseaseName }}</h4>
+        <h4 class="variant-disease">
+          <TranslatedText :text="variant.diseaseName" tag="span" />
+        </h4>
         <p class="variant-precision">
-          History fit {{ variant.precisionScore }}/100
+          {{ t('diagnosis.historyFit', { score: variant.precisionScore }) }}
         </p>
         <div
           class="variant-bar"
@@ -19,12 +21,12 @@
     </header>
 
     <section class="variant-section">
-      <h5 class="variant-section-title">Why this was suggested</h5>
-      <p class="variant-summary">{{ variant.rationale }}</p>
+      <h5 class="variant-section-title">{{ t('diagnosis.whySuggested') }}</h5>
+      <p class="variant-summary">{{ displayRationale }}</p>
     </section>
 
     <section v-if="variant.confirmCriteria.length" class="variant-section">
-      <h5 class="variant-section-title">Criteria that support this diagnosis</h5>
+      <h5 class="variant-section-title">{{ t('diagnosis.criteriaSupport') }}</h5>
       <ul class="criteria-list">
         <li
           v-for="item in variant.confirmCriteria"
@@ -34,10 +36,14 @@
         >
           <span class="criteria-icon" aria-hidden="true">{{ criteriaIcon(item) }}</span>
           <div class="criteria-body">
-            <span class="criteria-text">{{ item.text }}</span>
-            <span v-if="item.detail" class="criteria-detail">{{ item.detail }}</span>
+            <span class="criteria-text">
+              <TranslatedText :text="item.text" tag="span" />
+            </span>
+            <span v-if="item.detail" class="criteria-detail">
+              <TranslatedText :text="item.detail" tag="span" />
+            </span>
             <span v-else-if="item.status === 'not_met'" class="criteria-hint">
-              Not yet documented — discuss with your clinician
+              {{ t('diagnosis.notDocumented') }}
             </span>
           </div>
         </li>
@@ -45,7 +51,7 @@
     </section>
 
     <section v-if="variant.excludeCriteria.length" class="variant-section">
-      <h5 class="variant-section-title">Criteria that argue against it</h5>
+      <h5 class="variant-section-title">{{ t('diagnosis.criteriaAgainst') }}</h5>
       <ul class="criteria-list">
         <li
           v-for="item in variant.excludeCriteria"
@@ -55,22 +61,28 @@
         >
           <span class="criteria-icon" aria-hidden="true">{{ criteriaIcon(item) }}</span>
           <div class="criteria-body">
-            <span class="criteria-text">{{ item.text }}</span>
-            <span v-if="item.detail" class="criteria-detail">{{ item.detail }}</span>
+            <span class="criteria-text">
+              <TranslatedText :text="item.text" tag="span" />
+            </span>
+            <span v-if="item.detail" class="criteria-detail">
+              <TranslatedText :text="item.detail" tag="span" />
+            </span>
           </div>
         </li>
       </ul>
     </section>
 
     <section v-if="variant.suggestedWorkup.length" class="variant-section">
-      <h5 class="variant-section-title">Suggested workup to confirm or exclude</h5>
+      <h5 class="variant-section-title">{{ t('diagnosis.suggestedWorkup') }}</h5>
       <ul class="workup-list">
-        <li v-for="(step, wi) in variant.suggestedWorkup" :key="wi">{{ step }}</li>
+        <li v-for="(step, wi) in variant.suggestedWorkup" :key="wi">
+          <TranslatedText :text="step" tag="span" />
+        </li>
       </ul>
     </section>
 
     <section v-if="variant.matchFlags.length" class="variant-section">
-      <h5 class="variant-section-title">Evidence from your journal</h5>
+      <h5 class="variant-section-title">{{ t('diagnosis.evidenceJournal') }}</h5>
       <ul class="flag-list">
         <li
           v-for="(flag, fi) in variant.matchFlags"
@@ -79,31 +91,75 @@
           :class="`flag-item--${flag.kind}`"
         >
           <span class="flag-kind">{{ flagKindLabel(flag.kind) }}</span>
-          <span class="flag-label">{{ flag.label }}</span>
-          <span class="flag-detail">{{ flag.detail }}</span>
+          <span class="flag-label">
+            <TranslatedText :text="flag.label" tag="span" />
+          </span>
+          <span class="flag-detail">
+            <TranslatedText :text="flag.detail" tag="span" />
+          </span>
         </li>
       </ul>
     </section>
 
     <footer class="variant-footer">
       <span v-if="variant.primaryJournalCount">
-        {{ variant.primaryJournalCount }} journal
-        {{ variant.primaryJournalCount === 1 ? 'entry' : 'entries' }} in
-        {{ variant.conditionArea }}
+        {{
+          t('diagnosis.variantFooter.journalIn', {
+            count: variant.primaryJournalCount,
+            entries: t(
+              variant.primaryJournalCount === 1
+                ? 'hypothesisCard.entry'
+                : 'hypothesisCard.entries'
+            ),
+            area: variant.conditionArea,
+          })
+        }}
       </span>
       <span v-if="variant.crossBodyJournalCount" class="variant-cross">
-        + {{ variant.crossBodyJournalCount }} from other body
-        {{ variant.crossBodyJournalCount === 1 ? 'area' : 'areas' }}
+        {{
+          t('diagnosis.variantFooter.crossFrom', {
+            count: variant.crossBodyJournalCount,
+            areas: t(
+              variant.crossBodyJournalCount === 1
+                ? 'clinicalModel.summary.area'
+                : 'clinicalModel.summary.areas'
+            ),
+          })
+        }}
       </span>
       <span v-if="variant.pattern && variant.confidence" class="variant-hypothesis">
-        Hypothesis: {{ patternLabel(variant.pattern) }} · {{ variant.confidence }}
+        {{
+          t('diagnosis.variantFooter.hypothesisLine', {
+            pattern: patternLabel(variant.pattern),
+            confidence: localizeHypothesisConfidence(variant.confidence, t),
+          })
+        }}
       </span>
     </footer>
   </article>
 </template>
 
 <script setup lang="ts">
-import { PATTERN_LABELS } from '@/services/hypothesisGenerator'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import TranslatedText from '@/components/TranslatedText.vue'
+import {
+  localizeDiagnosisFlagKind,
+  localizeHypothesisConfidence,
+  localizePatternLabel,
+} from '@/services/localizeClinical'
+import { localizeDiagnosisRationale } from '@/services/localizeDiagnosisContent'
+
+const { t } = useI18n()
+
+const props = defineProps<{
+  variant: DiagnosisVariant
+  lead?: boolean
+}>()
+
+const displayRationale = computed(() =>
+  localizeDiagnosisRationale(props.variant, t)
+)
 import type {
   DiagnosisCriterion,
   DiagnosisMatchFlagKind,
@@ -111,29 +167,13 @@ import type {
   HypothesisPattern,
 } from '@/models/types'
 
-defineProps<{
-  variant: DiagnosisVariant
-  lead?: boolean
-}>()
-
-const FLAG_KIND_LABELS: Record<DiagnosisMatchFlagKind, string> = {
-  body_area: 'Body area',
-  keyword: 'Symptom',
-  medication: 'Medication',
-  named_condition: 'Named',
-  hypothesis: 'Hypothesis',
-  urgency: 'Urgency',
-  journal_flag: 'Journal flag',
-  cross_body: 'Cross-area',
-}
-
 function flagKindLabel(kind: DiagnosisMatchFlagKind): string {
-  return FLAG_KIND_LABELS[kind] ?? kind
+  return localizeDiagnosisFlagKind(kind, t)
 }
 
 function patternLabel(pattern: HypothesisPattern | undefined): string {
   if (!pattern) return ''
-  return PATTERN_LABELS[pattern]
+  return localizePatternLabel(pattern, t)
 }
 
 function criteriaIcon(item: DiagnosisCriterion): string {

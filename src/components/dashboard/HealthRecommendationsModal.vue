@@ -12,31 +12,31 @@
         <button
           type="button"
           class="rec-modal-close"
-          aria-label="Close"
+          :aria-label="t('common.close')"
           @click="close"
         >
           ×
         </button>
 
         <div class="rec-modal-content">
-          <p class="rec-modal-eyebrow">Recommendations for you</p>
+          <p class="rec-modal-eyebrow">{{ t('recommendations.eyebrow') }}</p>
           <h2 id="recommendations-modal-title" class="rec-modal-title">
             {{ headline }}
           </h2>
 
           <div class="rec-modal-summary">
             <p class="rec-modal-summary__text">
-              Preventive care suggestions based on your age, profile, and journal
+              {{ t('recommendations.summary') }}
             </p>
           </div>
 
           <p class="rec-modal-disclaimer">
-            General guidance—not a substitute for advice from your clinician.
+            {{ t('recommendations.disclaimer') }}
           </p>
 
           <ul v-if="recommendations.length" class="rec-modal-list">
             <li
-              v-for="rec in recommendations"
+              v-for="rec in localizedRecommendations"
               :key="rec.id"
               class="rec-card"
               :class="[
@@ -45,12 +45,14 @@
               ]"
             >
               <div class="rec-card__top">
-                <span class="rec-card__badge">{{ categoryLabel(rec.category) }}</span>
+                <span class="rec-card__badge">{{
+                  t(`recommendations.categories.${rec.category}`)
+                }}</span>
                 <span
                   v-if="rec.priority === 'high'"
                   class="rec-card__priority"
                 >
-                  Priority
+                  {{ t('common.priority') }}
                 </span>
               </div>
               <h3 class="rec-card__title">{{ rec.title }}</h3>
@@ -59,10 +61,7 @@
           </ul>
 
           <div v-else class="rec-modal-empty">
-            <p>
-              Add your date of birth in your profile to unlock personalized
-              screening suggestions.
-            </p>
+            <p>{{ t('recommendations.empty') }}</p>
           </div>
         </div>
       </div>
@@ -72,7 +71,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { HealthRecommendation, HealthRecommendationCategory } from '@/models/types'
+import { useI18n } from 'vue-i18n'
+import { localizeRecommendation } from '@/services/localizeRecommendation'
+import type { HealthRecommendation } from '@/models/types'
 
 const props = defineProps<{
   open: boolean
@@ -83,24 +84,21 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const CATEGORY_LABELS: Record<HealthRecommendationCategory, string> = {
-  screening: 'Screening',
-  preventive: 'Preventive',
-  lifestyle: 'Lifestyle',
-  profile: 'Profile',
-  journal: 'Your data',
-}
+const { t } = useI18n()
 
 const headline = computed(() => {
   const n = props.recommendations.length
-  if (n === 0) return 'No suggestions yet'
-  if (n === 1) return '1 suggestion'
-  return `${n} suggestions`
+  if (n === 0) return t('recommendations.headlineNone')
+  if (n === 1) return t('recommendations.headlineOne')
+  return t('recommendations.headlineMany', { count: n })
 })
 
-function categoryLabel(category: HealthRecommendationCategory): string {
-  return CATEGORY_LABELS[category]
-}
+const localizedRecommendations = computed(() =>
+  props.recommendations.map((rec) => ({
+    ...rec,
+    ...localizeRecommendation(rec, t),
+  }))
+)
 
 function close() {
   emit('close')
@@ -262,12 +260,6 @@ function close() {
 .rec-card--lifestyle .rec-card__badge {
   color: #2e7d32;
   border-color: color-mix(in srgb, #2e7d32 45%, var(--border));
-}
-
-[data-theme='dark'] .rec-card--preventive .rec-card__badge,
-[data-theme='dark'] .rec-card--lifestyle .rec-card__badge {
-  color: #81c784;
-  border-color: color-mix(in srgb, #81c784 45%, var(--border));
 }
 
 .rec-card--journal .rec-card__badge {

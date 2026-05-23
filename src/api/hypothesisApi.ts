@@ -16,11 +16,13 @@ export async function clearAllHypotheses(): Promise<number> {
   return count
 }
 
+export type RegenerateMessageKey = 'needEntries' | 'success' | 'noHypotheses'
+
 export interface RegenerateInsightsResult {
   hypothesisCount: number
   journalEntryCount: number
   areas: string[]
-  message: string
+  messageKey: RegenerateMessageKey
 }
 
 /** Clear stored hypotheses and rebuild them from the full journal. */
@@ -32,8 +34,7 @@ export async function regenerateAllHypothesesFromJournal(): Promise<RegenerateIn
       hypothesisCount: 0,
       journalEntryCount: 0,
       areas: [],
-      message:
-        'Add journal entries first, then regenerate hypotheses and possible conditions.',
+      messageKey: 'needEntries',
     }
   }
 
@@ -52,10 +53,7 @@ export async function regenerateAllHypothesesFromJournal(): Promise<RegenerateIn
     hypothesisCount: built.length,
     journalEntryCount: entries.length,
     areas,
-    message:
-      built.length > 0
-        ? `Regenerated ${built.length} ${built.length === 1 ? 'hypothesis' : 'hypotheses'} from ${entries.length} journal ${entries.length === 1 ? 'entry' : 'entries'} across ${areas.length} ${areas.length === 1 ? 'area' : 'areas'}. Possible conditions use the same records.`
-        : `Reviewed ${entries.length} journal ${entries.length === 1 ? 'entry' : 'entries'} but could not derive hypotheses — add more detail per body area and try again.`,
+    messageKey: built.length > 0 ? 'success' : 'noHypotheses',
   }
 }
 

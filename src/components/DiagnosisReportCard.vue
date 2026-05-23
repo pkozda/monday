@@ -21,10 +21,10 @@
         </div>
 
         <p
-          v-if="!expanded && report.suggestedClinician"
+          v-if="!expanded && specialistName"
           class="diagnosis-specialist-compact"
         >
-          See: {{ report.suggestedClinician }}
+          {{ t('diagnosis.seeSpecialist', { name: specialistName }) }}
         </p>
 
         <ul v-if="!expanded" class="diagnosis-variant-rows">
@@ -35,11 +35,13 @@
             :class="{ 'diagnosis-variant-row--lead': index === 0 }"
           >
             <span class="diagnosis-variant-row__pct">{{ variant.percentage }}%</span>
-            <span class="diagnosis-variant-row__name">{{ variant.diseaseName }}</span>
+            <span class="diagnosis-variant-row__name">
+              <TranslatedText :text="variant.diseaseName" tag="span" />
+            </span>
           </li>
         </ul>
         <p v-if="moreCompactCount > 0 && !expanded" class="diagnosis-variant-more">
-          +{{ moreCompactCount }} more — expand to see all
+          {{ t('common.expandToSeeAll', { count: moreCompactCount }) }}
         </p>
       </div>
       <span
@@ -49,17 +51,16 @@
     </button>
 
     <div v-show="expanded" class="diagnosis-card-body">
-      <p v-if="report.specialistVisitAdvice" class="diagnosis-specialist">
-        <strong>Who to see:</strong> {{ report.specialistVisitAdvice }}
+      <p v-if="specialistAdvice" class="diagnosis-specialist">
+        <strong>{{ t('diagnosis.whoToSee') }}</strong> {{ specialistAdvice }}
       </p>
 
       <p v-if="report.usesCrossBodyJournal" class="diagnosis-cross-note">
-        Scoring includes journal entries from other body areas when they may relate to
-        the same condition.
+        {{ t('diagnosis.crossBodyNote') }}
       </p>
 
       <p v-if="report.certainty === 'low'" class="diagnosis-uncertain-note">
-        No single match is dominant — compare variants and discuss with a clinician.
+        {{ t('diagnosis.uncertainNote') }}
       </p>
 
       <div class="diagnosis-variants">
@@ -76,12 +77,28 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DiagnosisVariantCard from '@/components/DiagnosisVariantCard.vue'
+import TranslatedText from '@/components/TranslatedText.vue'
+import {
+  localizedDiagnosisSpecialistAdvice,
+  localizedDiagnosisSpecialistName,
+} from '@/services/localizeClinical'
 import type { DiagnosisReport } from '@/models/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   report: DiagnosisReport
 }>()
+
+const specialistName = computed(() =>
+  localizedDiagnosisSpecialistName(props.report, t)
+)
+
+const specialistAdvice = computed(() =>
+  localizedDiagnosisSpecialistAdvice(props.report, t)
+)
 
 const MAX_VARIANTS = 8
 const MAX_VARIANTS_COMPACT = 3
@@ -105,11 +122,11 @@ const moreCompactCount = computed(() =>
 const certaintyShort = computed(() => {
   switch (props.report.certainty) {
     case 'high':
-      return 'Likely'
+      return t('diagnosis.certaintyHigh')
     case 'moderate':
-      return 'Leading'
+      return t('diagnosis.certaintyModerate')
     default:
-      return 'Uncertain'
+      return t('diagnosis.certaintyLow')
   }
 })
 

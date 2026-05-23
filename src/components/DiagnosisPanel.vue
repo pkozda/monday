@@ -1,35 +1,39 @@
 <template>
   <div class="diagnosis-panel">
     <p v-if="loading" class="diagnosis-empty">
-      Analyzing your journal for possible conditions…
+      {{ t('diagnosis.loading') }}
     </p>
 
     <p v-else-if="reports.length === 0" class="diagnosis-empty">
-      {{ emptyText }}
+      {{ emptyText ?? t('diagnosis.empty') }}
     </p>
 
     <template v-else-if="!loading">
       <div class="diagnosis-list">
         <DiagnosisReportCard
-          v-for="report in reports"
+          v-for="report in displayReports"
           :key="report.conditionArea"
           :report="report"
         />
       </div>
 
       <p v-if="showDisclaimer" class="diagnosis-disclaimer">
-        Conditions are inferred from your full journal (including related entries in
-        other body areas). Always confirm with a qualified clinician.
+        {{ t('diagnosis.disclaimer') }}
       </p>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DiagnosisReportCard from '@/components/DiagnosisReportCard.vue'
+import { localizeDiagnosisReportSync } from '@/services/localizeDiagnosisContent'
 import type { DiagnosisReport } from '@/models/types'
 
-withDefaults(
+const { t } = useI18n()
+
+const props = withDefaults(
   defineProps<{
     reports: DiagnosisReport[]
     loading?: boolean
@@ -39,9 +43,12 @@ withDefaults(
   {
     loading: false,
     showDisclaimer: true,
-    emptyText:
-      'Add journal entries describing your symptoms, body area, and medications to see possible conditions with percentages.',
   }
+)
+
+/** Sync i18n only — cards render immediately; per-field MT via TranslatedText. */
+const displayReports = computed(() =>
+  props.reports.map((r) => localizeDiagnosisReportSync(r, t))
 )
 </script>
 

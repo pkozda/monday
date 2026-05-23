@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import { i18n } from '@/i18n'
 import { purgeSeedMockData, seedDatabaseIfEmpty } from '@/db/seed'
 import {
   consolidateDuplicateHypotheses,
@@ -99,16 +100,20 @@ async function runRegenerateInsightsFromQuery(): Promise<void> {
 
   if (
     !skipConfirm &&
-    !window.confirm(
-      'Replace all hypotheses with new ones generated from your current journal? Possible conditions will refresh from the same records.'
-    )
+    !window.confirm(i18n.global.t('hypothesesPage.regenerateConfirm'))
   ) {
     cleanupUrl()
     return
   }
 
   const result = await regenerateAllHypothesesFromJournal()
-  window.alert(result.message)
+  window.alert(
+    i18n.global.t(`hypothesesPage.regenerateMessages.${result.messageKey}`, {
+      hypothesisCount: result.hypothesisCount,
+      journalEntryCount: result.journalEntryCount,
+      areaCount: result.areas.length,
+    })
+  )
   cleanupUrl()
   window.location.reload()
 }
@@ -211,6 +216,7 @@ async function runStartupMigrations(): Promise<void> {
 
 function bootstrap(): void {
   const app = createApp(App)
+  app.use(i18n)
   app.use(router)
   app.mount('#app')
   exposeDevClearHelpers()

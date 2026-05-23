@@ -14,7 +14,9 @@ import {
   startOfMonth,
   startOfWeek,
   subMonths,
+  type Locale,
 } from 'date-fns'
+import { enUS } from 'date-fns/locale'
 import type { DoctorAppointment } from '@/models/types'
 
 export function appointmentDayKey(iso: string): string {
@@ -33,10 +35,13 @@ export function providerDisplayName(appt: DoctorAppointment): string {
   return appt.doctorName.trim()
 }
 
-export function formatAppointmentDateTime(iso: string): string {
+export function formatAppointmentDateTime(
+  iso: string,
+  locale: Locale = enUS
+): string {
   const d = parseISO(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return format(d, 'EEE, MMM d, yyyy · h:mm a')
+  return format(d, 'EEE, MMM d, yyyy · h:mm a', { locale })
 }
 
 export function formatAppointmentTime(iso: string): string {

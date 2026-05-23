@@ -10,15 +10,14 @@
     >
       <div class="notes-dialog">
         <header class="notes-header">
-          <h2 id="doctor-notes-title">Notes for your doctor</h2>
-          <button type="button" class="notes-close" aria-label="Close" @click="emit('close')">
+          <h2 id="doctor-notes-title">{{ t('doctorNotes.title') }}</h2>
+          <button type="button" class="notes-close" :aria-label="t('common.close')" @click="emit('close')">
             ×
           </button>
         </header>
 
         <p class="notes-intro">
-          Review and edit before printing. This summary is built from your journal entries
-          related to this hypothesis.
+          {{ t('doctorNotes.intro') }}
         </p>
 
         <textarea
@@ -26,15 +25,15 @@
           class="notes-textarea"
           rows="18"
           spellcheck="true"
-          aria-label="Doctor visit notes"
+          :aria-label="t('doctorNotes.notesLabel')"
         />
 
         <div class="notes-actions">
           <button type="button" class="btn-secondary" @click="copyNotes">
-            {{ copied ? 'Copied' : 'Copy text' }}
+            {{ copied ? t('doctorNotes.copied') : t('doctorNotes.copy') }}
           </button>
           <button type="button" class="btn-primary" @click="printNotes">
-            Print
+            {{ t('doctorNotes.print') }}
           </button>
         </div>
       </div>
@@ -44,6 +43,9 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   open: boolean

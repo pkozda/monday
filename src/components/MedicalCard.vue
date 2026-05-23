@@ -3,7 +3,7 @@
     <h3 class="card-title">{{ title }}</h3>
     <p v-if="summary" class="card-summary">{{ summary }}</p>
     <div v-if="factors && factors.length > 0" class="card-factors">
-      <h4 class="factors-title">Key Factors:</h4>
+      <h4 class="factors-title">{{ t('clinicalModel.keyFactors') }}:</h4>
       <ul class="factors-list">
         <li v-for="factor in factors" :key="factor.id" class="factor-item">
           <strong>{{ factor.name }}:</strong> {{ factor.description }}
@@ -14,7 +14,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { ClinicalFactor } from '@/models/types'
+
+const { t } = useI18n()
 
 defineProps<{
   title: string

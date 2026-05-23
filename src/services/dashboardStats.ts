@@ -47,6 +47,7 @@ function countByType(entries: HealthEntry[]): ChartSegment[] {
   return [...counts.entries()]
     .map(([type, value]) => ({
       label: ENTRY_TYPE_LABELS[type],
+      key: type,
       value,
       color: ENTRY_TYPE_COLORS[type],
     }))
@@ -185,9 +186,15 @@ function countHypotheses(hypotheses: Hypothesis[]): ChartSegment[] {
   for (const h of hypotheses) {
     counts[h.confidence] += 1
   }
+  const confidenceKeys: Record<HypothesisConfidence, string> = {
+    Exploratory: 'exploratory',
+    Supported: 'supported',
+    'Strongly Supported': 'stronglySupported',
+  }
   return (Object.keys(counts) as HypothesisConfidence[])
     .map((confidence) => ({
       label: confidence,
+      key: confidenceKeys[confidence],
       value: counts[confidence],
       color: CONFIDENCE_COLORS[confidence],
     }))

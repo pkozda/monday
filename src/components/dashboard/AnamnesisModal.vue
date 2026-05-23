@@ -10,35 +10,33 @@
     >
       <div class="anamnesis-dialog">
         <header class="anamnesis-header">
-          <h2 id="anamnesis-title">Health history (anamnesis)</h2>
-          <button type="button" class="anamnesis-close" aria-label="Close" @click="close">
+          <h2 id="anamnesis-title">{{ t('anamnesis.title') }}</h2>
+          <button type="button" class="anamnesis-close" :aria-label="t('common.close')" @click="close">
             ×
           </button>
         </header>
 
         <p class="anamnesis-intro">
-          Describe your illness history in your own words—when symptoms started,
-          tests, treatments, and changes over time. Monday will split this into
-          journal entries and timeline events.
+          {{ t('anamnesis.intro') }}
         </p>
 
         <form class="anamnesis-form" @submit.prevent="onImport">
           <div class="form-field">
-            <label for="primaryArea">Main body area / condition</label>
+            <label for="primaryArea">{{ t('anamnesis.mainArea') }}</label>
             <input
               id="primaryArea"
               v-model="primaryArea"
               type="text"
-              placeholder="e.g. Legs, lower back, left knee"
+              :placeholder="t('anamnesis.mainAreaPlaceholder')"
               autocomplete="off"
             />
             <span class="field-hint">
-              Used when a paragraph does not mention a specific area.
+              {{ t('anamnesis.mainAreaHint') }}
             </span>
           </div>
 
           <div class="form-field">
-            <label for="anamnesisText">Your health history</label>
+            <label for="anamnesisText">{{ t('anamnesis.historyLabel') }}</label>
             <textarea
               id="anamnesisText"
               v-model="text"
@@ -47,14 +45,21 @@
               placeholder="Example:&#10;&#10;• In 2019 I started having pain in both legs after long walks.&#10;• 2021 — MRI showed disc issues; neurologist prescribed pregabalin.&#10;• Last year symptoms got worse, pain about 7/10 most days."
             />
             <span class="field-hint">
-              Use paragraphs or bullet points—one item per event or time period works best.
+              {{ t('anamnesis.historyHint') }}
             </span>
           </div>
 
           <div v-if="preview.length" class="preview-block">
             <h3 class="preview-title">
-              Preview — {{ preview.length }}
-              {{ preview.length === 1 ? 'journal entry' : 'journal entries' }}
+              {{
+                t('anamnesis.previewTitle', {
+                  count: preview.length,
+                  entries:
+                    preview.length === 1
+                      ? t('anamnesis.previewEntry')
+                      : t('anamnesis.previewEntries'),
+                })
+              }}
             </h3>
             <ul class="preview-list">
               <li v-for="(item, index) in preview" :key="index" class="preview-item">
@@ -76,14 +81,14 @@
               :disabled="importing || !text.trim()"
               @click="onPreview"
             >
-              Preview
+              {{ t('common.preview') }}
             </button>
             <button
               type="submit"
               class="btn-primary"
               :disabled="importing || !text.trim()"
             >
-              {{ importing ? 'Importing…' : 'Import to journal' }}
+              {{ importing ? t('common.importing') : t('anamnesis.importToJournal') }}
             </button>
           </div>
         </form>
@@ -94,12 +99,22 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format, parseISO } from 'date-fns'
+import { useLocale } from '@/composables/useLocale'
+import type { AppLocale } from '@/i18n'
+import { dateFnsLocaleFor } from '@/utils/dateLocale'
+
+const { t } = useI18n()
+const { locale } = useLocale()
 import {
   importAnamnesis,
   previewAnamnesis,
   type ParsedAnamnesisRecord,
 } from '@/api/anamnesisApi'
+import {
+  localizeClassificationLabel,
+} from '@/services/localizeClinical'
 import { analyzeHealthEntry } from '@/services/healthAnalysis'
 import { toHealthEntryInput } from '@/services/anamnesisParser'
 
@@ -134,12 +149,15 @@ function close() {
 }
 
 function previewClassification(item: ParsedAnamnesisRecord): string {
-  return analyzeHealthEntry(toHealthEntryInput(item)).classification
+  const result = analyzeHealthEntry(toHealthEntryInput(item))
+  return localizeClassificationLabel(result.classification, t)
 }
 
 function formatPreviewDate(iso: string): string {
   try {
-    return format(parseISO(iso), 'MMM d, yyyy')
+    return format(parseISO(iso), 'PP', {
+      locale: dateFnsLocaleFor(locale.value as AppLocale),
+    })
   } catch {
     return iso
   }
@@ -151,11 +169,10 @@ function onPreview() {
   try {
     preview.value = previewAnamnesis(text.value, primaryArea.value)
     if (preview.value.length === 0) {
-      error.value =
-        'No entries detected. Add more detail or use bullet points for separate events.'
+      error.value = t('anamnesis.noEntriesDetected')
     }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Could not parse text.'
+    error.value = e instanceof Error ? e.message : t('anamnesis.parseError')
     preview.value = []
   }
 }
@@ -171,7 +188,7 @@ async function onImport() {
       result.duplicatesSkipped > 0
         ? ` (${result.duplicatesSkipped} duplicate${result.duplicatesSkipped === 1 ? '' : 's'} skipped — already in your journal)`
         : ''
-    success.value = `Added ${result.entriesCreated} journal ${result.entriesCreated === 1 ? 'entry' : 'entries'} to your timeline.${skipped}`
+    success.value = `${t('anamnesis.importSuccess', { count: result.entriesCreated })}${skipped}`
     emit('imported', result.entriesCreated)
     setTimeout(() => {
       text.value = ''
@@ -181,7 +198,7 @@ async function onImport() {
       close()
     }, 1200)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Import failed.'
+    error.value = e instanceof Error ? e.message : t('anamnesis.importFailed')
   } finally {
     importing.value = false
   }

@@ -10,11 +10,11 @@
     >
       <div class="health-entry-modal-dialog">
         <header class="health-entry-modal-header">
-          <h2 id="health-entry-modal-title">New journal entry</h2>
+          <h2 id="health-entry-modal-title">{{ t('journalPage.newEntryModalTitle') }}</h2>
           <button
             type="button"
             class="health-entry-modal-close"
-            aria-label="Close"
+            :aria-label="t('common.close')"
             @click="close"
           >
             ×
@@ -22,8 +22,7 @@
         </header>
 
         <p class="health-entry-modal-intro">
-          Describe what you are experiencing in English or Russian — entries are
-          stored in English and analyzed automatically.
+          {{ t('journalPage.newEntryModalIntro') }}
         </p>
 
         <HealthEntryForm ref="formRef" @submitted="onSubmitted" />
@@ -34,7 +33,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import HealthEntryForm from '@/components/HealthEntryForm.vue'
+
+const { t } = useI18n()
 import type { HealthEntry } from '@/models/types'
 
 const props = defineProps<{

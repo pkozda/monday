@@ -6,7 +6,7 @@
         <h2 class="patient-name">{{ profile.displayName }}</h2>
         <p v-if="ageLabel" class="patient-meta">{{ ageLabel }}</p>
         <p v-if="weightSummary.currentLabel" class="patient-weight">
-          <span class="patient-weight__label">Current weight</span>
+          <span class="patient-weight__label">{{ t('profile.currentWeight') }}</span>
           <span class="patient-weight__value">{{ weightSummary.currentLabel }}</span>
           <span
             v-if="weightSummary.trend"
@@ -27,7 +27,7 @@
         <button
           type="button"
           class="profile-icon-btn profile-icon-btn--appointment"
-          aria-label="Next appointment"
+          :aria-label="t('profile.appointmentTitle')"
           :title="appointmentTitle"
           @click="appointmentOpen = true"
         >
@@ -52,7 +52,7 @@
         <button
           type="button"
           class="profile-icon-btn profile-icon-btn--recommendations"
-          aria-label="Recommendations for you"
+          :aria-label="t('profile.recommendationsTitle')"
           :title="recommendationsTitle"
           @click="recommendationsOpen = true"
         >
@@ -78,8 +78,8 @@
         <button
           type="button"
           class="profile-icon-btn profile-icon-btn--history"
-          aria-label="Add health history"
-          title="Add health history (anamnesis)"
+          :aria-label="t('profile.addHealthHistory')"
+          :title="t('profile.addHealthHistoryHint')"
           @click="anamnesisOpen = true"
         >
           <svg
@@ -96,7 +96,7 @@
           </svg>
         </button>
         <button type="button" class="edit-toggle" @click="editing = !editing">
-          {{ editing ? 'Cancel' : 'Edit profile' }}
+          {{ editing ? t('profile.cancelEdit') : t('profile.editProfile') }}
         </button>
       </div>
     </div>
@@ -121,25 +121,25 @@
 
     <form v-if="editing" class="patient-form" @submit.prevent="save">
       <div class="form-row">
-        <label for="displayName">Display name</label>
+        <label for="displayName">{{ t('profile.displayName') }}</label>
         <input id="displayName" v-model="draft.displayName" type="text" required />
       </div>
       <div class="form-row">
-        <label for="dateOfBirth">Date of birth</label>
+        <label for="dateOfBirth">{{ t('profile.dateOfBirth') }}</label>
         <input id="dateOfBirth" v-model="draft.dateOfBirth" type="date" />
       </div>
       <div class="form-row">
-        <label for="biologicalSex">Biological sex</label>
+        <label for="biologicalSex">{{ t('profile.biologicalSex') }}</label>
         <select id="biologicalSex" v-model="draft.biologicalSex">
-          <option value="">Not specified</option>
-          <option value="female">Female</option>
-          <option value="male">Male</option>
-          <option value="other">Other</option>
-          <option value="prefer_not_to_say">Prefer not to say</option>
+          <option value="">{{ t('profile.sexNotSpecified') }}</option>
+          <option value="female">{{ t('profile.sexFemale') }}</option>
+          <option value="male">{{ t('profile.sexMale') }}</option>
+          <option value="other">{{ t('profile.sexOther') }}</option>
+          <option value="prefer_not_to_say">{{ t('profile.sexPreferNot') }}</option>
         </select>
       </div>
       <div class="form-row">
-        <label for="bloodType">Blood type</label>
+        <label for="bloodType">{{ t('profile.bloodType') }}</label>
         <input
           id="bloodType"
           v-model="draft.bloodType"
@@ -148,25 +148,25 @@
         />
       </div>
       <button type="submit" class="save-btn" :disabled="saving">
-        {{ saving ? 'Saving…' : 'Save profile' }}
+        {{ saving ? t('common.saving') : t('profile.saveProfile') }}
       </button>
     </form>
 
     <dl v-else class="patient-details">
       <div v-if="profile.dateOfBirth" class="detail">
-        <dt>Date of birth</dt>
+        <dt>{{ t('profile.dateOfBirth') }}</dt>
         <dd>{{ formattedDob }}</dd>
       </div>
       <div v-if="profile.biologicalSex" class="detail">
-        <dt>Biological sex</dt>
+        <dt>{{ t('profile.sexLabel') }}</dt>
         <dd>{{ sexLabel }}</dd>
       </div>
       <div v-if="profile.bloodType" class="detail">
-        <dt>Blood type</dt>
+        <dt>{{ t('profile.bloodType') }}</dt>
         <dd>{{ profile.bloodType }}</dd>
       </div>
       <div v-if="weightSummary.currentLabel" class="detail">
-        <dt>Current weight</dt>
+        <dt>{{ t('profile.currentWeight') }}</dt>
         <dd class="detail-weight">
           {{ weightSummary.currentLabel }}
           <span
@@ -180,7 +180,7 @@
         </dd>
       </div>
       <div class="detail">
-        <dt>Profile created</dt>
+        <dt>{{ t('profile.profileCreated') }}</dt>
         <dd>{{ formattedCreated }}</dd>
       </div>
     </dl>
@@ -189,8 +189,12 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format, parseISO, differenceInYears } from 'date-fns'
 import { savePatientProfile } from '@/api/patientApi'
+import { useLocale } from '@/composables/useLocale'
+import type { AppLocale } from '@/i18n'
+import { dateFnsLocaleFor } from '@/utils/dateLocale'
 import AnamnesisModal from '@/components/dashboard/AnamnesisModal.vue'
 import HealthRecommendationsModal from '@/components/dashboard/HealthRecommendationsModal.vue'
 import UpcomingAppointmentModal from '@/components/dashboard/UpcomingAppointmentModal.vue'
@@ -218,6 +222,10 @@ const emit = defineEmits<{
   journalImported: [count: number]
 }>()
 
+const { t } = useI18n()
+const { locale } = useLocale()
+const dfLocale = computed(() => dateFnsLocaleFor(locale.value as AppLocale))
+
 const editing = ref(false)
 const saving = ref(false)
 const anamnesisOpen = ref(false)
@@ -226,14 +234,14 @@ const recommendationsOpen = ref(false)
 
 const appointmentTitle = computed(() =>
   props.nearestAppointment
-    ? 'Next appointment — click to view'
-    : 'Appointments — none upcoming'
+    ? t('profile.appointmentTitle')
+    : t('profile.appointmentNone')
 )
 
 const recommendationsTitle = computed(() => {
   const n = props.recommendations.length
-  if (n === 0) return 'Recommendations for you'
-  return `Recommendations for you (${n})`
+  if (n === 0) return t('profile.recommendationsTitle')
+  return t('profile.recommendationsCount', { count: n })
 })
 
 const recommendationsBadgeText = computed(() => {
@@ -274,7 +282,7 @@ const initials = computed(() => {
 const ageLabel = computed(() => {
   if (!props.profile.dateOfBirth) return null
   const years = differenceInYears(new Date(), parseISO(props.profile.dateOfBirth))
-  return `${years} years old`
+  return t('profile.yearsOld', { years })
 })
 
 const weightSummary = computed(() =>
@@ -300,54 +308,56 @@ const weightDeltaText = computed(() => {
   const abs = Math.abs(delta)
   const formatted = Number.isInteger(abs) ? String(abs) : abs.toFixed(1)
   if (weightSummary.value.trend === 'down') {
-    return `−${formatted} kg vs last log`
+    return t('profile.weightDown', { value: formatted })
   }
   if (weightSummary.value.trend === 'up') {
-    return `+${formatted} kg vs last log`
+    return t('profile.weightUp', { value: formatted })
   }
-  return 'unchanged vs last log'
+  return t('profile.weightFlat')
 })
 
 const weightTrendTitle = computed(() => {
   const { trend, previousLabel, previousDate } = weightSummary.value
   if (!trend || !previousLabel) return ''
   const date = previousDate
-    ? format(parseISO(previousDate), 'MMM d, yyyy')
-    : 'previous entry'
+    ? format(parseISO(previousDate), 'PP', { locale: dfLocale.value })
+    : t('profile.previousEntry')
   if (trend === 'down') {
-    return `Down from ${previousLabel} (${date})`
+    return t('profile.weightDownTitle', { label: previousLabel, date })
   }
   if (trend === 'up') {
-    return `Up from ${previousLabel} (${date})`
+    return t('profile.weightUpTitle', { label: previousLabel, date })
   }
-  return `Same as ${previousLabel} (${date})`
+  return t('profile.weightFlatTitle', { label: previousLabel, date })
 })
 
 const trackingLabel = computed(() => {
   if (!props.trackingSince) {
-    return 'Start your health journal to begin tracking'
+    return t('profile.trackingStart')
   }
   const span = formatFriendlyDayCount(props.daysTracked)
-  const since = format(parseISO(props.trackingSince), 'MMM d, yyyy')
-  return `Health journal spans ${span} · records since ${since}`
+  const since = format(parseISO(props.trackingSince), 'PP', {
+    locale: dfLocale.value,
+  })
+  return t('profile.trackingSpan', { span, since })
 })
 
 const formattedDob = computed(() =>
   props.profile.dateOfBirth
-    ? format(parseISO(props.profile.dateOfBirth), 'MMMM d, yyyy')
+    ? format(parseISO(props.profile.dateOfBirth), 'PP', { locale: dfLocale.value })
     : ''
 )
 
 const formattedCreated = computed(() =>
-  format(parseISO(props.profile.createdAt), 'MMMM d, yyyy')
+  format(parseISO(props.profile.createdAt), 'PP', { locale: dfLocale.value })
 )
 
 const sexLabel = computed(() => {
   const map: Record<BiologicalSex, string> = {
-    female: 'Female',
-    male: 'Male',
-    other: 'Other',
-    prefer_not_to_say: 'Prefer not to say',
+    female: t('profile.sexFemale'),
+    male: t('profile.sexMale'),
+    other: t('profile.sexOther'),
+    prefer_not_to_say: t('profile.sexPreferNot'),
   }
   return props.profile.biologicalSex
     ? map[props.profile.biologicalSex]

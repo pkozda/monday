@@ -13,16 +13,30 @@
       @click="expanded = !expanded"
     >
       <div class="hypothesis-header">
-        <h3 class="hypothesis-title">{{ hypothesis.title }}</h3>
+        <h3 class="hypothesis-title">{{ displayTitle }}</h3>
         <p class="hypothesis-meta">
-          {{ patternLabel }} · {{ evidenceCount }} journal
-          {{ evidenceCount === 1 ? 'entry' : 'entries' }}
-          <span v-if="revisionCount > 1"> · {{ revisionCount }} revisions</span>
+          {{ patternLabel }} ·
+          {{
+            t('hypothesisCard.journalMeta', {
+              count: evidenceCount,
+              entries: t(
+                evidenceCount === 1 ? 'hypothesisCard.entry' : 'hypothesisCard.entries'
+              ),
+            })
+          }}
+          <span v-if="revisionCount > 1">
+            ·
+            {{
+              t('hypothesisCard.revisions', { count: revisionCount })
+            }}
+          </span>
         </p>
         <div class="hypothesis-badges">
-          <span v-if="detail.isCritical" class="critical-badge">Needs clinician</span>
+          <span v-if="detail.isCritical" class="critical-badge">{{
+            t('hypothesisCard.needsClinician')
+          }}</span>
           <span class="hypothesis-confidence" :class="confidenceClass">
-            {{ hypothesis.confidence }}
+            {{ confidenceLabel }}
           </span>
         </div>
       </div>
@@ -32,25 +46,25 @@
     <div v-if="detail.isCritical && !expanded" class="critical-banner">
       <p>{{ detail.criticalReason }}</p>
       <button type="button" class="btn-doctor-notes" @click.stop="openDoctorNotes">
-        Prepare notes for doctor
+        {{ t('hypothesisCard.prepareNotes') }}
       </button>
     </div>
 
     <div v-show="expanded" class="hypothesis-body">
       <section class="hypothesis-section">
-        <h4 class="section-label">What this means</h4>
+        <h4 class="section-label">{{ t('hypothesisCard.whatThisMeans') }}</h4>
         <p class="hypothesis-summary">{{ detail.summary }}</p>
       </section>
 
       <section class="hypothesis-section">
-        <h4 class="section-label">What to do next</h4>
+        <h4 class="section-label">{{ t('hypothesisCard.whatToDoNext') }}</h4>
         <ul class="recommendations-list">
           <li v-for="(rec, i) in detail.recommendations" :key="i">{{ rec }}</li>
         </ul>
       </section>
 
       <section v-if="historyNewestFirst.length" class="hypothesis-section">
-        <h4 class="section-label">History</h4>
+        <h4 class="section-label">{{ t('hypothesisCard.history') }}</h4>
         <ol class="history-list">
           <li
             v-for="item in historyNewestFirst"
@@ -62,12 +76,24 @@
               <time :datetime="item.at">{{ formatHistoryDate(item.at) }}</time>
               <span class="history-kind">{{ historyKindLabel(item.kind) }}</span>
             </div>
-            <p class="history-item-title">{{ item.title }}</p>
-            <p class="history-item-note">{{ item.note }}</p>
+            <p class="history-item-title">
+              <TranslatedText :text="item.title" />
+            </p>
+            <p class="history-item-note">
+              <TranslatedText :text="item.note" tag="span" :inline="false" />
+            </p>
             <p v-if="item.newJournalEntryIds.length" class="history-item-entries">
-              +{{ item.newJournalEntryIds.length }} journal
-              {{ item.newJournalEntryIds.length === 1 ? 'entry' : 'entries' }}
-              · {{ item.confidence }}
+              {{
+                t('hypothesisCard.historyEntries', {
+                  count: item.newJournalEntryIds.length,
+                  entries: t(
+                    item.newJournalEntryIds.length === 1
+                      ? 'hypothesisCard.entry'
+                      : 'hypothesisCard.entries'
+                  ),
+                })
+              }}
+              · {{ localizeHypothesisConfidence(item.confidence, t) }}
             </p>
           </li>
         </ol>
@@ -75,22 +101,26 @@
 
       <section v-if="detail.evidenceEntries.length" class="hypothesis-section">
         <h4 class="section-label">
-          Supporting journal entries ({{ detail.evidenceEntries.length }})
+          {{
+            t('hypothesisCard.supportingEntries', {
+              count: detail.evidenceEntries.length,
+            })
+          }}
         </h4>
         <ul class="evidence-list">
           <li v-for="entry in detail.evidenceEntries" :key="entry.id">
-            <span class="evidence-line">{{ formatJournalEntryHeader(entry) }}</span>
+            <span class="evidence-line">{{ evidenceHeader(entry) }}</span>
             <span
               v-if="evidenceDescriptionVisible(entry)"
               class="evidence-desc"
-            >{{ entry.description }}</span>
+            ><TranslatedText :text="entry.description" tag="span" :inline="false" /></span>
           </li>
         </ul>
       </section>
 
       <div v-if="detail.isCritical" class="hypothesis-actions">
         <button type="button" class="btn-doctor-notes" @click="openDoctorNotes">
-          Prepare notes for doctor
+          {{ t('hypothesisCard.prepareNotes') }}
         </button>
       </div>
     </div>
@@ -105,15 +135,23 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format, parseISO } from 'date-fns'
 import DoctorNotesModal from '@/components/DoctorNotesModal.vue'
-import { generateDoctorNotes } from '@/services/doctorNotes'
-import { PATTERN_LABELS } from '@/services/hypothesisGenerator'
-import { buildHypothesisDetail } from '@/services/hypothesisDetail'
+import TranslatedText from '@/components/TranslatedText.vue'
+import { localizeHypothesisTitle } from '@/services/localizeHypothesisTitle'
+import { useLocale } from '@/composables/useLocale'
+import type { AppLocale } from '@/i18n'
+import { dateFnsLocaleFor } from '@/utils/dateLocale'
 import {
-  formatJournalEntryHeader,
-  journalDescriptionAddsDetail,
-} from '@/services/journalEntryText'
+  formatLocalizedJournalEntryHeader,
+  localizeHypothesisConfidence,
+  localizePatternLabel,
+} from '@/services/localizeClinical'
+import { patternFromTitle } from '@/services/hypothesisGenerator'
+import { buildLocalizedHypothesisDetail } from '@/services/localizeHypothesisDetail'
+import { generateLocalizedDoctorNotes } from '@/services/localizeDoctorNotes'
+import { journalDescriptionAddsDetail } from '@/services/journalEntryText'
 import type {
   HealthEntry,
   Hypothesis,
@@ -127,18 +165,29 @@ const props = defineProps<{
   patient?: PatientProfile | null
 }>()
 
+const { t } = useI18n()
+const { locale } = useLocale()
+const dfLocale = computed(() => dateFnsLocaleFor(locale.value as AppLocale))
+
 const expanded = ref(false)
 const doctorNotesOpen = ref(false)
 
 const detail = computed(() =>
-  buildHypothesisDetail(props.hypothesis, props.journalEntries)
+  buildLocalizedHypothesisDetail(
+    props.hypothesis,
+    props.journalEntries,
+    t,
+    dfLocale.value
+  )
 )
 
 const doctorNotesContent = computed(() =>
-  generateDoctorNotes(
+  generateLocalizedDoctorNotes(
     props.hypothesis,
     props.patient ?? null,
-    props.journalEntries
+    props.journalEntries,
+    t,
+    dfLocale.value
   )
 )
 
@@ -151,12 +200,31 @@ const confidenceClass = computed(() => {
   return map[props.hypothesis.confidence] || ''
 })
 
-const patternLabel = computed(
-  () => PATTERN_LABELS[props.hypothesis.pattern] ?? 'Health pattern'
+const confidenceLabel = computed(() =>
+  localizeHypothesisConfidence(props.hypothesis.confidence, t)
+)
+
+const displayTitle = computed(() =>
+  localizeHypothesisTitle(
+    props.hypothesis.title,
+    props.hypothesis.pattern,
+    t
+  )
+)
+
+const patternLabel = computed(() =>
+  localizePatternLabel(
+    props.hypothesis.pattern ?? patternFromTitle(props.hypothesis.title),
+    t
+  )
 )
 
 function evidenceDescriptionVisible(entry: HealthEntry): boolean {
   return journalDescriptionAddsDetail(entry.title, entry.description)
+}
+
+function evidenceHeader(entry: HealthEntry): string {
+  return formatLocalizedJournalEntryHeader(entry, t, dfLocale.value)
 }
 
 const evidenceCount = computed(() => detail.value.evidenceEntries.length)
@@ -171,14 +239,16 @@ const historyNewestFirst = computed(() =>
 
 function formatHistoryDate(iso: string): string {
   try {
-    return format(parseISO(iso), 'MMM d, yyyy · h:mm a')
+    return format(parseISO(iso), 'PPp', { locale: dfLocale.value })
   } catch {
     return iso
   }
 }
 
 function historyKindLabel(kind: HypothesisHistoryKind): string {
-  return kind === 'created' ? 'Created' : 'Updated'
+  return kind === 'created'
+    ? String(t('hypothesisCard.historyCreated'))
+    : String(t('hypothesisCard.historyUpdated'))
 }
 
 function openDoctorNotes() {

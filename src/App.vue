@@ -9,11 +9,12 @@
         </router-link>
         <div class="nav-end">
           <div class="nav-links">
-            <router-link to="/" class="nav-link">Dashboard</router-link>
-            <router-link to="/hypotheses" class="nav-link">Hypotheses</router-link>
-            <router-link to="/appointments" class="nav-link">Appointments</router-link>
-            <router-link to="/journal" class="nav-link">Journal</router-link>
+            <router-link to="/" class="nav-link">{{ t('nav.dashboard') }}</router-link>
+            <router-link to="/hypotheses" class="nav-link">{{ t('nav.hypotheses') }}</router-link>
+            <router-link to="/appointments" class="nav-link">{{ t('nav.appointments') }}</router-link>
+            <router-link to="/journal" class="nav-link">{{ t('nav.journal') }}</router-link>
           </div>
+          <LanguageSwitcher />
           <ThemeToggle />
         </div>
       </div>
@@ -26,8 +27,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+
+const { t } = useI18n()
 import { useTheme } from '@/composables/useTheme'
 import logoLight from '@assets/logo.png'
 import logoDark from '@assets/logo-dark.png'
@@ -155,7 +160,7 @@ body:has(.app-main--fill) {
 .nav-end {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
 }
 

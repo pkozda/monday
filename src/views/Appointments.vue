@@ -2,13 +2,13 @@
   <div class="appointments-view">
     <div class="appointments-top">
       <PageHeader
-        eyebrow="Scheduling"
-        title="Doctor appointments"
-        subtitle="Calendar plus upcoming and past visits."
+        :eyebrow="t('appointmentsPage.eyebrow')"
+        :title="t('appointmentsPage.title')"
+        :subtitle="t('appointmentsPage.subtitle')"
       >
         <template #actions>
           <button type="button" class="btn-add-appointment" @click="addModalOpen = true">
-            Add appointment
+            {{ t('appointmentsPage.addAppointment') }}
           </button>
         </template>
       </PageHeader>
@@ -26,8 +26,8 @@
       <aside class="appointments-column appointments-column--calendar" aria-label="Appointment calendar">
         <div class="appointments-column-header">
           <SectionHeader
-            title="Calendar"
-            subtitle="Tap a day to see visits on that date."
+            :title="t('appointmentsPage.calendarTitle')"
+            :subtitle="t('appointmentsPage.calendarSubtitle')"
             class="column-header page-section-title"
           />
         </div>
@@ -44,17 +44,17 @@
         <div class="appointments-column-header">
           <SectionHeader
             id="upcoming-heading"
-            title="Upcoming"
-            subtitle="Soonest first."
+            :title="t('appointmentsPage.upcomingTitle')"
+            :subtitle="t('appointmentsPage.upcomingSubtitle')"
             class="column-header page-section-title"
           />
         </div>
         <div class="appointments-column-scroll" role="region" aria-label="Upcoming appointments">
-          <div v-if="loading" class="loading">Loading…</div>
+          <div v-if="loading" class="loading">{{ t('appointmentsPage.loading') }}</div>
           <div v-else-if="upcoming.length === 0" class="empty-state">
-            <p>No upcoming appointments.</p>
+            <p>{{ t('appointmentsPage.noUpcoming') }}</p>
             <button type="button" class="empty-cta" @click="addModalOpen = true">
-              Add appointment
+              {{ t('appointmentsPage.addAppointment') }}
             </button>
           </div>
           <div v-else class="appointments-list">
@@ -73,15 +73,15 @@
         <div class="appointments-column-header">
           <SectionHeader
             id="past-heading"
-            title="Past visits"
-            subtitle="Newest first."
+            :title="t('appointmentsPage.pastTitle')"
+            :subtitle="t('appointmentsPage.pastSubtitle')"
             class="column-header page-section-title"
           />
         </div>
         <div class="appointments-column-scroll" role="region" aria-label="Past appointments">
-          <div v-if="loading" class="loading">Loading…</div>
+          <div v-if="loading" class="loading">{{ t('appointmentsPage.loading') }}</div>
           <div v-else-if="past.length === 0" class="empty-state">
-            <p>No past appointments yet.</p>
+            <p>{{ t('appointmentsPage.noPast') }}</p>
           </div>
           <div v-else class="appointments-list">
             <AppointmentCard
@@ -106,7 +106,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/PageHeader.vue'
+
+const { t } = useI18n()
 import SectionHeader from '@/components/SectionHeader.vue'
 import AppointmentFormModal from '@/components/AppointmentFormModal.vue'
 import AppointmentCard from '@/components/AppointmentCard.vue'
@@ -147,7 +150,10 @@ function onAppointmentSubmitted(appt: DoctorAppointment) {
     appt,
     ...appointments.value.filter((a) => a.id !== appt.id),
   ]
-  successMessage.value = `Appointment saved — ${appt.doctorName}, ${appt.specialty}.`
+  successMessage.value = t('appointmentsPage.saved', {
+    doctor: appt.doctorName,
+    specialty: appt.specialty,
+  })
   window.setTimeout(() => {
     successMessage.value = ''
   }, 6000)
