@@ -12,41 +12,41 @@
         <button
           type="button"
           class="appointment-modal-close"
-          aria-label="Close"
+          :aria-label="t('common.close')"
           @click="close"
         >
           ×
         </button>
 
-        <div v-if="appointment && schedule" class="appointment-modal-content">
-          <p class="appointment-modal-eyebrow">Next appointment</p>
+        <div v-if="appointment" class="appointment-modal-content">
+          <p class="appointment-modal-eyebrow">{{ t('appointment.eyebrow') }}</p>
           <h2 id="upcoming-appointment-modal-title" class="appointment-modal-title">
-            {{ schedule.badgeHeadline }}
+            {{ badgeHeadline }}
           </h2>
 
           <div class="appointment-modal-when">
-            <p class="appointment-modal-datetime">{{ schedule.dateTimeText }}</p>
+            <p class="appointment-modal-datetime">{{ dateTimeText }}</p>
           </div>
 
           <div class="appointment-modal-details">
             <div class="appointment-detail-row">
               <span class="appointment-detail-icon" aria-hidden="true">👨‍⚕️</span>
               <div>
-                <p class="appointment-detail-label">Doctor</p>
+                <p class="appointment-detail-label">{{ t('appointment.doctor') }}</p>
                 <p class="appointment-detail-value">{{ providerLabel }}</p>
               </div>
             </div>
             <div class="appointment-detail-row">
               <span class="appointment-detail-icon" aria-hidden="true">🏥</span>
               <div>
-                <p class="appointment-detail-label">Specialty</p>
+                <p class="appointment-detail-label">{{ t('appointment.specialty') }}</p>
                 <p class="appointment-detail-value">{{ appointment.specialty }}</p>
               </div>
             </div>
             <div class="appointment-detail-row">
               <span class="appointment-detail-icon" aria-hidden="true">📍</span>
               <div>
-                <p class="appointment-detail-label">Location</p>
+                <p class="appointment-detail-label">{{ t('appointment.location') }}</p>
                 <p class="appointment-detail-value">{{ appointment.address }}</p>
               </div>
             </div>
@@ -57,24 +57,24 @@
             class="appointment-modal-cta"
             @click="close"
           >
-            View all appointments
+            {{ t('appointment.viewAll') }}
           </router-link>
         </div>
 
         <div v-else class="appointment-modal-empty">
-          <p class="appointment-modal-eyebrow">Appointments</p>
+          <p class="appointment-modal-eyebrow">{{ t('appointment.eyebrowEmpty') }}</p>
           <h2 id="upcoming-appointment-modal-title" class="appointment-modal-title">
-            Nothing scheduled
+            {{ t('appointment.nothingScheduled') }}
           </h2>
           <p class="appointment-modal-empty-text">
-            You do not have an upcoming visit on your calendar yet.
+            {{ t('appointment.emptyText') }}
           </p>
           <router-link
             to="/appointments"
             class="appointment-modal-cta"
             @click="close"
           >
-            Go to Appointments
+            {{ t('appointment.goToAppointments') }}
           </router-link>
         </div>
       </div>
@@ -84,10 +84,14 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { addDays, format, isSameDay, parseISO } from 'date-fns'
 import {
-  appointmentScheduleSummary,
+  appointmentDaysUntil,
   providerDisplayName,
 } from '@/services/appointmentUtils'
+import { dateFnsLocaleFor } from '@/utils/dateLocale'
+import type { AppLocale } from '@/i18n'
 import type { DoctorAppointment } from '@/models/types'
 
 const props = defineProps<{
@@ -99,15 +103,36 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const { t, locale } = useI18n()
+
 const providerLabel = computed(() =>
   props.appointment ? providerDisplayName(props.appointment) : ''
 )
 
-const schedule = computed(() =>
-  props.appointment
-    ? appointmentScheduleSummary(props.appointment.scheduledAt)
-    : null
-)
+const badgeHeadline = computed(() => {
+  if (!props.appointment) return ''
+  const days = appointmentDaysUntil(props.appointment.scheduledAt)
+  if (days === 0) return t('appointment.badgeToday')
+  if (days === 1) return t('appointment.badgeTomorrow')
+  return t('appointment.badgeInDays', { days })
+})
+
+const dateTimeText = computed(() => {
+  if (!props.appointment) return ''
+  const d = parseISO(props.appointment.scheduledAt)
+  if (Number.isNaN(d.getTime())) return props.appointment.scheduledAt
+  const now = new Date()
+  const dfLocale = dateFnsLocaleFor(locale.value as AppLocale)
+  const time = format(d, 'p', { locale: dfLocale })
+  if (isSameDay(d, now)) {
+    return t('appointment.datetimeToday', { time })
+  }
+  if (isSameDay(d, addDays(now, 1))) {
+    return t('appointment.datetimeTomorrow', { time })
+  }
+  const date = format(d, 'EEE, MMM d', { locale: dfLocale })
+  return t('appointment.datetimeDefault', { date, time })
+})
 
 function close() {
   emit('close')

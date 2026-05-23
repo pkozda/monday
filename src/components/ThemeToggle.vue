@@ -1,7 +1,7 @@
 <template>
   <label
     class="theme-toggle"
-    :title="theme === 'dark' ? 'Dark mode — click to switch to light' : 'Light mode — click to switch to dark'"
+    :title="theme === 'dark' ? t('theme.darkHint') : t('theme.lightHint')"
   >
     <span class="theme-toggle__icon" aria-hidden="true">{{ theme === 'dark' ? '🌙' : '☀️' }}</span>
     <span class="theme-toggle__track">
@@ -13,13 +13,15 @@
       />
       <span class="theme-toggle__thumb" />
     </span>
-    <span class="theme-toggle__label">{{ theme === 'dark' ? 'Dark' : 'Light' }}</span>
+    <span class="theme-toggle__label">{{ theme === 'dark' ? t('theme.dark') : t('theme.light') }}</span>
   </label>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useTheme } from '@/composables/useTheme'
 
+const { t } = useI18n()
 const { theme, setTheme } = useTheme()
 
 function onToggle(event: Event) {

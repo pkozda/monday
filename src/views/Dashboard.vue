@@ -1,12 +1,12 @@
 <template>
   <div class="page dashboard">
     <PageHeader
-      eyebrow="Health overview"
-      title="Dashboard"
-      subtitle="Your health overview — patient profile, statistics, and trends"
+      :eyebrow="t('dashboard.eyebrow')"
+      :title="t('dashboard.title')"
+      :subtitle="t('dashboard.subtitle')"
     />
 
-    <div v-if="loading" class="page-loading">Loading dashboard…</div>
+    <div v-if="loading" class="page-loading">{{ t('dashboard.loading') }}</div>
 
     <template v-else>
       <section class="page-section dashboard-section">
@@ -24,50 +24,50 @@
 
       <section class="page-section dashboard-section">
         <SectionHeader
-          title="Overview"
-          subtitle="Key metrics from your health journal"
+          :title="t('dashboard.overviewTitle')"
+          :subtitle="t('dashboard.overviewSubtitle')"
           class="page-section-title"
         />
         <div class="stats-grid">
           <StatCard
             variant="journal"
-            label="Journal entries"
+            :label="t('dashboard.stats.journalEntries')"
             :value="stats?.totalJournalEntries ?? 0"
-            hint="All time"
+            :hint="t('dashboard.stats.allTime')"
           />
           <StatCard
             variant="activity"
-            label="Last 30 days"
+            :label="t('dashboard.stats.last30Days')"
             :value="stats?.entriesLast30Days ?? 0"
-            hint="Recent activity"
+            :hint="t('dashboard.stats.recentActivity')"
           />
           <StatCard
             variant="conditions"
-            label="Tracked conditions"
+            :label="t('dashboard.stats.trackedConditions')"
             :value="stats?.conditions.length ?? 0"
-            hint="Body areas / issues"
+            :hint="t('dashboard.stats.bodyAreasHint')"
           />
           <StatCard
             variant="severity"
-            label="Avg severity"
+            :label="t('dashboard.stats.avgSeverity')"
             :value="avgSeverityLabel"
-            hint="When reported (1–10)"
+            :hint="t('dashboard.stats.severityHint')"
           />
           <StatCard
             variant="timeline"
-            label="Timeline events"
+            :label="t('dashboard.stats.timelineEvents')"
             :value="stats?.totalTimelineEvents ?? 0"
           />
           <StatCard
             variant="hypotheses"
-            label="Hypotheses"
+            :label="t('dashboard.stats.hypotheses')"
             :value="stats?.totalHypotheses ?? 0"
           />
           <StatCard
             variant="attention"
-            label="Needs attention"
+            :label="t('dashboard.stats.needsAttention')"
             :value="stats?.attentionRequired ?? 0"
-            hint="Urgent or emergency flags"
+            :hint="t('dashboard.stats.attentionHint')"
             :alert="(stats?.attentionRequired ?? 0) > 0"
           />
         </div>
@@ -76,7 +76,7 @@
       <section class="page-section dashboard-section charts-row">
         <div class="chart-panel page-panel">
           <SectionHeader
-            title="Severity trend"
+            :title="t('dashboard.severityTrendTitle')"
             class="page-section-title"
             :subtitle="severityTrendSubtitle"
           />
@@ -87,9 +87,9 @@
         </div>
         <div class="chart-panel page-panel">
           <SectionHeader
-            title="Entry classification"
+            :title="t('dashboard.classificationTitle')"
             class="page-section-title"
-            subtitle="How journal entries were categorized from your descriptions"
+            :subtitle="t('dashboard.classificationSubtitle')"
           />
           <DonutChart :segments="stats?.urgencyBreakdown ?? []" />
         </div>
@@ -98,44 +98,44 @@
       <section class="page-section dashboard-section charts-row">
         <div class="chart-panel page-panel">
           <SectionHeader
-            title="Entries by type"
+            :title="t('dashboard.entriesByTypeTitle')"
             class="page-section-title"
-            subtitle="Symptoms, medications, visits, and more"
+            :subtitle="t('dashboard.entriesByTypeSubtitle')"
           />
-          <BarChart :segments="stats?.entriesByType ?? []" />
+          <BarChart :segments="entriesByTypeChart" />
         </div>
         <div class="chart-panel page-panel">
           <SectionHeader
-            title="Hypothesis confidence"
+            :title="t('dashboard.hypothesisConfidenceTitle')"
             class="page-section-title"
-            subtitle="Distribution of active hypotheses"
+            :subtitle="t('dashboard.hypothesisConfidenceSubtitle')"
           />
           <DonutChart
-            :segments="stats?.hypothesesByConfidence ?? []"
-            empty-text="No hypotheses yet"
+            :segments="hypothesesConfidenceChart"
+            :empty-text="t('dashboard.noHypothesesYet')"
           />
         </div>
       </section>
 
       <section class="page-section dashboard-section">
         <SectionHeader
-          title="Tracked conditions"
+          :title="t('dashboard.conditionsTitle')"
           class="page-section-title"
-          subtitle="Body areas you have logged in your journal"
+          :subtitle="t('dashboard.conditionsSubtitle')"
         />
         <div v-if="!stats?.conditions.length" class="page-empty">
-          <span class="page-empty__title">No conditions yet</span>
-          <p>Add an entry in the Journal to start tracking body areas.</p>
-          <router-link to="/journal" class="link-cta">Go to Journal</router-link>
+          <span class="page-empty__title">{{ t('dashboard.noConditionsTitle') }}</span>
+          <p>{{ t('dashboard.noConditionsText') }}</p>
+          <router-link to="/journal" class="link-cta">{{ t('common.goToJournal') }}</router-link>
         </div>
         <div v-else class="conditions-table-wrap page-panel page-panel--compact">
           <table class="conditions-table">
             <thead>
               <tr>
-                <th>Condition / area</th>
-                <th>Entries</th>
-                <th>Last update</th>
-                <th>Latest classification</th>
+                <th>{{ t('dashboard.table.condition') }}</th>
+                <th>{{ t('dashboard.table.entries') }}</th>
+                <th>{{ t('dashboard.table.lastUpdate') }}</th>
+                <th>{{ t('dashboard.table.classification') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -145,7 +145,7 @@
                 <td>{{ formatDate(c.lastEntryDate) }}</td>
                 <td>
                   <span class="urgency-pill" :class="`urgency--${c.latestUrgency}`">
-                    {{ c.latestClassification }}
+                    {{ localizeClassificationLabel(c.latestClassification, t) }}
                   </span>
                 </td>
               </tr>
@@ -156,8 +156,8 @@
 
       <section class="page-section dashboard-section">
         <SectionHeader
-          title="Current clinical model"
-          subtitle="Synthesized from your health journal"
+          :title="t('dashboard.clinicalModelTitle')"
+          :subtitle="t('dashboard.clinicalModelSubtitle')"
           class="page-section-title"
         />
         <MedicalCard
@@ -167,7 +167,7 @@
           :factors="clinicalModel.factors"
         />
         <p v-if="clinicalModel && !clinicalModel.factors.length" class="clinical-model-hint">
-          Log symptoms and visits in the Journal to populate condition-specific factors.
+          {{ t('dashboard.clinicalModelHint') }}
         </p>
       </section>
 
@@ -176,8 +176,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format, parseISO } from 'date-fns'
+import { dateFnsLocaleFor } from '@/utils/dateLocale'
+import { localizeClassificationLabel } from '@/services/localizeClinical'
+import type { AppLocale } from '@/i18n'
+import type { ChartSegment } from '@/models/types'
+
+const { t, locale } = useI18n()
 import PageHeader from '@/components/PageHeader.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import MedicalCard from '@/components/MedicalCard.vue'
@@ -186,7 +193,7 @@ import StatCard from '@/components/dashboard/StatCard.vue'
 import BarChart from '@/components/dashboard/BarChart.vue'
 import DonutChart from '@/components/dashboard/DonutChart.vue'
 import SeverityLineChart from '@/components/dashboard/SeverityLineChart.vue'
-import { getClinicalModel } from '@/api/clinicalModelApi'
+import { buildLocalizedClinicalModel } from '@/services/localizeClinicalModel'
 import { getHypotheses, getTimeline } from '@/api/mockApi'
 import { getHealthEntries } from '@/api/healthApi'
 import { getAppointments } from '@/api/appointmentsApi'
@@ -215,19 +222,39 @@ const avgSeverityLabel = computed(() => {
   return avg !== null && avg !== undefined ? `${avg} / 10` : '—'
 })
 
+function localizeChartSegments(
+  segments: ChartSegment[],
+  labelPrefix: string
+): ChartSegment[] {
+  return segments.map((s) => ({
+    ...s,
+    label: s.key ? t(`${labelPrefix}.${s.key}`) : s.label,
+  }))
+}
+
+const entriesByTypeChart = computed(() =>
+  localizeChartSegments(stats.value?.entriesByType ?? [], 'chartEntryTypes')
+)
+
+const hypothesesConfidenceChart = computed(() =>
+  localizeChartSegments(
+    stats.value?.hypothesesByConfidence ?? [],
+    'confidenceHypothesis'
+  )
+)
+
 const severityTrendSubtitle = computed(() => {
-  const base =
-    'By event date (when symptoms happened), not when you logged the entry.'
+  const base = t('dashboard.severityTrendBase')
   const info = stats.value?.severityTrendInfo
   if (!info) return base
   if (info.urgencyEstimatedCount > 0 && info.explicitCount === 0) {
-    return `${base} Estimated from entry urgency until you add 1–10 ratings.`
+    return `${base} ${t('dashboard.severityTrendEstimated')}`
   }
   if (info.urgencyEstimatedCount > 0) {
-    return `${base} Some points use urgency when no rating was logged.`
+    return `${base} ${t('dashboard.severityTrendSomeUrgency')}`
   }
   if (info.textInferredCount > 0 && info.explicitCount === 0) {
-    return `${base} Parsed from pain scores in your notes (e.g. 7/10).`
+    return `${base} ${t('dashboard.severityTrendParsed')}`
   }
   return base
 })
@@ -235,22 +262,37 @@ const severityTrendSubtitle = computed(() => {
 const severityTrendEmptyText = computed(() => {
   const total = stats.value?.totalJournalEntries ?? 0
   if (total === 0) {
-    return 'Add journal entries to see severity trends.'
+    return t('dashboard.severityTrendEmpty')
   }
-  return `You have ${total} journal ${total === 1 ? 'entry' : 'entries'}, but none have a severity rating or text we can read (e.g. "pain 7/10"). Use the severity slider when logging.`
+  return t('dashboard.severityTrendEmptyDetail', {
+    count: total,
+    entries: t(total === 1 ? 'dashboard.entryOne' : 'dashboard.entryMany'),
+  })
 })
 
 const recommendations = computed(() =>
   getHealthRecommendations(patient.value, stats.value)
 )
 
+function applyClinicalModel(entries: HealthEntry[]): void {
+  clinicalModel.value = buildLocalizedClinicalModel(
+    entries,
+    t,
+    dateFnsLocaleFor(locale.value as AppLocale)
+  )
+}
+
 function loadDeferredClinicalModel(entries: HealthEntry[]): void {
   scheduleIdleWork(() => {
-    void getClinicalModel(entries).then((model) => {
-      clinicalModel.value = model
-    })
+    applyClinicalModel(entries)
   })
 }
+
+watch(locale, () => {
+  if (journalEntries.value.length > 0) {
+    applyClinicalModel(journalEntries.value)
+  }
+})
 
 onMounted(async () => {
   try {
@@ -300,7 +342,9 @@ async function onJournalImported() {
 }
 
 function formatDate(iso: string): string {
-  return format(parseISO(iso), 'MMM d, yyyy')
+  return format(parseISO(iso), 'PP', {
+    locale: dateFnsLocaleFor(locale.value as AppLocale),
+  })
 }
 </script>
 

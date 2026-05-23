@@ -1,9 +1,9 @@
 <template>
   <div class="page hypotheses-view">
     <PageHeader
-      eyebrow="Clinical insights"
-      title="Hypotheses & diagnoses"
-      subtitle="Regenerate pulls the latest journal data into possible conditions and hypotheses."
+      :eyebrow="t('hypothesesPage.eyebrow')"
+      :title="t('hypothesesPage.title')"
+      :subtitle="t('hypothesesPage.subtitle')"
     >
       <template #actions>
         <button
@@ -12,15 +12,15 @@
           :disabled="loading || regenerating || journalEntries.length === 0"
           :title="
             journalEntries.length === 0
-              ? 'Add journal entries first'
-              : 'Regenerate from current journal'
+              ? t('hypothesesPage.regenerateTitleEmpty')
+              : t('hypothesesPage.regenerateTitle')
           "
           @click="onRegenerateInsights"
         >
           {{
             regenerating
-              ? 'Regenerating…'
-              : 'Regenerate hypotheses & conditions'
+              ? t('hypothesesPage.regenerating')
+              : t('hypothesesPage.regenerate')
           }}
         </button>
       </template>
@@ -35,7 +35,7 @@
       {{ regenerateMessage }}
     </div>
 
-    <div v-if="loading" class="page-loading">Loading insights…</div>
+    <div v-if="loading" class="page-loading">{{ t('hypothesesPage.loading') }}</div>
 
     <template v-else>
       <div class="hypotheses-tabs page-panel page-panel--compact" role="tablist" aria-label="Hypotheses and diagnoses">
@@ -47,7 +47,7 @@
           :aria-selected="activeTab === 'diagnoses'"
           @click="activeTab = 'diagnoses'"
         >
-          Diagnoses
+          {{ t('hypothesesPage.tabDiagnoses') }}
           <span v-if="diagnosisReports.length" class="tab-count">{{
             diagnosisReports.length
           }}</span>
@@ -60,7 +60,7 @@
           :aria-selected="activeTab === 'hypotheses'"
           @click="activeTab = 'hypotheses'"
         >
-          Hypotheses
+          {{ t('hypothesesPage.tabHypotheses') }}
           <span v-if="hypotheses.length" class="tab-count">{{ hypotheses.length }}</span>
         </button>
       </div>
@@ -81,12 +81,11 @@
         aria-label="Hypotheses"
       >
         <div v-if="hypotheses.length === 0" class="page-empty">
-          <span class="page-empty__title">No hypotheses yet</span>
+          <span class="page-empty__title">{{ t('hypothesesPage.noHypothesesTitle') }}</span>
           <p>
-            Add journal entries, then use
-            <strong>Regenerate hypotheses &amp; conditions</strong> in the header.
+            {{ t('hypothesesPage.noHypothesesText') }}
           </p>
-          <router-link to="/" class="link-cta">Go to Dashboard</router-link>
+          <router-link to="/" class="link-cta">{{ t('common.goToDashboard') }}</router-link>
         </div>
 
         <div v-else class="hypotheses-container">
@@ -105,7 +104,10 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+
+const { t } = useI18n()
 import PageHeader from '@/components/PageHeader.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
 import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
@@ -120,6 +122,16 @@ import type {
   Hypothesis,
   PatientProfile,
 } from '@/models/types'
+import type { RegenerateInsightsResult } from '@/api/hypothesisApi'
+
+function formatRegenerateMessage(result: RegenerateInsightsResult): string {
+  const params = {
+    hypothesisCount: result.hypothesisCount,
+    journalEntryCount: result.journalEntryCount,
+    areaCount: result.areas.length,
+  }
+  return t(`hypothesesPage.regenerateMessages.${result.messageKey}`, params)
+}
 
 type TabId = 'diagnoses' | 'hypotheses'
 
@@ -172,9 +184,7 @@ onMounted(async () => {
 async function onRegenerateInsights() {
   if (
     hypotheses.value.length > 0 &&
-    !window.confirm(
-      'Replace all hypotheses with new ones from your current journal? Possible conditions will be recalculated from the same records.'
-    )
+    !window.confirm(t('hypothesesPage.regenerateConfirm'))
   ) {
     return
   }
@@ -186,14 +196,14 @@ async function onRegenerateInsights() {
     await loadInsights()
     regenerateMessageType.value =
       result.hypothesisCount > 0 ? 'success' : 'info'
-    regenerateMessage.value = result.message
+    regenerateMessage.value = formatRegenerateMessage(result)
     if (result.hypothesisCount > 0 && diagnosisReports.value.length > 0) {
       activeTab.value = 'diagnoses'
     }
   } catch (e) {
     regenerateMessageType.value = 'error'
     regenerateMessage.value =
-      e instanceof Error ? e.message : 'Regeneration failed.'
+      e instanceof Error ? e.message : t('hypothesesPage.regenerateFailed')
   } finally {
     regenerating.value = false
   }

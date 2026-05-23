@@ -5,7 +5,7 @@
         <h3 class="appointment-card__provider">{{ providerLabel }}</h3>
         <p class="appointment-card__specialty">{{ appointment.specialty }}</p>
         <p v-if="appointment.source === 'journal'" class="appointment-card__source">
-          From health journal
+          {{ t('appointmentCard.fromJournal') }}
         </p>
       </div>
       <span class="appointment-card__badge" :class="badgeClass">
@@ -21,18 +21,25 @@
       :disabled="removing"
       @click="emit('remove', appointment.id)"
     >
-      {{ removing ? 'Removing…' : 'Remove' }}
+      {{ removing ? t('appointmentCard.removing') : t('appointmentCard.remove') }}
     </button>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useLocale } from '@/composables/useLocale'
+import type { AppLocale } from '@/i18n'
+import { dateFnsLocaleFor } from '@/utils/dateLocale'
 import {
   formatAppointmentDateTime,
   isUpcomingAppointment,
   providerDisplayName,
 } from '@/services/appointmentUtils'
+
+const { t } = useI18n()
+const { locale } = useLocale()
 import type { DoctorAppointment } from '@/models/types'
 
 const props = defineProps<{
@@ -51,10 +58,15 @@ const providerLabel = computed(() =>
 )
 
 const whenLabel = computed(() =>
-  formatAppointmentDateTime(props.appointment.scheduledAt)
+  formatAppointmentDateTime(
+    props.appointment.scheduledAt,
+    dateFnsLocaleFor(locale.value as AppLocale)
+  )
 )
 
-const badgeText = computed(() => (isPast.value ? 'Past' : 'Upcoming'))
+const badgeText = computed(() =>
+  isPast.value ? t('appointmentCard.past') : t('appointmentCard.upcoming')
+)
 
 const badgeClass = computed(() =>
   isPast.value ? 'appointment-card__badge--past' : 'appointment-card__badge--upcoming'

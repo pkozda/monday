@@ -4,20 +4,27 @@
       <div class="entry-meta">
         <time :datetime="entry.eventDate">{{ formattedDate }}</time>
         <span class="entry-type">{{ classificationLabel }}</span>
-        <span class="condition-area">{{ entry.conditionArea }}</span>
+        <span class="condition-area">
+          <TranslatedText :text="entry.conditionArea" tag="span" />
+        </span>
       </div>
       <span class="urgency-badge" :class="urgencyClass">{{ urgencyLabel }}</span>
     </header>
 
-    <h3 class="entry-title">{{ entry.title }}</h3>
-    <p v-if="showFullDescription" class="entry-description">{{ entry.description }}</p>
+    <h3 class="entry-title">
+      <TranslatedText :text="entry.title" tag="span" />
+    </h3>
+    <p v-if="showFullDescription" class="entry-description">
+      <TranslatedText :text="entry.description" tag="span" :inline="false" />
+    </p>
 
     <p v-if="entry.medications" class="entry-medications">
-      <strong>Medications:</strong> {{ entry.medications }}
+      <strong>{{ t('healthEntryCard.medications') }}</strong>
+      <TranslatedText :text="entry.medications" tag="span" />
     </p>
 
     <p v-if="entry.severity" class="entry-severity">
-      Severity: {{ entry.severity }}/10
+      {{ t('healthEntryCard.severity') }} {{ entry.severity }}/10
     </p>
 
     <div v-if="entry.analysis.flags.length" class="entry-flags">
@@ -31,15 +38,24 @@
     </div>
 
     <p class="entry-summary">
-      <strong>Clinical summary:</strong> {{ entry.analysis.summary }}
+      <strong>{{ t('healthEntryCard.clinicalSummary') }}</strong>
+      <TranslatedText :text="entry.analysis.summary" tag="span" />
     </p>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
-import { getEntryClassificationLabel } from '@/services/healthAnalysis'
+import { useLocale } from '@/composables/useLocale'
+import type { AppLocale } from '@/i18n'
+import { dateFnsLocaleFor } from '@/utils/dateLocale'
+import TranslatedText from '@/components/TranslatedText.vue'
+import { localizedClassificationForEntry, localizeJournalFlag } from '@/services/localizeClinical'
+
+const { t } = useI18n()
+const { locale } = useLocale()
 import { journalDescriptionAddsDetail } from '@/services/journalEntryText'
 import type { HealthEntry } from '@/models/types'
 
@@ -47,19 +63,14 @@ const props = defineProps<{
   entry: HealthEntry
 }>()
 
-const URGENCY_LABELS: Record<HealthEntry['analysis']['urgency'], string> = {
-  routine: 'Routine',
-  monitor: 'Monitor',
-  urgent: 'Urgent',
-  emergency: 'Emergency',
-}
-
 const formattedDate = computed(() =>
-  format(new Date(props.entry.eventDate), 'MMM d, yyyy')
+  format(new Date(props.entry.eventDate), 'PP', {
+    locale: dateFnsLocaleFor(locale.value as AppLocale),
+  })
 )
 
 const classificationLabel = computed(() =>
-  getEntryClassificationLabel(props.entry)
+  localizedClassificationForEntry(props.entry, t)
 )
 
 const showFullDescription = computed(() =>
@@ -70,12 +81,12 @@ const urgencyClass = computed(
   () => `urgency--${props.entry.analysis.urgency}`
 )
 
-const urgencyLabel = computed(
-  () => URGENCY_LABELS[props.entry.analysis.urgency]
+const urgencyLabel = computed(() =>
+  t(`urgency.${props.entry.analysis.urgency}`)
 )
 
 function formatFlag(flag: string): string {
-  return flag.replace(/_/g, ' ')
+  return localizeJournalFlag(flag, t)
 }
 </script>
 

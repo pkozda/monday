@@ -1,13 +1,12 @@
 <template>
   <form class="health-entry-form" @submit.prevent="handleSubmit">
     <p class="form-lang-hint">
-      English and Russian (Русский) are supported. Russian text is translated to
-      English before saving so analysis and your timeline stay consistent.
+      {{ t('entryForm.langHint') }}
     </p>
 
     <div class="form-grid">
       <div class="form-field">
-        <label for="eventDate">When did this happen?</label>
+        <label for="eventDate">{{ t('entryForm.eventDate') }}</label>
         <input
           id="eventDate"
           v-model="form.eventDate"
@@ -18,7 +17,7 @@
       </div>
 
       <div class="form-field">
-        <label for="conditionArea">Body area / condition</label>
+        <label for="conditionArea">{{ t('entryForm.conditionArea') }}</label>
         <input
           id="conditionArea"
           v-model="form.conditionArea"
@@ -30,19 +29,19 @@
       </div>
 
       <div class="form-field form-field--full">
-        <label for="entryType">What are you recording?</label>
+        <label for="entryType">{{ t('entryForm.entryType') }}</label>
         <select id="entryType" v-model="form.entryType" required>
-          <option value="symptom">Symptoms</option>
-          <option value="change">Change in condition</option>
-          <option value="medication">Medication / prescription</option>
-          <option value="doctor_visit">Doctor visit or advice</option>
-          <option value="imaging">Test or imaging</option>
-          <option value="other">Other health note</option>
+          <option value="symptom">{{ t('entryForm.optionSymptom') }}</option>
+          <option value="change">{{ t('entryForm.optionChange') }}</option>
+          <option value="medication">{{ t('entryForm.optionMedication') }}</option>
+          <option value="doctor_visit">{{ t('entryForm.optionDoctorVisit') }}</option>
+          <option value="imaging">{{ t('entryForm.optionImaging') }}</option>
+          <option value="other">{{ t('entryForm.optionOther') }}</option>
         </select>
       </div>
 
       <div class="form-field form-field--full">
-        <label for="description">Full details</label>
+        <label for="description">{{ t('entryForm.description') }}</label>
         <textarea
           id="description"
           v-model="form.description"
@@ -52,13 +51,12 @@
           @blur="maybeSuggestTitle"
         />
         <p class="field-hint">
-          Write the full story here — what happened, when, and any test or
-          treatment details.
+          {{ t('entryForm.descriptionHint') }}
         </p>
       </div>
 
       <div class="form-field form-field--full">
-        <label for="title">Short title</label>
+        <label for="title">{{ t('entryForm.title') }}</label>
         <input
           id="title"
           v-model="form.title"
@@ -69,8 +67,7 @@
           autocomplete="off"
         />
         <p class="field-hint">
-          A few words for quick scanning (e.g. “MRI — knee”). We can shorten
-          this from your details when you save.
+          {{ t('entryForm.titleHint') }}
         </p>
       </div>
 
@@ -78,7 +75,7 @@
         v-if="showMedications"
         class="form-field form-field--full"
       >
-        <label for="medications">Medications (name, dose, how often)</label>
+        <label for="medications">{{ t('entryForm.medications') }}</label>
         <input
           id="medications"
           v-model="form.medications"
@@ -90,7 +87,7 @@
 
       <div class="form-field">
         <label for="severity">
-          Severity (optional)
+          {{ t('entryForm.severity') }}
           <span v-if="form.severity" class="severity-value">{{ form.severity }}/10</span>
         </label>
         <input
@@ -107,7 +104,7 @@
           class="clear-severity"
           @click="form.severity = undefined"
         >
-          Clear
+          {{ t('entryForm.clearSeverity') }}
         </button>
       </div>
     </div>
@@ -119,7 +116,7 @@
         {{ submitLabel }}
       </button>
       <button type="button" class="btn-secondary" :disabled="submitting" @click="resetForm">
-        Clear form
+        {{ t('entryForm.clearForm') }}
       </button>
     </div>
   </form>
@@ -127,7 +124,10 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { createHealthEntry } from '@/api/healthApi'
+
+const { t } = useI18n()
 import { buildJournalShortTitle } from '@/services/journalEntryText'
 import { entryNeedsTranslation } from '@/services/translation'
 import type { HealthEntry, HealthEntryInput, HealthEntryType } from '@/models/types'
@@ -209,7 +209,7 @@ function maybeSuggestTitle() {
 }
 
 const submitLabel = computed(() => {
-  if (!submitting.value) return 'Save health record'
+  if (!submitting.value) return t('entryForm.saveHealthRecord')
   const draft: HealthEntryInput = {
     eventDate: form.eventDate,
     conditionArea: form.conditionArea,
@@ -220,8 +220,8 @@ const submitLabel = computed(() => {
     severity: form.severity,
   }
   return entryNeedsTranslation(draft)
-    ? 'Translating & saving…'
-    : 'Saving & analyzing…'
+    ? t('entryForm.translating')
+    : t('entryForm.savingAnalyzing')
 })
 
 function resetForm() {

@@ -214,6 +214,8 @@ export interface ChartSegment {
   label: string
   value: number
   color: string
+  /** Stable id for i18n (e.g. entry type or confidence bucket) */
+  key?: string
 }
 
 export interface SeverityPoint {

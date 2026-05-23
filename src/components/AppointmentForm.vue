@@ -2,16 +2,16 @@
   <form class="appointment-form" @submit.prevent="handleSubmit">
     <div class="form-grid">
       <div class="form-field">
-        <label for="apptDate">Date</label>
+        <label for="apptDate">{{ t('appointmentForm.date') }}</label>
         <input id="apptDate" v-model="form.date" type="date" required />
       </div>
       <div class="form-field">
-        <label for="apptTime">Time</label>
+        <label for="apptTime">{{ t('appointmentForm.time') }}</label>
         <input id="apptTime" v-model="form.time" type="time" required />
       </div>
 
       <div class="form-field form-field--full">
-        <label for="doctorName">Doctor name</label>
+        <label for="doctorName">{{ t('appointmentForm.doctorName') }}</label>
         <input
           id="doctorName"
           v-model="form.doctorName"
@@ -23,7 +23,7 @@
       </div>
 
       <div class="form-field form-field--full">
-        <label for="clinicName">Clinic / hospital (optional)</label>
+        <label for="clinicName">{{ t('appointmentForm.clinicName') }}</label>
         <input
           id="clinicName"
           v-model="form.clinicName"
@@ -34,7 +34,7 @@
       </div>
 
       <div class="form-field form-field--full">
-        <label for="specialty">Specialty</label>
+        <label for="specialty">{{ t('appointmentForm.specialty') }}</label>
         <input
           id="specialty"
           v-model="form.specialty"
@@ -46,7 +46,7 @@
       </div>
 
       <div class="form-field form-field--full">
-        <label for="address">Address</label>
+        <label for="address">{{ t('appointmentForm.address') }}</label>
         <input
           id="address"
           v-model="form.address"
@@ -58,7 +58,7 @@
       </div>
 
       <div class="form-field form-field--full">
-        <label for="notes">Notes (optional)</label>
+        <label for="notes">{{ t('appointmentForm.notes') }}</label>
         <textarea
           id="notes"
           v-model="form.notes"
@@ -72,7 +72,7 @@
 
     <div class="form-actions">
       <button type="submit" class="btn-primary" :disabled="submitting">
-        {{ submitting ? 'Saving…' : 'Add appointment' }}
+        {{ submitting ? t('appointmentForm.saving') : t('appointmentForm.addAppointment') }}
       </button>
       <button
         type="button"
@@ -80,7 +80,7 @@
         :disabled="submitting"
         @click="resetForm"
       >
-        Clear form
+        {{ t('appointmentForm.clearForm') }}
       </button>
     </div>
   </form>
@@ -88,7 +88,10 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { createAppointment } from '@/api/appointmentsApi'
+
+const { t } = useI18n()
 import {
   combineDateAndTime,
   defaultAppointmentDateTime,
