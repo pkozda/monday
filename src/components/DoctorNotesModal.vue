@@ -10,108 +10,56 @@
     >
       <div class="notes-dialog">
         <header class="notes-header">
-          <h2 id="doctor-notes-title">{{ t('doctorNotes.title') }}</h2>
+          <h2 id="doctor-notes-title">{{ title ?? t('doctorNotes.title') }}</h2>
           <button type="button" class="notes-close" :aria-label="t('common.close')" @click="emit('close')">
             ×
           </button>
         </header>
 
-        <p class="notes-intro">
-          {{ loading ? t('doctorNotes.generating') : t('doctorNotes.intro') }}
-        </p>
-
-        <textarea
-          v-model="notesText"
-          class="notes-textarea"
-          rows="18"
-          spellcheck="true"
-          :disabled="loading"
-          :aria-busy="loading"
-          :aria-label="t('doctorNotes.notesLabel')"
+        <DoctorNotesPanel
+          :content="content"
+          :loading="loading"
+          :intro="intro"
+          :generating-label="generatingLabel"
+          :show-specialty-selector="showSpecialtySelector"
+          :specialty="specialty"
+          @update:specialty="emit('update:specialty', $event)"
+          @specialty-change="emit('specialty-change', $event)"
         />
-
-        <div class="notes-actions">
-          <button type="button" class="btn-secondary" :disabled="loading" @click="copyNotes">
-            {{ copied ? t('doctorNotes.copied') : t('doctorNotes.copy') }}
-          </button>
-          <button type="button" class="btn-primary" :disabled="loading" @click="printNotes">
-            {{ t('doctorNotes.print') }}
-          </button>
-        </div>
       </div>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import DoctorNotesPanel from '@/components/DoctorNotesPanel.vue'
+import type { DoctorSpecialtyId } from '@/services/doctorSpecialty'
 
-const { t } = useI18n()
-
-const props = defineProps<{
-  open: boolean
-  content: string
-  loading?: boolean
-}>()
+withDefaults(
+  defineProps<{
+    open: boolean
+    content: string
+    loading?: boolean
+    title?: string
+    intro?: string
+    generatingLabel?: string
+    showSpecialtySelector?: boolean
+    specialty?: DoctorSpecialtyId
+  }>(),
+  {
+    showSpecialtySelector: false,
+    specialty: 'primary_care',
+  }
+)
 
 const emit = defineEmits<{
   close: []
+  'update:specialty': [value: DoctorSpecialtyId]
+  'specialty-change': [value: DoctorSpecialtyId]
 }>()
 
-const notesText = ref('')
-const copied = ref(false)
-
-watch(
-  () => props.content,
-  (value) => {
-    notesText.value = value
-  },
-  { immediate: true }
-)
-
-watch(
-  () => props.open,
-  (isOpen) => {
-    if (isOpen) {
-      notesText.value = props.content
-      copied.value = false
-    }
-  }
-)
-
-async function copyNotes() {
-  try {
-    await navigator.clipboard.writeText(notesText.value)
-    copied.value = true
-    window.setTimeout(() => {
-      copied.value = false
-    }, 2000)
-  } catch {
-    copied.value = false
-  }
-}
-
-function printNotes() {
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer')
-  if (!printWindow) return
-
-  const escaped = notesText.value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-
-  printWindow.document.write(`<!DOCTYPE html>
-<html><head><title>Doctor visit notes</title>
-<style>
-  body { font-family: Georgia, 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; margin: 2cm; color: #111; }
-  pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; }
-</style></head>
-<body><pre>${escaped}</pre></body></html>`)
-  printWindow.document.close()
-  printWindow.focus()
-  printWindow.print()
-}
+const { t } = useI18n()
 </script>
 
 <style scoped>
@@ -162,63 +110,7 @@ function printNotes() {
   cursor: pointer;
 }
 
-.notes-intro {
-  margin: 0 0 1rem;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  line-height: 1.45;
-}
-
-.notes-textarea {
-  width: 100%;
-  padding: 0.85rem 1rem;
-  background: var(--bg-input);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  resize: vertical;
-  min-height: 320px;
-}
-
-.notes-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn-primary,
-.btn-secondary {
-  border-radius: 8px;
-  padding: 0.6rem 1.1rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
-}
-
-.btn-primary {
-  background: var(--accent-strong);
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background: var(--accent-hover);
-}
-
-.btn-secondary {
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  color: var(--text-secondary);
-}
-
-.btn-secondary:hover {
-  border-color: var(--accent);
+.notes-close:hover {
   color: var(--text-primary);
 }
 </style>

@@ -32,12 +32,17 @@
           <blockquote v-if="row.loggedQuote" class="user-evidence-card__quote">
             <TranslatedText :text="row.loggedQuote" tag="span" :inline="false" />
           </blockquote>
-          <p class="user-evidence-card__why">
+          <div class="user-evidence-card__why">
             <span class="user-evidence-card__why-label">
               {{ t('diseaseInsight.whyThisSupports') }}
             </span>
-            {{ t(`diseaseInsight.supportReason.${row.supportReason}`) }}
-          </p>
+            <p v-if="row.linkExplanation" class="user-evidence-card__why-text">
+              <TranslatedText :text="row.linkExplanation" tag="span" :inline="false" />
+            </p>
+            <p v-else class="user-evidence-card__why-text">
+              {{ t(`diseaseInsight.supportReason.${row.supportReason}`) }}
+            </p>
+          </div>
         </li>
       </ul>
     </section>
@@ -294,6 +299,10 @@ function rowMeta(row: UserJournalEvidenceRow): string {
   letter-spacing: 0.04em;
   color: var(--confirm-match-text);
   margin-bottom: 0.2rem;
+}
+
+.user-evidence-card__why-text {
+  margin: 0;
 }
 
 .disease-education__symptom-list {

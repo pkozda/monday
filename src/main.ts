@@ -107,7 +107,7 @@ async function runRegenerateInsightsFromQuery(): Promise<void> {
 
   if (
     !skipConfirm &&
-    !window.confirm(i18n.global.t('hypothesesPage.regenerateConfirm'))
+    !window.confirm(i18n.global.t('hypothesesPage.regenerateConfirmMessage'))
   ) {
     cleanupUrl()
     return

@@ -36,6 +36,12 @@ export function applyDocumentLocale(locale: AppLocale): void {
   document.documentElement.setAttribute('lang', locale)
 }
 
+export function getAppLocale(): AppLocale {
+  const value = i18n.global.locale.value
+  if (value === 'en' || value === 'de' || value === 'ru') return value
+  return 'en'
+}
+
 export const i18n = createI18n({
   legacy: false,
   globalInjection: true,

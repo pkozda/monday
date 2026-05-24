@@ -1,68 +1,109 @@
 import { getHealthEntries } from '@/api/healthApi'
-import { getHypotheses } from '@/api/mockApi'
-import { buildDiagnosisReports } from '@/services/diagnosisGenerator'
 import {
-  buildJournalFocusPlan,
-  resolveJournalFocusPlan,
-} from '@/services/journalFocusAreas'
-import { shouldUseAiInsights } from '@/services/llm/config'
-import type { DiagnosisReport, DiagnosisVariant } from '@/models/types'
+  clearStoredDiagnosisReports,
+  getStoredClinicalInsights,
+  saveDiagnosisReports,
+} from '@/api/diagnosisStorageApi'
+import { getHypotheses } from '@/api/mockApi'
+import { shouldUseAiInsights, isLlmProxyConfigured } from '@/services/llm/config'
+import type {
+  DiagnosisGenerationOutcome,
+  DiagnosisReport,
+} from '@/models/types'
 
-function stripAiMetadata(reports: DiagnosisReport[]): DiagnosisReport[] {
-  return reports.map((report) => ({
-    ...report,
-    aiRanked: false,
-    variants: report.variants.map((variant) => stripVariantAi(variant)),
-  }))
+export interface GetDiagnosisReportsOptions {
+  /** Rebuild from LLM even if stored reports exist. */
+  forceRegenerate?: boolean
 }
 
-function stripVariantAi(variant: DiagnosisVariant): DiagnosisVariant {
-  return {
-    ...variant,
-    aiEnhanced: false,
-    aiRanked: false,
-  }
+export interface DiagnosisGenerationResult {
+  reports: DiagnosisReport[]
+  outcome: DiagnosisGenerationOutcome
+  outcomeMessage?: string
 }
 
-export async function getDiagnosisReports(): Promise<DiagnosisReport[]> {
+function journalMayNeedMoreDetail(
+  entries: Awaited<ReturnType<typeof getHealthEntries>>
+): boolean {
+  if (entries.length === 0) return true
+  if (entries.length >= 2) return false
+  const text = `${entries[0].title} ${entries[0].description}`.trim()
+  return text.length < 120
+}
+
+export async function generateDiagnosisReports(
+  options: GetDiagnosisReportsOptions = {}
+): Promise<DiagnosisGenerationResult> {
   const [hypotheses, entries] = await Promise.all([
     getHypotheses(),
     getHealthEntries(),
   ])
 
-  if (entries.length === 0 && hypotheses.length === 0) {
-    return []
+  if (entries.length === 0) {
+    return { reports: [], outcome: 'needs_more_journal' }
   }
 
-  const useAi = shouldUseAiInsights()
-
-  if (!useAi) {
-    const focusPlan = buildJournalFocusPlan(entries)
-    return stripAiMetadata(buildDiagnosisReports(hypotheses, entries, focusPlan))
+  if (hypotheses.length === 0) {
+    return { reports: [], outcome: 'no_suggestions' }
   }
 
-  const focusPlan = await resolveJournalFocusPlan(entries, { useAi: true })
-  const ruleReports = buildDiagnosisReports(hypotheses, entries, focusPlan)
+  if (!shouldUseAiInsights() || !isLlmProxyConfigured()) {
+    return { reports: [], outcome: 'failed', outcomeMessage: 'ai_off' }
+  }
 
-  if (ruleReports.length === 0) {
-    return ruleReports
+  if (!options.forceRegenerate) {
+    const stored = await getStoredClinicalInsights()
+    if (stored && stored.diagnosisReports.length > 0) {
+      const { enrichAiDiagnosisReports } = await import(
+        '@/services/llm/aiDiagnosisJournalSupport'
+      )
+      return {
+        reports: enrichAiDiagnosisReports(stored.diagnosisReports, entries),
+        outcome: stored.diagnosisOutcome ?? 'ok',
+        outcomeMessage: stored.diagnosisOutcomeMessage,
+      }
+    }
+    if (
+      stored?.diagnosisOutcome === 'no_suggestions' ||
+      stored?.diagnosisOutcome === 'needs_more_journal'
+    ) {
+      return {
+        reports: [],
+        outcome: stored.diagnosisOutcome,
+        outcomeMessage: stored.diagnosisOutcomeMessage,
+      }
+    }
   }
 
   try {
-    const { generateDiagnosisReportsWithAi } = await import(
-      '@/services/llm/aiDiagnosis'
+    const { buildDiagnosisReportsFromAiOnly } = await import(
+      '@/services/llm/aiDiagnosisPure'
     )
-    return await generateDiagnosisReportsWithAi(
-      ruleReports,
-      hypotheses,
-      entries,
-      focusPlan
-    )
+    const reports = await buildDiagnosisReportsFromAiOnly(entries, hypotheses)
+
+    if (reports.length > 0) {
+      await saveDiagnosisReports(reports, 'ok')
+      return { reports, outcome: 'ok' }
+    }
+
+    const outcome: DiagnosisGenerationOutcome = journalMayNeedMoreDetail(entries)
+      ? 'needs_more_journal'
+      : 'no_suggestions'
+
+    await saveDiagnosisReports([], outcome)
+    return { reports: [], outcome }
   } catch (err) {
-    console.warn(
-      '[Monday] AI diagnosis generation failed; showing rule-based diagnoses.',
-      err
-    )
-    return stripAiMetadata(ruleReports)
+    const message = err instanceof Error ? err.message : String(err)
+    await saveDiagnosisReports([], 'failed', message)
+    return { reports: [], outcome: 'failed', outcomeMessage: message }
   }
 }
+
+export async function getDiagnosisReports(
+  options: GetDiagnosisReportsOptions = {}
+): Promise<DiagnosisReport[]> {
+  const result = await generateDiagnosisReports(options)
+  return result.reports
+}
+
+export { clearStoredDiagnosisReports }

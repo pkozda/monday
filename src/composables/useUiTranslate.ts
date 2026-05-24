@@ -2,6 +2,7 @@ import { computed, ref, watch, unref, type MaybeRefOrGetter, toValue } from 'vue
 import type { AppLocale } from '@/i18n'
 import { translateUiText } from '@/services/uiTranslation'
 import { useLocale } from '@/composables/useLocale'
+import { shouldTranslateForDisplay } from '@/utils/textLanguage'
 
 /** Reactive English source text → locale-aware display (async MT when not English). */
 export function useUiTranslate(source: MaybeRefOrGetter<string>) {
@@ -14,7 +15,7 @@ export function useUiTranslate(source: MaybeRefOrGetter<string>) {
   async function refresh() {
     const text = raw.value
     const gen = ++generation
-    if (!text?.trim() || locale.value === 'en') {
+    if (!shouldTranslateForDisplay(text, locale.value as AppLocale)) {
       display.value = text
       return
     }

@@ -2,28 +2,7 @@
   <div id="app">
     <div class="app-bg" aria-hidden="true" :style="bgStyle" />
 
-    <nav class="app-nav">
-      <div class="nav-container">
-        <router-link to="/" class="nav-logo-link">
-          <img :src="logoSrc" alt="Monday" class="nav-logo-img" />
-        </router-link>
-        <div class="nav-end">
-          <div class="nav-links">
-            <router-link to="/" class="nav-link">{{ t('nav.dashboard') }}</router-link>
-            <router-link to="/hypotheses" class="nav-link">{{ t('nav.hypotheses') }}</router-link>
-            <router-link to="/appointments" class="nav-link">{{ t('nav.appointments') }}</router-link>
-            <router-link to="/journal" class="nav-link">{{ t('nav.journal') }}</router-link>
-          </div>
-          <div class="nav-divider" aria-hidden="true" />
-          <div class="nav-controls">
-            <NotificationCenter />
-            <AiInsightsToggle />
-            <LanguageSwitcher />
-            <ThemeToggle />
-          </div>
-        </div>
-      </div>
-    </nav>
+    <AppHeader />
     <main class="app-main" :class="{ 'app-main--fill': fillViewport }">
       <router-view />
     </main>
@@ -38,30 +17,31 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { useInsightsRegenerationMessages } from '@/composables/useInsightsRegenerationMessages'
 import { runInsightsRegeneration } from '@/services/insightsRegeneration'
-import AiInsightsToggle from '@/components/AiInsightsToggle.vue'
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-import NotificationCenter from '@/components/notifications/NotificationCenter.vue'
+import { pushToast } from '@/composables/useNotifications'
+import AppHeader from '@/components/nav/AppHeader.vue'
 import ToastStack from '@/components/notifications/ToastStack.vue'
-import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const { t } = useI18n()
-import { useTheme } from '@/composables/useTheme'
-import logoLight from '@assets/logo.png'
-import logoDark from '@assets/logo-dark.png'
 import backgroundUrl from '@assets/background.png'
 
 const route = useRoute()
-const { theme } = useTheme()
 
 const fillViewport = computed(() => route.meta.fillViewport === true)
-
-const logoSrc = computed(() => (theme.value === 'dark' ? logoDark : logoLight))
 
 const bgStyle = computed(() => ({
   '--app-bg-image': `url(${backgroundUrl})`,
 }))
 
 const regenerationMessages = useInsightsRegenerationMessages()
+
+function handleTranslationSkipped() {
+  pushToast({
+    kind: 'warning',
+    title: t('translation.skippedTitle'),
+    message: t('translation.skippedMessage'),
+    durationMs: 10_000,
+  })
+}
 
 function handleGlobalInsightsRegeneration() {
   void runInsightsRegeneration({
@@ -77,10 +57,12 @@ function handleGlobalInsightsRegeneration() {
 
 onMounted(() => {
   window.addEventListener('monday-ai-insights-changed', handleGlobalInsightsRegeneration)
+  window.addEventListener('monday-translation-skipped', handleTranslationSkipped)
 })
 
 onUnmounted(() => {
   window.removeEventListener('monday-ai-insights-changed', handleGlobalInsightsRegeneration)
+  window.removeEventListener('monday-translation-skipped', handleTranslationSkipped)
 })
 </script>
 
@@ -146,98 +128,6 @@ body:has(.app-main--fill) {
   flex: 1;
 }
 
-.app-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--bg-nav);
-  border-bottom: 1px solid var(--border);
-  padding: 1rem 0;
-  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 1px 0 var(--border);
-}
-
-.nav-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.nav-logo-link {
-  display: block;
-  flex-shrink: 0;
-  text-decoration: none;
-  /* Same aspect ratio as logo assets (1024×375) */
-  height: 52px;
-  width: 142px;
-}
-
-[data-theme='dark'] .nav-logo-link {
-  background: var(--bg-nav);
-  border-radius: 6px;
-}
-
-.nav-logo-img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: left center;
-}
-
-.nav-end {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.nav-links {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.nav-divider {
-  width: 1px;
-  height: 1.5rem;
-  flex-shrink: 0;
-  background: var(--border-strong);
-  margin: 0 0.15rem;
-}
-
-.nav-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.nav-link {
-  text-decoration: none;
-  color: var(--text-muted);
-  font-weight: 500;
-  transition: color 0.2s;
-}
-
-.nav-link:hover {
-  color: var(--text-primary);
-}
-
-.nav-link.router-link-active {
-  color: var(--accent-strong);
-  background: color-mix(in srgb, var(--accent-strong) 14%, transparent);
-  padding: 0.35rem 0.65rem;
-  margin: -0.35rem -0.65rem;
-  border-radius: 6px;
-}
-
 .app-main {
   padding: 2rem 0;
 }
@@ -286,29 +176,4 @@ body:has(.app-main--fill) {
   }
 }
 
-@media (max-width: 640px) {
-  .nav-container {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .nav-end {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .nav-divider {
-    display: none;
-  }
-
-  .nav-controls {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .nav-logo-link {
-    height: 44px;
-    width: 120px;
-  }
-}
 </style>

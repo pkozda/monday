@@ -88,6 +88,10 @@ export interface DiagnosisCriterion {
   role: 'confirm' | 'exclude'
   status: DiagnosisCriterionStatus
   detail?: string
+  /** Journal entry this criterion was linked from (AI / enriched path). */
+  sourceEntryId?: string
+  /** Plain-language AI note: why this journal entry supports the possible condition. */
+  linkExplanation?: string
 }
 
 export interface DiagnosisVariant {
@@ -118,6 +122,21 @@ export interface DiagnosisVariant {
   aiEnhanced?: boolean
 }
 
+/** Result of the last AI diagnosis generation attempt (stored with reports). */
+export type DiagnosisGenerationOutcome =
+  | 'ok'
+  | 'no_suggestions'
+  | 'needs_more_journal'
+  | 'failed'
+
+export interface StoredClinicalInsights {
+  id: string
+  diagnosisReports: DiagnosisReport[]
+  generatedAt: string
+  diagnosisOutcome?: DiagnosisGenerationOutcome
+  diagnosisOutcomeMessage?: string
+}
+
 export interface DiagnosisReport {
   conditionArea: string
   certainty: DiagnosisCertainty
@@ -140,6 +159,8 @@ export type HealthEntryType =
   | 'change'
   | 'doctor_visit'
   | 'imaging'
+  | 'lab_test'
+  | 'surgery'
   | 'other'
 
 export type HealthUrgency = 'routine' | 'monitor' | 'urgent' | 'emergency'
@@ -233,6 +254,10 @@ export interface PatientProfile {
   dateOfBirth?: string
   biologicalSex?: BiologicalSex
   bloodType?: string
+  /** Optional baseline height in centimeters */
+  heightCm?: number
+  /** Optional baseline weight in kilograms */
+  weightKg?: number
   createdAt: string
 }
 
@@ -273,12 +298,25 @@ export type HealthRecommendationCategory =
 
 export type HealthRecommendationPriority = 'high' | 'medium' | 'low'
 
+/** Link from a recommendation to a specific journal record. */
+export interface RecommendationJournalLink {
+  entryId: string
+  title: string
+  eventDate: string
+  conditionArea: string
+  urgency: HealthUrgency
+}
+
 export interface HealthRecommendation {
   id: string
   title: string
   detail: string
   category: HealthRecommendationCategory
   priority: HealthRecommendationPriority
+  /** In-app route (e.g. journal list with filter). */
+  actionRoute?: string
+  /** Journal entries this recommendation refers to. */
+  journalLinks?: RecommendationJournalLink[]
 }
 
 export interface DashboardStats {

@@ -34,8 +34,7 @@ export function localizeRecommendation(
   const base = `recommendations.items.${rec.id}`
 
   if (rec.id === 'journal-attention') {
-    const match = rec.detail.match(/You have (\d+) journal/)
-    const count = match ? Number(match[1]) : 1
+    const count = rec.journalLinks?.length ?? 1
     return {
       title: t(`${base}.title`),
       detail: t(`${base}.detail`, {

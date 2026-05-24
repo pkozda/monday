@@ -1,5 +1,8 @@
 import { computed, ref } from 'vue'
-import { getDiagnosisReports } from '@/api/diagnosisApi'
+import {
+  generateDiagnosisReports,
+  type DiagnosisGenerationResult,
+} from '@/api/diagnosisApi'
 import {
   regenerateAllHypothesesFromJournal,
   type RegenerateInsightsResult,
@@ -13,10 +16,13 @@ import {
   type InsightsCacheSnapshot,
 } from '@/composables/useInsightsCache'
 import {
+  invalidateClinicalModelCache,
+} from '@/services/clinicalModelCache'
+import {
   clearToastGroup,
   notifyError,
+  notifyInsightsRegenerationComplete,
   notifyProgress,
-  notifySuccess,
   pushNotification,
 } from '@/composables/useNotifications'
 import { consolidateHypothesesForDisplay } from '@/services/hypothesisDisplay'
@@ -30,25 +36,30 @@ export type InsightsRegenerationPhase = 'idle' | 'running'
 export interface InsightsRegeneratedDetail {
   result: RegenerateInsightsResult
   snapshot: InsightsCacheSnapshot
+  diagnosis: DiagnosisGenerationResult
 }
 
 const phase = ref<InsightsRegenerationPhase>('idle')
 let slowNotified = false
 let activeJob = 0
+let inFlight: Promise<InsightsRegeneratedDetail | null> | null = null
 
-async function buildInsightsSnapshot(): Promise<InsightsCacheSnapshot> {
+async function buildInsightsSnapshot(): Promise<{
+  snapshot: InsightsCacheSnapshot
+  diagnosis: DiagnosisGenerationResult
+}> {
   const [hyps, entries, profile] = await Promise.all([
     getHypotheses(),
     getHealthEntries(),
     getPatientProfile(),
   ])
   const displayHyps = consolidateHypothesesForDisplay(hyps)
-  const diagnosisReports = await getDiagnosisReports()
+  const diagnosis = await generateDiagnosisReports({ forceRegenerate: true })
 
   const snapshot: InsightsCacheSnapshot = {
     hypotheses: displayHyps,
     journalEntries: entries,
-    diagnosisReports,
+    diagnosisReports: diagnosis.reports,
     patient: profile,
     aiInsightsEnabled: shouldUseAiInsights(),
     journalRevision: '',
@@ -63,7 +74,16 @@ async function buildInsightsSnapshot(): Promise<InsightsCacheSnapshot> {
     aiInsightsEnabled: snapshot.aiInsightsEnabled,
   })
 
-  return snapshot
+  return { snapshot, diagnosis }
+}
+
+function resolveRegenerateMessageKey(
+  result: RegenerateInsightsResult,
+  diagnosis: DiagnosisGenerationResult
+): RegenerateInsightsResult['messageKey'] {
+  if (result.messageKey !== 'success') return result.messageKey
+  if (diagnosis.reports.length > 0) return 'success'
+  return 'successNoDiagnoses'
 }
 
 export function isInsightsRegenerationRunning(): boolean {
@@ -81,6 +101,7 @@ export interface InsightsRegenerationMessages {
   slowNotificationTitle: string
   slowNotificationMessage: string
   successTitle: string
+  successToastMessage: string
   successMessage: (result: RegenerateInsightsResult) => string
   errorTitle: string
 }
@@ -100,8 +121,8 @@ export interface RunInsightsRegenerationOptions {
 export async function runInsightsRegeneration(
   options: RunInsightsRegenerationOptions = {}
 ): Promise<InsightsRegeneratedDetail | null> {
-  if (phase.value === 'running') {
-    return null
+  if (inFlight) {
+    return inFlight
   }
 
   const jobId = ++activeJob
@@ -129,44 +150,63 @@ export async function runInsightsRegeneration(
     })
   }, 2000)
 
-  try {
-    invalidateInsightsCache()
-    const result = await regenerateAllHypothesesFromJournal()
-    if (activeJob !== jobId) return null
+  inFlight = (async (): Promise<InsightsRegeneratedDetail | null> => {
+    try {
+      invalidateInsightsCache()
+      await invalidateClinicalModelCache()
+      const result = await regenerateAllHypothesesFromJournal()
+      if (activeJob !== jobId) return null
 
-    const snapshot = await buildInsightsSnapshot()
-    if (activeJob !== jobId) return null
+      const { snapshot, diagnosis } = await buildInsightsSnapshot()
+      if (activeJob !== jobId) return null
 
-    const detail: InsightsRegeneratedDetail = { result, snapshot }
+      const mergedResult: RegenerateInsightsResult = {
+        ...result,
+        messageKey: resolveRegenerateMessageKey(result, diagnosis),
+      }
 
-    window.dispatchEvent(
-      new CustomEvent<InsightsRegeneratedDetail>(INSIGHTS_REGENERATED_EVENT, {
-        detail,
-      })
-    )
+      const detail: InsightsRegeneratedDetail = {
+        result: mergedResult,
+        snapshot,
+        diagnosis,
+      }
 
-    clearToastGroup(INSIGHTS_REGENERATION_GROUP)
+      window.dispatchEvent(
+        new CustomEvent<InsightsRegeneratedDetail>(INSIGHTS_REGENERATED_EVENT, {
+          detail,
+        })
+      )
 
-    notifySuccess(
-      options.messages.successTitle,
-      options.messages.successMessage(result),
-      '/hypotheses'
-    )
+      const successDetail =
+        mergedResult.messageKey === 'success'
+          ? options.messages.successToastMessage
+          : options.messages.successMessage(mergedResult)
 
-    options.onComplete?.(detail)
-    return detail
-  } catch (err) {
-    if (activeJob !== jobId) return null
+      notifyInsightsRegenerationComplete(
+        INSIGHTS_REGENERATION_GROUP,
+        options.messages.successTitle,
+        successDetail,
+        '/hypotheses'
+      )
 
-    clearToastGroup(INSIGHTS_REGENERATION_GROUP)
-    const error = err instanceof Error ? err : new Error(String(err))
-    notifyError(options.messages.errorTitle, error.message)
-    options.onError?.(error)
-    return null
-  } finally {
-    window.clearTimeout(slowTimer)
-    if (activeJob === jobId) {
-      phase.value = 'idle'
+      options.onComplete?.(detail)
+      return detail
+    } catch (err) {
+      if (activeJob !== jobId) return null
+
+      clearToastGroup(INSIGHTS_REGENERATION_GROUP)
+      const error = err instanceof Error ? err : new Error(String(err))
+      notifyError(options.messages.errorTitle, error.message)
+      options.onError?.(error)
+      return null
+    } finally {
+      window.clearTimeout(slowTimer)
+      inFlight = null
+      if (activeJob === jobId) {
+        phase.value = 'idle'
+      }
     }
-  }
+  })()
+
+  return inFlight
 }

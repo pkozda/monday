@@ -11,8 +11,20 @@ const DEFAULT_TITLES: Record<HealthEntryType, string> = {
   change: 'Condition change',
   doctor_visit: 'Doctor visit',
   imaging: 'Imaging',
+  lab_test: 'Lab results',
+  surgery: 'Surgery',
   other: 'Health note',
 }
+
+const LAB_LABELS: { pattern: RegExp; label: string }[] = [
+  { pattern: /\b(cbc|complete\s+blood\s+count)\b/i, label: 'CBC' },
+  { pattern: /\b(cmp|bmp|metabolic\s+panel)\b/i, label: 'Metabolic panel' },
+  { pattern: /\b(lipid\s+panel|cholesterol)\b/i, label: 'Lipid panel' },
+  { pattern: /\b(a1c|hba1c)\b/i, label: 'A1c' },
+  { pattern: /\b(thyroid|tsh)\b/i, label: 'Thyroid panel' },
+  { pattern: /\b(psa)\b/i, label: 'PSA' },
+  { pattern: /\b(blood\s+test|blood\s+work|lab\s+results?)\b/i, label: 'Blood work' },
+]
 
 const IMAGING_LABELS: { pattern: RegExp; label: string }[] = [
   { pattern: /\bmri\b/i, label: 'MRI' },
@@ -145,6 +157,26 @@ export function buildJournalShortTitle(
   }
 
   const body = stripJournalDatePrefix(raw)
+
+  if (entryType === 'lab_test' || LAB_LABELS.some((r) => r.pattern.test(body))) {
+    for (const rule of LAB_LABELS) {
+      if (!rule.pattern.test(body)) continue
+      const year = body.match(/\b(20|19)\d{2}\b/)?.[0]
+      return clipTitle(year ? `${rule.label} · ${year}` : rule.label)
+    }
+    return DEFAULT_TITLES.lab_test
+  }
+
+  if (entryType === 'surgery' || /\b(surger(y|ies|ical)|operation|operated)\b/i.test(body)) {
+    for (const rule of VISIT_LABELS) {
+      if (!rule.pattern.test(body)) continue
+      const site = extractBodySnippet(body)
+      const year = body.match(/\b(20|19)\d{2}\b/)?.[0]
+      const parts = [rule.label, site, year].filter(Boolean)
+      return clipTitle(parts.join(' · '))
+    }
+    return DEFAULT_TITLES.surgery
+  }
 
   if (entryType === 'imaging' || IMAGING_LABELS.some((r) => r.pattern.test(body))) {
     for (const rule of IMAGING_LABELS) {

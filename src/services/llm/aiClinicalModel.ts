@@ -1,6 +1,7 @@
 import { chatCompletionJson } from '@/services/llm/llmClient'
+import { journalBundleForLlm } from '@/services/llm/llmClinicalPayload'
 import { getLlmModel } from '@/services/llm/config'
-import { CLINICAL_SAFETY_SYSTEM, journalBundleUserPayload } from '@/services/llm/prompts'
+import { CLINICAL_SAFETY_SYSTEM } from '@/services/llm/prompts'
 import type { ClinicalFactor, ClinicalModel, HealthEntry } from '@/models/types'
 import type { AppLocale } from '@/i18n'
 
@@ -56,24 +57,7 @@ export async function enhanceClinicalModelWithAi(
 ): Promise<ClinicalModel> {
   if (entries.length === 0) return baseline
 
-  const bundle = journalBundleUserPayload(
-    entries.map((e) => ({
-      id: e.id,
-      eventDate: e.eventDate,
-      conditionArea: e.conditionArea,
-      entryType: e.entryType,
-      title: e.title,
-      description: e.description,
-      medications: e.medications,
-      severity: e.severity,
-      analysis: {
-        urgency: e.analysis.urgency,
-        classification: e.analysis.classification,
-        flags: e.analysis.flags,
-        summary: e.analysis.summary,
-      },
-    }))
-  )
+  const bundle = journalBundleForLlm(entries)
 
   const response = await chatCompletionJson<AiClinicalModelResponse>(
     [
@@ -99,9 +83,6 @@ Rules:
 - factor ids: use short kebab ids like "factor-back-pain" or "factor-meds".
 - Do not duplicate the same theme in multiple factors.
 - This is patient-facing synthesis; not a definitive medical diagnosis.
-
-Rule-based baseline (you may refine, not contradict urgent flags):
-${JSON.stringify({ summary: baseline.summary, factors: baseline.factors }, null, 2)}
 
 Journal:
 ${bundle}`,

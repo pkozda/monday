@@ -1,26 +1,18 @@
 import { db } from '@/db/database'
+import { clearStoredDiagnosisReports } from '@/api/diagnosisStorageApi'
 import { getHealthEntries } from '@/api/healthApi'
 import { getHypotheses, saveHypothesis } from '@/api/mockApi'
-import {
-  analyzeHypothesisGeneration,
-  buildAllHypothesesFromJournal,
-  type HypothesisGenerationResult,
-} from '@/services/hypothesisGenerator'
 import { invalidateInsightsCache } from '@/composables/useInsightsCache'
-import { resolveJournalFocusPlan } from '@/services/journalFocusAreas'
-import { shouldUseAiInsights } from '@/services/llm/config'
+import { isLlmProxyConfigured, shouldUseAiInsights } from '@/services/llm/config'
 import { normalizeHypothesis } from '@/services/hypothesisNormalize'
 import type { Hypothesis } from '@/models/types'
 
-export type { HypothesisGenerationResult }
-
-export async function clearAllHypotheses(): Promise<number> {
-  const count = await db.hypotheses.count()
-  await db.hypotheses.clear()
-  return count
-}
-
-export type RegenerateMessageKey = 'needEntries' | 'success' | 'noHypotheses'
+export type RegenerateMessageKey =
+  | 'needEntries'
+  | 'success'
+  | 'successNoDiagnoses'
+  | 'noHypotheses'
+  | 'aiRequired'
 
 export interface RegenerateInsightsResult {
   hypothesisCount: number
@@ -29,7 +21,13 @@ export interface RegenerateInsightsResult {
   messageKey: RegenerateMessageKey
 }
 
-/** Clear stored hypotheses and rebuild them from the full journal. */
+export async function clearAllHypotheses(): Promise<number> {
+  const count = await db.hypotheses.count()
+  await db.hypotheses.clear()
+  return count
+}
+
+/** Clear stored hypotheses and rebuild from journal using LLM only. */
 export async function regenerateAllHypothesesFromJournal(): Promise<RegenerateInsightsResult> {
   const entries = await getHealthEntries()
 
@@ -42,10 +40,20 @@ export async function regenerateAllHypothesesFromJournal(): Promise<RegenerateIn
     }
   }
 
+  if (!shouldUseAiInsights() || !isLlmProxyConfigured()) {
+    return {
+      hypothesisCount: 0,
+      journalEntryCount: entries.length,
+      areas: [],
+      messageKey: 'aiRequired',
+    }
+  }
+
   await clearAllHypotheses()
+  await clearStoredDiagnosisReports()
   invalidateInsightsCache()
 
-  const built = await buildHypothesesForRegenerate(entries)
+  const built = await buildHypothesesForJournal(entries)
   for (const hypothesis of built) {
     await saveHypothesis(normalizeHypothesis(hypothesis))
   }
@@ -62,43 +70,42 @@ export async function regenerateAllHypothesesFromJournal(): Promise<RegenerateIn
   }
 }
 
-async function buildHypothesesForRegenerate(
+/** LLM-first when AI insights are on; rule-based fallback if the model fails or returns nothing. */
+async function buildHypothesesForJournal(
   entries: Awaited<ReturnType<typeof getHealthEntries>>
 ): Promise<Hypothesis[]> {
-  const focusPlan = await resolveJournalFocusPlan(entries)
-
-  if (!shouldUseAiInsights()) {
-    return buildAllHypothesesFromJournal(entries, focusPlan)
+  if (shouldUseAiInsights() && isLlmProxyConfigured()) {
+    try {
+      const { buildHypothesesWithAi } = await import('@/services/llm/aiHypotheses')
+      const fromAi = await buildHypothesesWithAi(entries)
+      if (fromAi.length > 0) return fromAi
+      console.warn(
+        '[Monday] AI returned no hypotheses; falling back to rule-based generation.'
+      )
+    } catch (err) {
+      console.warn(
+        '[Monday] AI hypothesis generation failed; falling back to rule-based generation.',
+        err
+      )
+    }
   }
 
-  try {
-    const { buildHypothesesWithAi } = await import('@/services/llm/aiHypotheses')
-    const aiBuilt = await buildHypothesesWithAi(entries, focusPlan)
-    if (aiBuilt.length > 0) return aiBuilt
-  } catch (err) {
-    console.warn(
-      '[Monday] AI hypothesis generation failed; using rule-based engine.',
-      err
-    )
-  }
-
-  return buildAllHypothesesFromJournal(entries, focusPlan)
+  const { resolveJournalFocusPlan } = await import('@/services/journalFocusAreas')
+  const { buildAllHypothesesFromJournal } = await import(
+    '@/services/hypothesisGenerator'
+  )
+  const plan = await resolveJournalFocusPlan(entries)
+  return buildAllHypothesesFromJournal(entries, plan)
 }
 
-export async function tryGenerateHypothesis(): Promise<HypothesisGenerationResult> {
-  const [entries, existing] = await Promise.all([
-    getHealthEntries(),
-    getHypotheses(),
-  ])
-
-  const result = analyzeHypothesisGeneration(entries, existing)
-
-  if (
-    (result.status === 'created' || result.status === 'updated') &&
-    result.hypothesis
-  ) {
-    await saveHypothesis(normalizeHypothesis(result.hypothesis))
+/** Incremental rule-based updates are disabled — use Generate on Hypotheses page. */
+export async function tryGenerateHypothesis(): Promise<{
+  status: 'skipped'
+  message: string
+}> {
+  return {
+    status: 'skipped',
+    message:
+      'Hypotheses are updated when you use Generate on the Hypotheses & diagnoses page.',
   }
-
-  return result
 }

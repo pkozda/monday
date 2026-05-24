@@ -1,26 +1,42 @@
 <template>
-  <label
+  <div
     v-if="available"
     class="ai-insights-switch"
-    :title="hint"
+    :class="{ 'ai-insights-switch--menu': layout === 'menu' }"
   >
-    <span class="ai-insights-switch__icon" aria-hidden="true">✦</span>
-    <span class="ai-insights-switch__track">
-      <input
-        type="checkbox"
-        class="ai-insights-switch__input"
-        :checked="enabled"
-        :disabled="busy || isRegenerating"
-        @change="onChange"
-      />
-      <span class="ai-insights-switch__thumb" />
-    </span>
-    <span class="ai-insights-switch__label">{{ t('aiInsights.toggle') }}</span>
-  </label>
+    <label class="ai-insights-switch__row" :title="hint">
+      <span v-if="layout !== 'menu'" class="ai-insights-switch__icon" aria-hidden="true">✦</span>
+      <span v-if="layout === 'menu'" class="ai-insights-switch__menu-label">{{
+        t('aiInsights.toggle')
+      }}</span>
+      <span class="ai-insights-switch__track">
+        <input
+          type="checkbox"
+          class="ai-insights-switch__input"
+          :checked="enabled"
+          :disabled="busy || isRegenerating"
+          :aria-label="t('aiInsights.toggle')"
+          @change="onChange"
+        />
+        <span class="ai-insights-switch__thumb" />
+      </span>
+      <span v-if="layout !== 'menu'" class="ai-insights-switch__label">{{
+        t('aiInsights.toggle')
+      }}</span>
+    </label>
+    <p v-if="layout === 'menu'" class="ai-insights-switch__hint">{{ hint }}</p>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+
+withDefaults(
+  defineProps<{
+    layout?: 'default' | 'menu'
+  }>(),
+  { layout: 'default' }
+)
 import { useI18n } from 'vue-i18n'
 import { useAiInsights } from '@/composables/useAiInsights'
 import { invalidateInsightsCache } from '@/composables/useInsightsCache'
@@ -130,5 +146,36 @@ async function onChange(event: Event) {
 
 .ai-insights-switch__input:disabled + .ai-insights-switch__thumb {
   opacity: 0.55;
+}
+
+.ai-insights-switch--menu {
+  display: block;
+  width: 100%;
+}
+
+.ai-insights-switch__row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-insights-switch--menu .ai-insights-switch__row {
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ai-insights-switch__menu-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ai-insights-switch__hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 </style>

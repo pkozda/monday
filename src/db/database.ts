@@ -6,6 +6,7 @@ import type {
   HealthEntry,
   PatientProfile,
   DoctorAppointment,
+  StoredClinicalInsights,
 } from '@/models/types'
 
 export class MondayDatabase extends Dexie {
@@ -15,6 +16,7 @@ export class MondayDatabase extends Dexie {
   healthEntries!: Table<HealthEntry, string>
   patientProfiles!: Table<PatientProfile, string>
   appointments!: Table<DoctorAppointment, string>
+  clinicalInsights!: Table<StoredClinicalInsights, string>
 
   constructor() {
     super('MondayDB')
@@ -43,6 +45,15 @@ export class MondayDatabase extends Dexie {
       healthEntries: 'id, eventDate, entryType, conditionArea, createdAt',
       patientProfiles: 'id',
       appointments: 'id, scheduledAt, createdAt',
+    })
+    this.version(5).stores({
+      clinicalModels: 'id',
+      timelineEvents: 'id, date, type',
+      hypotheses: 'id, confidence',
+      healthEntries: 'id, eventDate, entryType, conditionArea, createdAt',
+      patientProfiles: 'id',
+      appointments: 'id, scheduledAt, createdAt',
+      clinicalInsights: 'id',
     })
   }
 }

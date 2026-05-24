@@ -5,10 +5,21 @@ import {
 } from '@/services/specialistSuggestion'
 import type {
   DashboardStats,
+  HealthEntry,
   HealthRecommendation,
   HealthRecommendationPriority,
   PatientProfile,
 } from '@/models/types'
+import {
+  attentionJournalLinks,
+  journalLinkFromEntry,
+} from '@/utils/journalLinks'
+
+function attentionEntries(entries: HealthEntry[]) {
+  return entries.filter((e) =>
+    ['urgent', 'emergency'].includes(e.analysis.urgency)
+  )
+}
 
 const PRIORITY_ORDER: Record<HealthRecommendationPriority, number> = {
   high: 0,
@@ -38,7 +49,8 @@ function add(
 
 export function getHealthRecommendations(
   profile: PatientProfile | null,
-  stats: DashboardStats | null
+  stats: DashboardStats | null,
+  journalEntries: HealthEntry[] = []
 ): HealthRecommendation[] {
   const recs: HealthRecommendation[] = []
   const age = getAge(profile?.dateOfBirth)
@@ -201,13 +213,16 @@ export function getHealthRecommendations(
   })
 
   if (stats) {
-    if (stats.attentionRequired > 0) {
+    const needsAttention = attentionEntries(journalEntries)
+    if (needsAttention.length > 0) {
       add(recs, {
         id: 'journal-attention',
         title: 'Review urgent journal entries',
-        detail: `You have ${stats.attentionRequired} journal ${stats.attentionRequired === 1 ? 'entry' : 'entries'} flagged as needing attention. Discuss these with a clinician promptly.`,
+        detail: `You have ${needsAttention.length} journal ${needsAttention.length === 1 ? 'entry' : 'entries'} flagged as needing attention. Discuss these with a clinician promptly.`,
         category: 'journal',
         priority: 'high',
+        actionRoute: '/journal?filter=attention',
+        journalLinks: needsAttention.map(journalLinkFromEntry),
       })
     }
 

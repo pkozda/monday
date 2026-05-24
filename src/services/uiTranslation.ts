@@ -1,8 +1,17 @@
 import type { AppLocale } from '@/i18n'
+import { isAiTranslationAvailable, translateEnglishToLocale } from '@/services/llm/aiTranslation'
+import { isLlmTranslationBlocked } from '@/services/llm/llmTranslationGate'
+import { translateWithMyMemory } from '@/services/myMemoryClient'
+import { shouldTranslateForDisplay } from '@/utils/textLanguage'
 
 const UI_CACHE = new Map<string, string>()
 const MAX_CACHE = 800
 const CACHE_STORAGE_KEY = 'monday-ui-translation-cache'
+
+const LANG_PAIR: Record<Exclude<AppLocale, 'en'>, string> = {
+  de: 'en|de',
+  ru: 'en|ru',
+}
 
 function loadCacheFromStorage(): void {
   try {
@@ -28,15 +37,6 @@ function persistCache(): void {
 
 loadCacheFromStorage()
 
-const TRANSLATE_ENDPOINT =
-  import.meta.env.VITE_TRANSLATION_URL ??
-  (import.meta.env.DEV ? '/api/translate' : 'https://api.mymemory.translated.net/get')
-
-const LANG_PAIR: Record<Exclude<AppLocale, 'en'>, string> = {
-  de: 'en|de',
-  ru: 'en|ru',
-}
-
 function cacheKey(locale: AppLocale, text: string): string {
   return `${locale}:${text}`
 }
@@ -46,40 +46,6 @@ function trimCache(): void {
   const drop = Math.floor(MAX_CACHE * 0.2)
   const keys = [...UI_CACHE.keys()].slice(0, drop)
   for (const k of keys) UI_CACHE.delete(k)
-}
-
-async function translateChunkEnTo(
-  text: string,
-  locale: Exclude<AppLocale, 'en'>
-): Promise<string> {
-  const url = new URL(
-    TRANSLATE_ENDPOINT,
-    TRANSLATE_ENDPOINT.startsWith('http')
-      ? undefined
-      : window.location.origin
-  )
-  url.searchParams.set('q', text)
-  url.searchParams.set('langpair', LANG_PAIR[locale])
-
-  const response = await fetch(url.toString(), { signal: AbortSignal.timeout(12_000) })
-  if (!response.ok) {
-    throw new Error(`Translation failed (${response.status})`)
-  }
-
-  const data = (await response.json()) as {
-    responseData?: { translatedText?: string }
-  }
-
-  const translated = data.responseData?.translatedText?.trim()
-  if (!translated) {
-    throw new Error('Translation service returned an empty result')
-  }
-
-  if (translated.toUpperCase().includes('MYMEMORY WARNING')) {
-    throw new Error('Translation limit reached')
-  }
-
-  return translated
 }
 
 const MAX_CHUNK = 450
@@ -100,13 +66,27 @@ function splitChunks(text: string): string[] {
   return chunks
 }
 
+async function translateChunkEnTo(
+  text: string,
+  locale: Exclude<AppLocale, 'en'>
+): Promise<string> {
+  if (isAiTranslationAvailable() && !isLlmTranslationBlocked()) {
+    try {
+      return await translateEnglishToLocale(text, locale)
+    } catch {
+      /* fall through to MyMemory */
+    }
+  }
+  return translateWithMyMemory(text, LANG_PAIR[locale])
+}
+
 /** Translate English UI/generated prose for display (cached). Falls back to source on error. */
 export async function translateUiText(
   text: string,
   locale: AppLocale
 ): Promise<string> {
   const trimmed = text.trim()
-  if (!trimmed || locale === 'en') return text
+  if (!trimmed || !shouldTranslateForDisplay(trimmed, locale)) return text
 
   const key = cacheKey(locale, trimmed)
   const hit = UI_CACHE.get(key)
@@ -114,9 +94,10 @@ export async function translateUiText(
 
   try {
     const chunks = splitChunks(trimmed)
-    const parts = await Promise.all(
-      chunks.map((chunk) => translateChunkEnTo(chunk, locale))
-    )
+    const parts: string[] = []
+    for (const chunk of chunks) {
+      parts.push(await translateChunkEnTo(chunk, locale))
+    }
     const result = parts.join(' ')
     UI_CACHE.set(key, result)
     trimCache()

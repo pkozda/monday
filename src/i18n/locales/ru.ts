@@ -1,9 +1,13 @@
 export default {
   nav: {
+    main: 'Главная навигация',
     dashboard: 'Обзор',
     hypotheses: 'Гипотезы',
     appointments: 'Приёмы',
     journal: 'Журнал',
+    openMenu: 'Открыть меню',
+    settings: 'Настройки',
+    preferences: 'Настройки',
   },
   language: {
     label: 'Язык',
@@ -12,6 +16,7 @@ export default {
     ru: 'Русский',
   },
   theme: {
+    appearance: 'Оформление',
     dark: 'Тёмная',
     light: 'Светлая',
     darkHint: 'Тёмная тема — переключить на светлую',
@@ -42,6 +47,8 @@ export default {
       slowNotificationMessage:
         'Гипотезы и диагнозы пересобираются из вашего журнала.',
       successTitle: 'Анализ готов',
+      successToastMessage:
+        'Гипотезы и диагнозы готовы. Откройте раздел «Гипотезы и диагнозы».',
       errorTitle: 'Ошибка пересборки',
     },
   },
@@ -74,16 +81,43 @@ export default {
     stats: {
       journalEntries: 'Записи в журнале',
       allTime: 'Всего',
+      journalEntriesDetail:
+        'Симптомы, визиты, лекарства и заметки — {days} дней отслеживания в Monday.',
       last30Days: 'За 30 дней',
       recentActivity: 'Недавняя активность',
+      last30DaysDetail:
+        'Записи за последний месяц — удобно для краткосрочных изменений.',
+      daysTracked: 'Дней отслеживания',
+      daysTrackedHint: 'С первой записи',
+      daysTrackedDetail:
+        'Период от самой ранней записи ({date}) до сегодня.',
+      daysTrackedEmpty:
+        'Начнёт считаться после первой записи в журнале.',
       trackedConditions: 'Отслеживаемые состояния',
       bodyAreasHint: 'Области тела / темы',
+      trackedConditionsDetail: 'Области с активностью в журнале: {areas}.',
+      trackedConditionsEmpty:
+        'Области появятся, когда вы добавите записи с регионами тела.',
       avgSeverity: 'Сред. тяжесть',
       severityHint: 'При указании (1–10)',
+      avgSeverityDetail:
+        'Среднее явных оценок 1–10 (сейчас {avg}).',
+      avgSeverityEmpty:
+        'Добавьте оценки тяжести в записи, чтобы увидеть среднее здесь.',
       timelineEvents: 'События на линии',
+      timelineEventsHint: 'Из журнала',
+      timelineEventsDetail:
+        'Структурированные события из записей для хронологии.',
       hypotheses: 'Гипотезы',
+      hypothesesHint: 'Возможные состояния',
+      hypothesesDetail:
+        'Варианты на основе ИИ или правил по паттернам в журнале.',
       needsAttention: 'Требует внимания',
-      attentionHint: 'Срочно или экстренно',
+      attentionHint: 'Срочно или неотложно',
+      attentionDetail:
+        'Отмеченные записи ниже — откройте ссылку или все отмеченные.',
+      attentionEmptyDetail:
+        'Сейчас нет срочных/неотложных записей. Продолжайте вести журнал при изменениях.',
     },
     severityTrendTitle: 'Динамика тяжести',
     severityTrendBase:
@@ -124,6 +158,7 @@ export default {
     clinicalModelRefreshing: 'Обновление клинической модели с ИИ…',
     clinicalModelHint:
       'Записывайте симптомы и визиты в журнале для факторов по состояниям.',
+    generateDoctorNotes: 'Создать заметки для врача',
   },
   profile: {
     yearsOld: '{years} лет',
@@ -150,6 +185,40 @@ export default {
     dateOfBirth: 'Дата рождения',
     biologicalSex: 'Биологический пол',
     bloodType: 'Группа крови',
+    height: 'Рост (см)',
+    weight: 'Вес (кг)',
+    heightPlaceholder: 'напр. 175',
+    weightPlaceholder: 'напр. 72',
+    heightValue: '{value} см',
+    weightValue: '{value} кг',
+    bodyMetricsTitle: 'Параметры тела и ИМТ',
+    bmiAddHeightWeight:
+      'Укажите рост и вес в «Изменить профиль», чтобы увидеть ИМТ.',
+    bmiUnavailable: 'Не удалось рассчитать ИМТ по росту и весу.',
+    bmi: 'ИМТ',
+    bmiValue: '{value}',
+    bmiScaleAria: 'ИМТ {value}, {category}',
+    bmiCategory: {
+      underweight: 'Недостаточный вес',
+      normal: 'Норма',
+      overweight: 'Избыточный вес',
+      obese: 'Ожирение',
+    },
+    bmiCategoryShort: {
+      underweight: 'Низкий',
+      normal: 'Норма',
+      overweight: 'Повыш.',
+      obese: 'Высокий',
+    },
+    bmiHint: {
+      underweight:
+        'Ниже обычного здорового диапазона для взрослых. При нежелательной потере веса стоит обсудить с врачом.',
+      normal: 'В обычном здоровом диапазоне для взрослых (ИМТ 18,5–24,9).',
+      overweight:
+        'Выше обычного диапазона. Могут помочь образ жизни или консультация врача.',
+      obese:
+        'Значительно выше обычного диапазона. Врач поможет определить дальнейшие шаги.',
+    },
     sexNotSpecified: 'Не указан',
     sexFemale: 'Женский',
     sexMale: 'Мужской',
@@ -163,10 +232,24 @@ export default {
     headlineNone: 'Пока нет советов',
     headlineOne: '1 рекомендация',
     headlineMany: '{count} рекомендаций',
+    heroSubtitle:
+      'Советы по скринингу, привычкам и ведению журнала — для вас.',
+    statPriority: 'срочных',
+    statTotal: 'советов',
+    summaryBold: 'Подобрано для вас.',
     summary:
-      'Профилактика по возрасту, профилю и журналу',
+      ' По возрасту, профилю и записям в журнале здоровья.',
     disclaimer:
       'Общие советы — не замена консультации врача.',
+    sectionPriority: 'Стоит сделать в первую очередь',
+    sectionMore: 'Тоже полезно',
+    gotIt: 'Понятно, спасибо',
+    viewEntries: 'Открыть в журнале',
+    viewAllAttention: 'Все отмеченные записи',
+    viewAllAttentionCount: 'Все {count} отмеченных записей',
+    openAttentionJournal: 'Открыть отмеченные записи',
+    viewInJournal: 'Перейти в журнал',
+    emptyTitle: 'Нужно чуть больше данных',
     empty:
       'Укажите дату рождения в профиле для персональных рекомендаций.',
     categories: {
@@ -283,6 +366,7 @@ export default {
     nothingScheduled: 'Ничего не запланировано',
     emptyText: 'Ближайших визитов в календаре нет.',
     goToAppointments: 'К приёмам',
+    backToDetails: 'Приём',
   },
   appointmentsPage: {
     eyebrow: 'Планирование',
@@ -322,6 +406,7 @@ export default {
     remove: 'Удалить',
   },
   healthEntryCard: {
+    edit: 'Изменить',
     medications: 'Лекарства:',
     severity: 'Тяжесть:',
     clinicalSummary: 'Клиническое резюме:',
@@ -331,28 +416,39 @@ export default {
     title: 'Гипотезы и диагнозы',
     subtitle:
       'Пересоздание обновляет журнал в возможных диагнозах и гипотезах.',
+    generate: 'Создать гипотезы и диагнозы',
+    generateTitle: 'Построить гипотезы и возможные диагнозы по журналу',
     regenerate: 'Пересоздать гипотезы и диагнозы',
     regenerating: 'Создание…',
     loading: 'Загрузка…',
+    notGeneratedTitle: 'Пока ничего не создано',
+    notGeneratedText:
+      'Гипотезы и возможные диагнозы создаются по журналу только после нажатия «Создать». При открытии страницы ничего не запускается автоматически.',
     tabDiagnoses: 'Диагнозы',
     tabHypotheses: 'Гипотезы',
     noHypothesesTitle: 'Гипотез пока нет',
     noHypothesesText:
       'Добавьте записи в журнал, затем «Пересоздать» в шапке.',
-    regenerateConfirm:
-      'Заменить все гипотезы новыми из текущего журнала?',
+    regenerateConfirmTitle: 'Пересоздать выводы?',
+    regenerateConfirmMessage:
+      'Все гипотезы будут заменены новыми на основе текущего журнала. Возможные состояния будут пересчитаны по тем же записям.',
+    regenerateConfirmAction: 'Пересоздать',
     regenerateSlowHint:
       'Пересборка ещё идёт. Можно уйти со страницы — мы уведомим, когда гипотезы и диагнозы будут готовы.',
     regenerateTitleEmpty: 'Сначала добавьте записи в журнал',
     regenerateTitle: 'Пересоздать из текущего журнала',
     regenerateFailed: 'Не удалось пересоздать.',
     regenerateMessages: {
+      aiRequired:
+        'Включите ИИ-анализ в навигации и настройте ключ LLM API.',
       needEntries:
         'Сначала добавьте записи в журнал, затем пересоздайте гипотезы и диагнозы.',
       success:
         'Пересоздано гипотез: {hypothesisCount} из {journalEntryCount} записей журнала по {areaCount} зонам. Диагнозы используют те же данные.',
       noHypotheses:
         'Просмотрено записей: {journalEntryCount}, гипотезы не выведены — добавьте деталей по зонам и повторите.',
+      successNoDiagnoses:
+        'Создано гипотез: {hypothesisCount} из {journalEntryCount} записей, но ИИ не предложил возможные состояния — добавьте деталей в журнал или нажмите «Сгенерировать возможные состояния» на вкладке «Диагнозы».',
     },
   },
   journalPage: {
@@ -369,15 +465,71 @@ export default {
       'Нажмите «Новая запись» в шапке для первой заметки.',
     entrySaved: 'Запись сохранена — классификация: {classification}.',
     entrySavedTimeline: 'Добавлено на линию событий.',
+    entryUpdated: 'Запись обновлена — классификация: {classification}.',
     newEntryModalTitle: 'Новая запись в журнале',
     newEntryModalIntro:
       'Симптомы, лекарства или визиты — с классификацией и линией событий.',
+    editEntryModalTitle: 'Редактировать запись',
+    editEntryModalIntro:
+      'Измените дату или текст. Monday заново проанализирует запись и обновит линию событий.',
+    attentionFilterBanner:
+      'Записи с уровнем «Срочно» или «Неотложно» — те же, что в «Требует внимания» на панели.',
+    showAllEntries: 'Показать все записи',
+    backNavLabel: 'Выйти из просмотра одной записи',
+    backToAllEntries: 'Ко всем записям',
+    backToAttentionEntries: 'К отмеченным записям',
+    singleEntryHint:
+      'Открыта одна запись. Ссылка выше вернёт к полному журналу.',
+    singleEntryTitle: 'Запись журнала',
+    singleEntrySubtitle:
+      'Открыто по ссылке — вернитесь к списку, чтобы увидеть остальные записи.',
+    entryNotFoundTitle: 'Запись не найдена',
+    entryNotFoundText:
+      'Запись удалена или ссылка устарела. Вернитесь ко всем записям.',
+    attentionRecordsTitle: 'Записи, требующие внимания',
+    attentionRecordsSubtitle:
+      '{count} записей с уровнем срочности срочно/неотложно.',
+    noAttentionTitle: 'Нет срочных записей',
+    noAttentionText:
+      'Сейчас нет записей с уровнем срочно/неотложно. Можно показать все записи.',
   },
   diagnosis: {
     loading: 'Анализ журнала на возможные состояния…',
     refreshing: 'Обновление возможных состояний…',
+    generateAction: 'Сгенерировать возможные состояния',
+    generatedSuccess:
+      'Сгенерированы возможные состояния для {count} зон(ы) тела по журналу.',
     empty:
       'Опишите симптомы, область тела и лекарства для списка с процентами.',
+    emptyNotGeneratedTitle: 'Возможные состояния ещё не созданы',
+    emptyNotGeneratedHint:
+      'Нажмите «Создать» в шапке страницы (с включённым ИИ-анализом), чтобы построить гипотезы и возможные состояния вместе.',
+    emptyIncompleteTitle: 'Возможные состояния не сохранены',
+    emptyIncompleteHint:
+      'Гипотезы сохранены, но возможные состояния не были догенерированы (например, после прерванного запуска). Кнопка ниже или «Пересоздать» в шапке.',
+    emptyAiOffTitle: 'ИИ-анализ выключен',
+    emptyAiOffHint:
+      'Включите ИИ-анализ в навигации, чтобы генерировать возможные состояния из журнала.',
+    emptyNeedEntriesTitle: 'Сначала добавьте записи в журнал',
+    emptyNeedEntriesHint:
+      'Возможные состояния строятся из журнала здоровья. Запишите симптомы, визиты или анализы и сгенерируйте снова.',
+    emptyNoSuggestionsTitle: 'ИИ не предложил возможные состояния',
+    emptyNoSuggestionsHint:
+      'ИИ просмотрел журнал и гипотезы, но не смог назвать варианты для обсуждения с врачом. Добавьте симптомы, сроки и результаты обследований и попробуйте снова.',
+    emptyNeedsMoreJournalTitle: 'Нужно больше деталей в журнале',
+    emptyNeedsMoreJournalHint:
+      'При короткой записи ИИ часто не формирует список. Добавьте симптомы, лекарства, снимки или визиты и нажмите «Сгенерировать возможные состояния».',
+    emptyFailedTitle: 'Не удалось сгенерировать возможные состояния',
+    emptyFailedHint:
+      'Ошибка при обращении к ИИ. Проверьте ключ API и сеть и повторите попытку.',
+    outcomeBanner: {
+      no_suggestions:
+        'По текущему журналу возможные состояния не предложены. Добавьте деталей и повторите.',
+      needs_more_journal:
+        'Добавьте записи или более подробные заметки в журнал и сгенерируйте снова.',
+      failed:
+        'Не удалось сгенерировать возможные состояния. Проверьте настройки ИИ и повторите.',
+    },
     disclaimer:
       'Вывод из всего журнала — всегда уточняйте у врача.',
     aiRankedNote:
@@ -436,8 +588,8 @@ export default {
     aboutTitle: 'Что это за состояние?',
     whatYouLoggedTitle: 'Что вы записали и что поддерживает это',
     whatYouLoggedIntro:
-      'Ваши реальные записи в журнале, которые мы связали с этой возможностью — не общие формулировки.',
-    whyThisSupports: 'Почему это связано',
+      'Записи журнала с пояснением ИИ, что в вашем тексте указывает на это возможное состояние — не подтверждённый диагноз.',
+    whyThisSupports: 'Почему это поддерживает эту возможность',
     supportReason: {
       symptom_logged:
         'Вы описали симптомы или изменения, которые подходят под эту возможность.',
@@ -488,13 +640,27 @@ export default {
     importSuccess: 'Импортировано записей: {count}.',
     importFailed: 'Импорт не удался.',
   },
+  translation: {
+    skippedTitle: 'Сохранено на русском',
+    skippedMessage:
+      'Перевод недоступен (лимит ИИ или офлайн). Запись сохранена на русском. Подождите несколько минут или проверьте квоту OpenAI.',
+  },
   entryForm: {
     langHint:
-      'Поддерживаются английский и русский. Русский текст при сохранении переводится для анализа.',
-    translating: 'Перевод и сохранение…',
+      'Поддерживаются английский и русский. При сохранении русский текст переводит ИИ (учитывает опечатки). Нужен LLM_API_KEY в .env.local.',
+    translating: 'ИИ переводит и сохраняет…',
     eventDate: 'Когда это произошло?',
     conditionArea: 'Зона тела / состояние',
+    conditionAreaOptional: 'Зона тела (необязательно)',
+    conditionAreaHintRequired: 'Какая часть тела затронута?',
+    conditionAreaHintOptional:
+      'Необязательно — оставьте пустым для анализов крови и т.п., или укажите зону (напр. колено).',
     entryType: 'Что вы записываете?',
+    entryTypeHint: 'Выберите наиболее подходящий тип записи.',
+    typeGroupFeel: 'Самочувствие',
+    typeGroupCare: 'Лечение и визиты',
+    typeGroupTests: 'Анализы и процедуры',
+    typeGroupOther: 'Прочее',
     description: 'Подробности',
     descriptionHint:
       'Полный рассказ — что случилось, когда, обследования и лечение.',
@@ -506,21 +672,55 @@ export default {
     clearSeverity: 'Сбросить',
     saveEntry: 'Сохранить запись',
     saveHealthRecord: 'Сохранить запись о здоровье',
+    saveChanges: 'Сохранить изменения',
     savingAnalyzing: 'Сохранение и анализ…',
     clearForm: 'Очистить форму',
-    optionSymptom: 'Симптомы',
-    optionChange: 'Изменение состояния',
-    optionMedication: 'Лекарство / рецепт',
-    optionDoctorVisit: 'Визит к врачу или совет',
-    optionImaging: 'Анализ или снимок',
-    optionOther: 'Другая запись о здоровье',
+    validationMissingBody: 'Укажите зону тела или состояние.',
+    validationMissingCore: 'Заполните краткий заголовок и подробности.',
+    validationMedication: 'Укажите название лекарства и дозу.',
+    types: {
+      symptom: {
+        label: 'Симптомы',
+        hint: 'Боль, дискомфорт в какой-то части тела',
+      },
+      change: {
+        label: 'Изменение состояния',
+        hint: 'Стало лучше, хуже или новое развитие',
+      },
+      medication: {
+        label: 'Лекарство',
+        hint: 'Начали, отменили или изменили препарат',
+      },
+      doctor_visit: {
+        label: 'Визит к врачу',
+        hint: 'Приём, совет, наблюдение (не операция)',
+      },
+      lab_test: {
+        label: 'Анализ крови / лаборатория',
+        hint: 'Анализы, панели — зона тела необязательна',
+      },
+      imaging: {
+        label: 'Снимок / визуализация',
+        hint: 'МРТ, рентген, КТ, УЗИ и т.д.',
+      },
+      surgery: {
+        label: 'Операция или процедура',
+        hint: 'Операция, вмешательство, стационар',
+      },
+      other: {
+        label: 'Другая заметка',
+        hint: 'Только если ничего не подходит',
+      },
+    },
   },
   entryTypes: {
     symptom: 'Симптом',
     medication: 'Лекарства',
     change: 'Изменение состояния',
     doctor_visit: 'Визит к врачу',
-    imaging: 'Обследование',
+    imaging: 'Снимок / обследование',
+    lab_test: 'Лабораторные результаты',
+    surgery: 'Операция / процедура',
     other: 'Заметка',
   },
   urgency: {
@@ -539,7 +739,9 @@ export default {
     medication: 'Лекарства',
     change: 'Изменения',
     doctor_visit: 'Визиты к врачу',
-    imaging: 'Обследования',
+    imaging: 'Снимки',
+    lab_test: 'Анализы',
+    surgery: 'Операции',
     other: 'Прочие заметки',
   },
   classification: {
@@ -738,8 +940,56 @@ export default {
       reason: 'текущие жалобы по этой зоне',
     },
   },
+  doctorSpecialty: {
+    primary_care: 'Семейный / участковый врач',
+    orthopedics: 'Ортопед (кости и суставы)',
+    dermatology: 'Дерматолог',
+    cardiology: 'Кардиолог',
+    gastroenterology: 'Гастроэнтеролог',
+    neurology: 'Невролог',
+    endocrinology: 'Эндокринолог',
+    pulmonology: 'Пульмонолог',
+    urology: 'Уролог',
+    gynecology: 'Гинеколог',
+    ophthalmology: 'Офтальмолог',
+    ent: 'ЛОР-врач',
+    psychiatry: 'Психиатр / ментальное здоровье',
+    rheumatology: 'Ревматолог',
+  },
   doctorNotes: {
     title: 'Заметки для врача',
+    specialtyLabel: 'Для какого врача?',
+    preparedForSpecialty: 'Подготовлено для: {specialty}',
+    specialtyFocus: {
+      primary_care: 'Акцент: общее состояние, лекарства, профилактика, направления.',
+      orthopedics: 'Акцент: боль, подвижность, суставы, позвоночник, снимки.',
+      dermatology: 'Акцент: кожа, сыпь, лечение.',
+      cardiology: 'Акцент: сердце, грудь, факторы риска.',
+      gastroenterology: 'Акцент: ЖКТ, живот, питание.',
+      neurology: 'Акцент: головная боль, онемение, головокружение.',
+      endocrinology: 'Акцент: вес, обмен веществ, щитовидная железа.',
+      pulmonology: 'Акцент: кашель, одышка, лёгкие.',
+      urology: 'Акцент: мочевыводящая система, почки.',
+      gynecology: 'Акцент: гинекология, цикл, таз.',
+      ophthalmology: 'Акцент: зрение, глаза.',
+      ent: 'Акцент: ухо, горло, нос.',
+      psychiatry: 'Акцент: настроение, тревога, сон.',
+      rheumatology: 'Акцент: воспалительные суставы, скованность.',
+    },
+    clinicalTitle: 'Брифинг по клинической модели',
+    clinicalIntro:
+      'Клиническое резюме по всему журналу и модели. Проверьте и отредактируйте перед печатью.',
+    clinicalGenerating: 'ИИ готовит брифинг для визита…',
+    clinicalModelBadge: '(Из клинической модели и журнала)',
+    clinicalModelSectionTitle: 'КЛИНИЧЕСКАЯ МОДЕЛЬ',
+    clinicalModelFactorsTitle: 'КЛЮЧЕВЫЕ ФАКТОРЫ',
+    clinicalModelAiFactorsTitle: 'ПРИОРИТЕТЫ (ИИ)',
+    clinicalJournalSectionTitle: 'НЕДАВНИЕ ЗАПИСИ ЖУРНАЛА (всего {count})',
+    clinicalJournalTruncated:
+      '(Показаны {shown} последних из {total} — полный журнал в Monday.)',
+    clinicalNoJournal: 'Сначала добавьте записи в журнал.',
+    clinicalDiscussReview: 'Сверить темы модели с текущими симптомами.',
+    clinicalDiscussTrajectory: 'Обсудить: улучшение, стабильно или ухудшение.',
     generating: 'ИИ готовит сводку для врача…',
     intro:
       'Проверьте и отредактируйте перед печатью. С ИИ: синтез для визита, а не копия журнала.',
@@ -808,7 +1058,9 @@ export default {
       medication: 'лекарства',
       change: 'изменения',
       doctorVisit: 'визиты к врачу',
-      imaging: 'обследования',
+      imaging: 'снимки / обследования',
+      labTest: 'лабораторные анализы',
+      surgery: 'операции / процедуры',
       other: 'заметки',
     },
     factor: {

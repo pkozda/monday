@@ -95,15 +95,23 @@ const IMPROVEMENT_PATTERNS =
 const DIAGNOSIS_PATTERNS =
   /\b(diagnosed|diagnosis|confirmed|found\s+to\s+have|tested\s+positive)\b/i
 
+const LAB_TEST_PATTERNS = [
+  /\b(blood\s+test|blood\s+work|blood\s+panel|lab\s+results?)\b/i,
+  /\b(cbc|cmp|bmp|lipid\s+panel|metabolic\s+panel)\b/i,
+  /\b(hemoglobin|hematocrit|platelet|glucose\s+level|a1c|hba1c)\b/i,
+  /\b(urinalysis|urine\s+test|thyroid\s+panel|tsh|psa)\b/i,
+  /\b(анализ\s+крови|биохимия|общий\s+анализ)\b/i,
+  /\b(cholesterol|triglyceride|creatinine|bun|alt|ast|bilirubin)\b/i,
+]
+
 const IMAGING_PATTERNS = [
   /\bmri\b/i,
   /\b(ct\s+scan|cat\s+scan|computed\s+tomography)\b/i,
   /\b(x-?ray|radiograph)\b/i,
   /\b(ultrasound|sonograph|echocardiogram)\b/i,
   /\b(pet\s+scan|pet-?ct)\b/i,
-  /\b(mammogram|colonoscopy|endoscopy|arthroscop)\b/i,
+  /\b(mammogram|arthroscop)\b/i,
   /\b(imaging|scan\s+showed|scan\s+revealed|imaging\s+showed)\b/i,
-  /\b(test\s+results?|lab\s+results?|blood\s+work|blood\s+test)\b/i,
   /\b(biopsy\s+results?|pathology\s+report)\b/i,
   /\b(fluoroscopy|dexa|bone\s+density)\b/i,
 ]
@@ -126,8 +134,14 @@ const ENTRY_TYPE_LABELS: Record<HealthEntryType, string> = {
   medication: 'Medication update',
   change: 'Condition change',
   doctor_visit: 'Doctor visit',
-  imaging: 'Imaging / test',
+  imaging: 'Imaging study',
+  lab_test: 'Lab results',
+  surgery: 'Surgery / procedure',
   other: 'Health note',
+}
+
+function isLabTest(text: string): boolean {
+  return LAB_TEST_PATTERNS.some((p) => p.test(text))
 }
 
 interface ClassificationResult {
@@ -174,9 +188,13 @@ export function isClinicalVisit(text: string): boolean {
 export function inferEntryTypeFromText(text: string): HealthEntryType {
   const lower = text.toLowerCase()
 
+  if (isLabTest(lower)) return 'lab_test'
+
+  if (isProcedureOrSurgery(lower)) return 'surgery'
+
   if (isImagingStudy(lower)) return 'imaging'
 
-  if (isProcedureOrSurgery(lower) || isHospitalCare(lower)) return 'doctor_visit'
+  if (isHospitalCare(lower)) return 'doctor_visit'
 
   if (isClinicalVisit(lower) || DIAGNOSIS_PATTERNS.test(lower)) {
     return 'doctor_visit'
@@ -247,12 +265,16 @@ function classifyHealthEntry(
     return { urgency: 'urgent', label: 'Urgent — contact clinician' }
   }
 
-  if (isProcedureOrSurgery(combinedText)) {
+  if (input.entryType === 'surgery' || isProcedureOrSurgery(combinedText)) {
     return { urgency: 'monitor', label: 'Surgery / procedure' }
   }
 
   if (isHospitalCare(combinedText)) {
     return { urgency: 'monitor', label: 'Hospital / ER care' }
+  }
+
+  if (input.entryType === 'lab_test' || isLabTest(combinedText)) {
+    return { urgency: 'monitor', label: 'Lab results' }
   }
 
   if (isImagingStudy(combinedText) || input.entryType === 'imaging') {
@@ -381,6 +403,14 @@ function buildFlags(
     flags.push('clinical_encounter')
   }
 
+  if (input.entryType === 'surgery') {
+    flags.push('procedure_or_surgery')
+  }
+
+  if (input.entryType === 'lab_test') {
+    flags.push('lab_results')
+  }
+
   if (input.severity !== undefined && input.severity >= 7) {
     flags.push('high_severity_reported')
   }
@@ -394,8 +424,10 @@ function buildSummary(
 ): string {
   const typeLabel = ENTRY_TYPE_LABELS[input.entryType]
   const area = input.conditionArea.trim()
+  const areaPhrase =
+    area && !/^general\s+health$/i.test(area) ? ` for ${area}` : ''
   const parts = [
-    `${typeLabel} for ${area} on ${input.eventDate}: ${input.title.trim()}.`,
+    `${typeLabel}${areaPhrase} on ${input.eventDate}: ${input.title.trim()}.`,
     `Classification: ${classification.label}.`,
     input.description.trim(),
   ]
@@ -446,7 +478,10 @@ export function entryTypeToTimelineType(
     case 'doctor_visit':
       return 'diagnosis'
     case 'imaging':
+    case 'lab_test':
       return 'imaging'
+    case 'surgery':
+      return 'diagnosis'
     case 'symptom':
     case 'change':
     default:

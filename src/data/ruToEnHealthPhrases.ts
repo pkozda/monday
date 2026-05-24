@@ -1,0 +1,73 @@
+/** Offline RU→EN map for common health-journal phrases (lowercased keys). */
+const PHRASES: Record<string, string> = {
+  'левая нога': 'left leg',
+  'правая нога': 'right leg',
+  'левая рука': 'left arm',
+  'правая рука': 'right arm',
+  'левая кисть': 'left hand',
+  'правая кисть': 'right hand',
+  'левая стопа': 'left foot',
+  'правая стопа': 'right foot',
+  'левое колено': 'left knee',
+  'правое колено': 'right knee',
+  'левый локоть': 'left elbow',
+  'правый локоть': 'right elbow',
+  'левое плечо': 'left shoulder',
+  'правое плечо': 'right shoulder',
+  'левый бедро': 'left thigh',
+  'правое бедро': 'right thigh',
+  'левый голеностоп': 'left ankle',
+  'правый голеностоп': 'right ankle',
+  'левый голеностопный сустав': 'left ankle joint',
+  'правый голеностопный сустав': 'right ankle joint',
+  'левый запястье': 'left wrist',
+  'правый запястье': 'right wrist',
+  'левое запястье': 'left wrist',
+  'правое запястье': 'right wrist',
+  'левый позвоночник': 'left spine',
+  'поясница': 'lower back',
+  'спина': 'back',
+  'шея': 'neck',
+  'голова': 'head',
+  'живот': 'abdomen',
+  'грудь': 'chest',
+  'таз': 'pelvis',
+  'нога': 'leg',
+  'ноги': 'legs',
+  'рука': 'arm',
+  'руки': 'arms',
+  'колено': 'knee',
+  'колени': 'knees',
+  'голеностоп': 'ankle',
+  'плечо': 'shoulder',
+  'локоть': 'elbow',
+  'запястье': 'wrist',
+  'стопа': 'foot',
+  'стопы': 'feet',
+  'кисть': 'hand',
+  'кисти': 'hands',
+  'позвоночник': 'spine',
+  'позвоночника': 'spine',
+  'сустав': 'joint',
+  'суставы': 'joints',
+  'связки': 'ligaments',
+  'мышцы': 'muscles',
+  'кожа': 'skin',
+  'сердце': 'heart',
+  'лёгкие': 'lungs',
+  'легкие': 'lungs',
+  'печень': 'liver',
+  'почки': 'kidneys',
+  'общее здоровье': 'general health',
+  'общее': 'general health',
+}
+
+export function normalizeRuPhraseKey(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+export function lookupRuToEnPhrase(text: string): string | null {
+  const key = normalizeRuPhraseKey(text)
+  if (!key) return null
+  return PHRASES[key] ?? null
+}

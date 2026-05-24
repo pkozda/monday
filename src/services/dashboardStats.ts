@@ -20,7 +20,9 @@ const ENTRY_TYPE_LABELS: Record<HealthEntryType, string> = {
   medication: 'Medication',
   change: 'Changes',
   doctor_visit: 'Doctor visits',
-  imaging: 'Tests / imaging',
+  imaging: 'Imaging',
+  lab_test: 'Lab results',
+  surgery: 'Surgery',
   other: 'Other notes',
 }
 
@@ -30,6 +32,8 @@ const ENTRY_TYPE_COLORS: Record<HealthEntryType, string> = {
   change: '#64b5f6',
   doctor_visit: '#ba68c8',
   imaging: '#4dd0e1',
+  lab_test: '#4fc3f7',
+  surgery: '#f06292',
   other: '#90a4ae',
 }
 

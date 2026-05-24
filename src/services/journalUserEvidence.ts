@@ -23,8 +23,10 @@ export interface UserJournalEvidenceRow {
   loggedQuote?: string
   bodyArea: string
   eventDate?: string
-  /** i18n key: diseaseInsight.supportReason.* */
+  /** i18n key: diseaseInsight.supportReason.* — fallback when linkExplanation is absent */
   supportReason: DiagnosisSupportReason
+  /** AI-generated: why this entry supports this specific possible condition */
+  linkExplanation?: string
 }
 
 function snippet(text: string, maxLen = 160): string | undefined {
@@ -70,7 +72,8 @@ function findEntryForDetail(
 function buildRowFromEntry(
   id: string,
   entry: HealthEntry,
-  criterionText: string
+  criterionText: string,
+  linkExplanation?: string
 ): UserJournalEvidenceRow {
   return {
     id,
@@ -80,7 +83,18 @@ function buildRowFromEntry(
     bodyArea: entry.conditionArea.trim(),
     eventDate: entry.eventDate,
     supportReason: supportReasonForEntry(entry, criterionText),
+    linkExplanation: linkExplanation?.trim() || undefined,
   }
+}
+
+function resolveEntryForCriterion(
+  criterion: DiagnosisCriterion,
+  entries: HealthEntry[]
+): HealthEntry | undefined {
+  if (criterion.sourceEntryId) {
+    return entries.find((e) => e.id === criterion.sourceEntryId)
+  }
+  return findEntryForDetail(criterion.detail, entries)
 }
 
 /** User-facing journal proof rows — one per matched journal entry / criterion. */
@@ -94,12 +108,19 @@ export function buildUserJournalEvidence(
   for (const criterion of variant.confirmCriteria) {
     if (criterion.status !== 'met') continue
 
-    const entry = findEntryForDetail(criterion.detail, entries)
+    const entry = resolveEntryForCriterion(criterion, entries)
     if (entry) {
       if (!entryHasDiagnosisSupport(entry)) continue
       if (seenEntryIds.has(entry.id)) continue
       seenEntryIds.add(entry.id)
-      rows.push(buildRowFromEntry(criterion.id, entry, criterion.text))
+      rows.push(
+        buildRowFromEntry(
+          criterion.id,
+          entry,
+          criterion.text,
+          criterion.linkExplanation
+        )
+      )
       continue
     }
   }
