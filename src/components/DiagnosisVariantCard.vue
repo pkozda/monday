@@ -1,16 +1,16 @@
 <template>
   <article
     class="variant-card"
-    :class="{ 'variant-card--lead': lead }"
+    :class="{ 'variant-card--lead': lead && !inTabs }"
   >
-    <header class="variant-card-header">
+    <header v-if="!inTabs" class="variant-card-header">
       <span class="variant-percent">{{ variant.percentage }}%</span>
       <div class="variant-title-block">
         <h4 class="variant-disease">
           <TranslatedText :text="variant.diseaseName" tag="span" />
         </h4>
         <p class="variant-precision">
-          {{ t('diagnosis.historyFit', { score: variant.precisionScore }) }}
+          {{ journalAlignmentLabel }}
         </p>
         <div
           class="variant-bar"
@@ -20,56 +20,24 @@
       </div>
     </header>
 
+    <div v-else class="variant-card-meta">
+      <p class="variant-precision">
+        {{ journalAlignmentLabel }}
+      </p>
+      <div
+        class="variant-bar"
+        role="presentation"
+        :style="{ '--fill': `${variant.percentage}%` }"
+      />
+    </div>
+
     <section class="variant-section">
       <h5 class="variant-section-title">{{ t('diagnosis.whySuggested') }}</h5>
       <p class="variant-summary">{{ displayRationale }}</p>
     </section>
 
-    <section v-if="variant.confirmCriteria.length" class="variant-section">
-      <h5 class="variant-section-title">{{ t('diagnosis.criteriaSupport') }}</h5>
-      <ul class="criteria-list">
-        <li
-          v-for="item in variant.confirmCriteria"
-          :key="item.id"
-          class="criteria-item"
-          :class="`criteria-item--${item.status}`"
-        >
-          <span class="criteria-icon" aria-hidden="true">{{ criteriaIcon(item) }}</span>
-          <div class="criteria-body">
-            <span class="criteria-text">
-              <TranslatedText :text="item.text" tag="span" />
-            </span>
-            <span v-if="item.detail" class="criteria-detail">
-              <TranslatedText :text="item.detail" tag="span" />
-            </span>
-            <span v-else-if="item.status === 'not_met'" class="criteria-hint">
-              {{ t('diagnosis.notDocumented') }}
-            </span>
-          </div>
-        </li>
-      </ul>
-    </section>
-
-    <section v-if="variant.excludeCriteria.length" class="variant-section">
-      <h5 class="variant-section-title">{{ t('diagnosis.criteriaAgainst') }}</h5>
-      <ul class="criteria-list">
-        <li
-          v-for="item in variant.excludeCriteria"
-          :key="item.id"
-          class="criteria-item"
-          :class="`criteria-item--${item.status}`"
-        >
-          <span class="criteria-icon" aria-hidden="true">{{ criteriaIcon(item) }}</span>
-          <div class="criteria-body">
-            <span class="criteria-text">
-              <TranslatedText :text="item.text" tag="span" />
-            </span>
-            <span v-if="item.detail" class="criteria-detail">
-              <TranslatedText :text="item.detail" tag="span" />
-            </span>
-          </div>
-        </li>
-      </ul>
+    <section class="variant-section variant-section--education">
+      <DiseaseEducationBlock :variant="variant" :journal-entries="journalEntries" />
     </section>
 
     <section v-if="variant.suggestedWorkup.length" class="variant-section">
@@ -143,29 +111,43 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import TranslatedText from '@/components/TranslatedText.vue'
+import DiseaseEducationBlock from '@/components/disease/DiseaseEducationBlock.vue'
 import {
   localizeDiagnosisFlagKind,
   localizeHypothesisConfidence,
   localizePatternLabel,
 } from '@/services/localizeClinical'
-import { localizeDiagnosisRationale } from '@/services/localizeDiagnosisContent'
+import {
+  localizeDiagnosisRationale,
+  localizeJournalAlignment,
+} from '@/services/localizeDiagnosisContent'
+import type {
+  DiagnosisMatchFlagKind,
+  DiagnosisVariant,
+  HealthEntry,
+  HypothesisPattern,
+} from '@/models/types'
 
 const { t } = useI18n()
 
-const props = defineProps<{
-  variant: DiagnosisVariant
-  lead?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    variant: DiagnosisVariant
+    journalEntries?: HealthEntry[]
+    lead?: boolean
+    /** Title/percent shown in parent tabs — hide duplicate header */
+    inTabs?: boolean
+  }>(),
+  { lead: false, inTabs: false, journalEntries: () => [] }
+)
 
 const displayRationale = computed(() =>
   localizeDiagnosisRationale(props.variant, t)
 )
-import type {
-  DiagnosisCriterion,
-  DiagnosisMatchFlagKind,
-  DiagnosisVariant,
-  HypothesisPattern,
-} from '@/models/types'
+
+const journalAlignmentLabel = computed(() =>
+  localizeJournalAlignment(props.variant, t)
+)
 
 function flagKindLabel(kind: DiagnosisMatchFlagKind): string {
   return localizeDiagnosisFlagKind(kind, t)
@@ -174,13 +156,6 @@ function flagKindLabel(kind: DiagnosisMatchFlagKind): string {
 function patternLabel(pattern: HypothesisPattern | undefined): string {
   if (!pattern) return ''
   return localizePatternLabel(pattern, t)
-}
-
-function criteriaIcon(item: DiagnosisCriterion): string {
-  if (item.role === 'confirm') {
-    return item.status === 'met' ? '✓' : '○'
-  }
-  return item.status === 'exclusion_present' ? '✗' : '✓'
 }
 </script>
 
@@ -195,6 +170,14 @@ function criteriaIcon(item: DiagnosisCriterion): string {
 .variant-card--lead {
   border-color: var(--accent);
   background: var(--hint-bg);
+}
+
+.variant-card-meta {
+  margin-bottom: 0.75rem;
+}
+
+.variant-card-meta .variant-precision {
+  margin: 0 0 0.35rem;
 }
 
 .variant-card-header {
@@ -254,6 +237,10 @@ function criteriaIcon(item: DiagnosisCriterion): string {
 
 .variant-section {
   margin-bottom: 0.65rem;
+}
+
+.variant-section--education {
+  padding-top: 0.15rem;
 }
 
 .variant-section-title {

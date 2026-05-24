@@ -61,6 +61,13 @@
 
   --urgency-monitor-bg: #4a3a1e;
   --urgency-monitor-text: #ffb74d;
+
+  --confirm-match-bg: #3d3520;
+  --confirm-match-border: #ffc107;
+  --confirm-match-text: #ffeb3b;
+  --confirm-match-badge-bg: #f9a825;
+  --confirm-match-badge-fg: #1a1a1a;
+
   --urgency-urgent-bg: #4a2a1e;
   --urgency-urgent-text: #ff7043;
   --urgency-emergency-bg: #4a1e1e;
@@ -131,6 +138,13 @@
 
   --urgency-monitor-bg: #fff3e0;
   --urgency-monitor-text: #e65100;
+
+  --confirm-match-bg: #fffde7;
+  --confirm-match-border: #f9a825;
+  --confirm-match-text: #f57f17;
+  --confirm-match-badge-bg: #fbc02d;
+  --confirm-match-badge-fg: #1a1a1a;
+
   --urgency-urgent-bg: #fbe9e7;
   --urgency-urgent-text: #d84315;
   --urgency-emergency-bg: #ffebee;

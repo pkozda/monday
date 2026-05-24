@@ -63,20 +63,60 @@
         {{ t('diagnosis.uncertainNote') }}
       </p>
 
-      <div class="diagnosis-variants">
-        <DiagnosisVariantCard
-          v-for="(variant, index) in topVariants"
-          :key="variant.id"
-          :variant="variant"
-          :lead="index === 0"
-        />
+      <div
+        v-if="topVariants.length"
+        class="diagnosis-variant-tabs-wrap"
+      >
+        <div
+          class="diagnosis-variant-tabs"
+          role="tablist"
+          :aria-label="
+            t('diagnosis.variantTabsLabel', { area: report.conditionArea })
+          "
+        >
+          <button
+            v-for="(variant, index) in topVariants"
+            :id="`variant-tab-${variant.id}`"
+            :key="variant.id"
+            type="button"
+            role="tab"
+            class="diagnosis-variant-tab"
+            :class="{
+              'diagnosis-variant-tab--active': variant.id === activeVariantId,
+              'diagnosis-variant-tab--lead': index === 0,
+            }"
+            :aria-selected="variant.id === activeVariantId"
+            :aria-controls="`variant-panel-${variant.id}`"
+            @click="activeVariantId = variant.id"
+          >
+            <span class="diagnosis-variant-tab__pct">{{ variant.percentage }}%</span>
+            <span class="diagnosis-variant-tab__name">
+              <TranslatedText :text="variant.diseaseName" tag="span" />
+            </span>
+          </button>
+        </div>
+
+        <div
+          v-if="activeVariant"
+          :id="`variant-panel-${activeVariant.id}`"
+          role="tabpanel"
+          class="diagnosis-variant-panel"
+          :aria-labelledby="`variant-tab-${activeVariant.id}`"
+        >
+          <DiagnosisVariantCard
+            :variant="activeVariant"
+            :journal-entries="journalEntries"
+            :lead="activeVariant.id === topVariants[0]?.id"
+            in-tabs
+          />
+        </div>
       </div>
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DiagnosisVariantCard from '@/components/DiagnosisVariantCard.vue'
 import TranslatedText from '@/components/TranslatedText.vue'
@@ -84,12 +124,13 @@ import {
   localizedDiagnosisSpecialistAdvice,
   localizedDiagnosisSpecialistName,
 } from '@/services/localizeClinical'
-import type { DiagnosisReport } from '@/models/types'
+import type { DiagnosisReport, HealthEntry } from '@/models/types'
 
 const { t } = useI18n()
 
 const props = defineProps<{
   report: DiagnosisReport
+  journalEntries?: HealthEntry[]
 }>()
 
 const specialistName = computed(() =>
@@ -104,6 +145,7 @@ const MAX_VARIANTS = 8
 const MAX_VARIANTS_COMPACT = 3
 
 const expanded = ref(false)
+const activeVariantId = ref<string | null>(null)
 
 const sortedVariants = computed(() =>
   [...props.report.variants].sort((a, b) => b.percentage - a.percentage)
@@ -130,8 +172,30 @@ const certaintyShort = computed(() => {
   }
 })
 
+const activeVariant = computed(() =>
+  topVariants.value.find((v) => v.id === activeVariantId.value) ?? topVariants.value[0] ?? null
+)
+
+watch(
+  topVariants,
+  (variants) => {
+    if (!variants.length) {
+      activeVariantId.value = null
+      return
+    }
+    if (!variants.some((v) => v.id === activeVariantId.value)) {
+      activeVariantId.value = variants[0].id
+    }
+  },
+  { immediate: true }
+)
+
 function onToggle() {
+  const opening = !expanded.value
   expanded.value = !expanded.value
+  if (opening && topVariants.value.length && !activeVariantId.value) {
+    activeVariantId.value = topVariants.value[0].id
+  }
 }
 
 </script>
@@ -315,19 +379,88 @@ function onToggle() {
   border-left: 2px solid var(--accent);
 }
 
-.diagnosis-variants {
+.diagnosis-variant-tabs-wrap {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  gap: 0.65rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 0.25rem;
-  scrollbar-width: thin;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.15rem;
 }
 
-.diagnosis-variants :deep(.variant-card) {
-  flex: 0 0 min(300px, 88vw);
-  max-width: 300px;
+.diagnosis-variant-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.35rem;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.diagnosis-variant-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.diagnosis-variant-tab:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.diagnosis-variant-tab--active {
+  background: var(--bg-surface);
+  border-color: var(--accent);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.diagnosis-variant-tab--active.diagnosis-variant-tab--lead {
+  background: var(--hint-bg);
+}
+
+.diagnosis-variant-tab__pct {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-strong);
+}
+
+.diagnosis-variant-tab--active .diagnosis-variant-tab__pct {
+  color: var(--accent-strong);
+}
+
+.diagnosis-variant-tab__name {
+  min-width: 0;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.diagnosis-variant-tab--lead .diagnosis-variant-tab__name {
+  font-weight: 600;
+}
+
+.diagnosis-variant-panel {
+  width: 100%;
+}
+
+.diagnosis-variant-panel :deep(.variant-card) {
+  width: 100%;
+  max-width: none;
 }
 </style>

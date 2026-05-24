@@ -3,6 +3,7 @@ import {
   getDiagnosisCriteria,
   type DiseaseDiagnosisCriteria,
 } from '@/data/diseaseDiagnosisCriteria'
+import { findEntryForConfirmCriterion } from '@/services/clinicalConfirmation'
 import {
   buildMedicalHistoryContext,
   entryText,
@@ -14,6 +15,10 @@ import {
   areasForEntry,
   areasMatch as bodyAreasMatch,
 } from '@/services/bodyAreaDetection'
+import {
+  buildJournalSymptomProfile,
+  journalFitScoreAdjustments,
+} from '@/services/diagnosisJournalFit'
 import type {
   DiagnosisCriterion,
   DiagnosisMatchFlag,
@@ -88,7 +93,10 @@ function evaluateRules(
   history: MedicalHistoryContext
 ): DiagnosisCriterion[] {
   return rules.map((rule) => {
-    const match = findMatchingEntry(history, rule.patterns)
+    const match =
+      role === 'confirm'
+        ? findEntryForConfirmCriterion(history, rule)
+        : findMatchingEntry(history, rule.patterns)
     if (role === 'confirm') {
       return {
         id: rule.id,
@@ -307,10 +315,17 @@ export function scoreDiseaseWithPrecision(
   const confirmCriteria = evaluateRules(criteria.confirm, 'confirm', history)
   const excludeCriteria = evaluateRules(criteria.exclude, 'exclude', history)
 
-  const confirmMet = confirmCriteria.filter((c) => c.status === 'met').length
-  const confirmTotal = confirmCriteria.length
+  const journalProfile = buildJournalSymptomProfile(
+    disease.id,
+    confirmCriteria,
+    history
+  )
+  const journalAdjust = journalFitScoreAdjustments(journalProfile)
+
+  const confirmMet = journalProfile.confirmMet
+  const confirmTotal = journalProfile.confirmTotal
   const confirmScore = confirmTotal
-    ? (confirmMet / confirmTotal) * 26
+    ? (confirmMet / confirmTotal) * 20
     : 0
 
   const exclusionPresent = excludeCriteria.filter(
@@ -365,14 +380,29 @@ export function scoreDiseaseWithPrecision(
     })
   }
 
+  if (journalProfile.typicalMatched > 0) {
+    matchedSignals.push(
+      `${journalProfile.typicalMatched} typical sign${journalProfile.typicalMatched === 1 ? '' : 's'} in journal`
+    )
+  }
+  if (journalProfile.typicalMissing > 0) {
+    pushFlag(matchFlags, {
+      kind: 'journal_flag',
+      label: 'Typical signs not logged yet',
+      detail: `${journalProfile.typicalMissing} common sign${journalProfile.typicalMissing === 1 ? '' : 's'} for this condition are missing from your journal`,
+    })
+  }
+
   const rawScore =
     evidence +
     areaFit +
     confirmScore +
+    journalAdjust.typicalAndConfirmBonus +
     historyCoherence +
     specificity +
     hypothesisSupport -
-    exclusionPenalty
+    exclusionPenalty -
+    journalAdjust.missingPenalty
 
   if (rawScore < 5) return null
 
@@ -380,10 +410,11 @@ export function scoreDiseaseWithPrecision(
     Math.min(
       100,
       rawScore * 1.1 +
-        confirmMet * 5 -
+        confirmMet * 4 -
         exclusionPresent * 8 +
         (history.hasExplicitDiagnosis ? 6 : 0) +
-        (hits.strongHits >= 2 ? 5 : 0)
+        (hits.strongHits >= 2 ? 5 : 0) +
+        Math.round(journalProfile.supportRatio * 12)
     )
   )
   precisionScore = Math.max(10, precisionScore)
@@ -391,13 +422,27 @@ export function scoreDiseaseWithPrecision(
   if (exclusionPresent >= 2) precisionScore = Math.round(precisionScore * 0.5)
   else if (exclusionPresent === 1) precisionScore = Math.round(precisionScore * 0.8)
 
-  if (confirmMet === confirmTotal && confirmTotal >= 2) {
-    precisionScore = Math.min(100, precisionScore + 10)
+  precisionScore = Math.round(
+    precisionScore * journalAdjust.precisionMultiplier
+  )
+  precisionScore += journalAdjust.precisionFlatAdjust
+
+  if (confirmMet === confirmTotal && confirmTotal >= 2 && journalProfile.typicalMissing <= 1) {
+    precisionScore = Math.min(100, precisionScore + 8)
+  }
+
+  if (
+    journalProfile.supportRatio < 0.25 &&
+    journalProfile.typicalTotal + confirmTotal >= 2
+  ) {
+    precisionScore = Math.round(precisionScore * 0.82)
   }
 
   if (!areaMatch && hits.primaryIds.size === 0 && hits.strongHits < 2) {
     precisionScore = Math.round(precisionScore * 0.85)
   }
+
+  precisionScore = Math.max(8, Math.min(100, precisionScore))
 
   return {
     precisionScore,

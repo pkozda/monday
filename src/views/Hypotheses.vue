@@ -71,7 +71,10 @@
         class="tab-panel page-panel"
         aria-label="Diagnoses"
       >
-        <DiagnosisPanel :reports="diagnosisReports" />
+        <DiagnosisPanel
+          :reports="diagnosisReports"
+          :journal-entries="journalEntries"
+        />
       </div>
 
       <div
@@ -95,6 +98,7 @@
             :hypothesis="hypothesis"
             :journal-entries="journalEntries"
             :patient="patient"
+            :related-variants="relatedVariantsForHypothesis(hypothesis)"
           />
         </div>
       </div>
@@ -114,10 +118,13 @@ import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
 import { regenerateAllHypothesesFromJournal } from '@/api/hypothesisApi'
 import { getHypotheses } from '@/api/mockApi'
 import { buildDiagnosisReports } from '@/services/diagnosisGenerator'
+import { consolidateHypothesesForDisplay } from '@/services/hypothesisDisplay'
+import { areasMatch } from '@/services/bodyAreaDetection'
 import { getHealthEntries } from '@/api/healthApi'
 import { getPatientProfile } from '@/api/patientApi'
 import type {
   DiagnosisReport,
+  DiagnosisVariant,
   HealthEntry,
   Hypothesis,
   PatientProfile,
@@ -147,13 +154,20 @@ const regenerating = ref(false)
 const regenerateMessage = ref('')
 const regenerateMessageType = ref<'success' | 'error' | 'info'>('success')
 
+function relatedVariantsForHypothesis(hypothesis: Hypothesis): DiagnosisVariant[] {
+  const report = diagnosisReports.value.find((r) =>
+    areasMatch(r.conditionArea, hypothesis.conditionArea)
+  )
+  return report?.variants.slice(0, 3) ?? []
+}
+
 async function loadInsights() {
   const [hyps, entries, profile] = await Promise.all([
     getHypotheses(),
     getHealthEntries(),
     getPatientProfile(),
   ])
-  hypotheses.value = hyps
+  hypotheses.value = consolidateHypothesesForDisplay(hyps)
   journalEntries.value = entries
   patient.value = profile
   diagnosisReports.value = buildDiagnosisReports(hyps, entries)

@@ -34,3 +34,8 @@ dist-ssr
 
 # Vite cache artifacts
 vite.config.ts.timestamp-*.mjs
+
+# Local IndexedDB exports (see db-snapshots/README.md)
+db-snapshots/*
+!db-snapshots/README.md
+!db-snapshots/.gitkeep

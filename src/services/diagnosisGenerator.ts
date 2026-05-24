@@ -18,6 +18,10 @@ import {
 } from '@/services/specialistSuggestion'
 import { combinedEntryText } from '@/services/healthAnalysis'
 import {
+  buildJournalSymptomProfile,
+  journalFitDisplayWeight,
+} from '@/services/diagnosisJournalFit'
+import {
   buildMedicalHistoryContext,
   type MedicalHistoryContext,
 } from '@/services/medicalHistoryContext'
@@ -95,29 +99,51 @@ function buildRationale(disease: InferredDisease, primaryArea: string): string {
     (c) => c.status === 'exclusion_present'
   ).length
 
-  const parts: string[] = []
+  const scopeParts: string[] = []
   if (disease.primaryJournalCount > 0) {
-    parts.push(
-      `${disease.primaryJournalCount} ${disease.primaryJournalCount === 1 ? 'entry' : 'entries'} in ${primaryArea}`
+    scopeParts.push(
+      `${disease.primaryJournalCount} journal ${disease.primaryJournalCount === 1 ? 'entry' : 'entries'} about ${primaryArea}`
     )
   }
   if (disease.crossBodyJournalCount > 0) {
-    parts.push(
-      `${disease.crossBodyJournalCount} cross-area ${disease.crossBodyJournalCount === 1 ? 'entry' : 'entries'}`
+    scopeParts.push(
+      `${disease.crossBodyJournalCount} related ${disease.crossBodyJournalCount === 1 ? 'entry' : 'entries'} from other body areas`
     )
   }
   const scope =
-    parts.length > 0 ? parts.join(' and ') : 'your full medical history'
+    scopeParts.length > 0 ? scopeParts.join(' and ') : 'your health journal'
 
-  let criteriaNote = ''
+  const sentences = [`We looked at ${scope}.`]
+
   if (confirmTotal > 0) {
-    criteriaNote = ` ${confirmMet} of ${confirmTotal} supporting criteria met in your journal.`
-  }
-  if (exclusions > 0) {
-    criteriaNote += ` ${exclusions} exclusion ${exclusions === 1 ? 'factor' : 'factors'} present.`
+    if (confirmMet === confirmTotal) {
+      sentences.push(
+        'Several typical signs for this condition appear in what you logged.'
+      )
+    } else if (confirmMet > 0) {
+      sentences.push(
+        `Some typical signs show up in your journal (${confirmMet} of ${confirmTotal}); others are not documented yet.`
+      )
+    } else {
+      sentences.push(
+        'Few typical signs are clearly documented in your journal so far.'
+      )
+    }
   }
 
-  return `Precision score ${disease.precisionScore}/100 from ${scope}, symptom patterns, and clinical criteria.${criteriaNote} Not a confirmed diagnosis — use confirm/exclude criteria below with your clinician.`
+  if (exclusions > 0) {
+    sentences.push(
+      exclusions === 1
+        ? 'One journal note may point away from this condition—worth discussing with your clinician.'
+        : `${exclusions} journal notes may point away from this condition—worth discussing with your clinician.`
+    )
+  }
+
+  sentences.push(
+    'This is a suggestion to explore with a clinician, not a confirmed diagnosis.'
+  )
+
+  return sentences.join(' ')
 }
 
 function buildAreaReport(
@@ -154,7 +180,14 @@ function buildAreaReport(
       d.precisionScore >= topPrecision * MIN_PRECISION_FRACTION
   )
 
-  const weights = candidates.map((d) => d.precisionScore)
+  const weights = candidates.map((d) => {
+    const profile = buildJournalSymptomProfile(
+      d.diseaseId,
+      d.confirmCriteria,
+      sharedHistory
+    )
+    return journalFitDisplayWeight(d.precisionScore, profile)
+  })
   const percentages = normalizePercentages(weights)
 
   const variants: DiagnosisVariant[] = candidates
@@ -167,6 +200,7 @@ function buildAreaReport(
 
       return {
         id: `${area}-${disease.diseaseId}`,
+        diseaseId: disease.diseaseId,
         diseaseName: disease.diseaseName,
         label: disease.diseaseName,
         percentage: percentages[index] ?? 0,
