@@ -154,6 +154,7 @@
     <DoctorNotesModal
       :open="doctorNotesOpen"
       :content="doctorNotesContent"
+      :loading="doctorNotesLoading"
       @close="doctorNotesOpen = false"
     />
   </article>
@@ -177,7 +178,7 @@ import {
 } from '@/services/localizeClinical'
 import { patternFromTitle } from '@/services/hypothesisGenerator'
 import { buildLocalizedHypothesisDetail } from '@/services/localizeHypothesisDetail'
-import { generateLocalizedDoctorNotes } from '@/services/localizeDoctorNotes'
+import { generateLocalizedDoctorNotesAsync } from '@/services/localizeDoctorNotes'
 import { journalDescriptionAddsDetail } from '@/services/journalEntryText'
 import type {
   DiagnosisVariant,
@@ -203,20 +204,13 @@ const dfLocale = computed(() => dateFnsLocaleFor(locale.value as AppLocale))
 
 const expanded = ref(false)
 const doctorNotesOpen = ref(false)
+const doctorNotesContent = ref('')
+const doctorNotesLoading = ref(false)
+let doctorNotesRequestId = 0
 
 const detail = computed(() =>
   buildLocalizedHypothesisDetail(
     props.hypothesis,
-    props.journalEntries,
-    t,
-    dfLocale.value
-  )
-)
-
-const doctorNotesContent = computed(() =>
-  generateLocalizedDoctorNotes(
-    props.hypothesis,
-    props.patient ?? null,
     props.journalEntries,
     t,
     dfLocale.value
@@ -283,8 +277,29 @@ function historyKindLabel(kind: HypothesisHistoryKind): string {
     : String(t('hypothesisCard.historyUpdated'))
 }
 
-function openDoctorNotes() {
+async function openDoctorNotes() {
   doctorNotesOpen.value = true
+  const requestId = ++doctorNotesRequestId
+  doctorNotesLoading.value = true
+  doctorNotesContent.value = ''
+
+  try {
+    const notes = await generateLocalizedDoctorNotesAsync(
+      props.hypothesis,
+      props.patient ?? null,
+      props.journalEntries,
+      t,
+      dfLocale.value,
+      locale.value as AppLocale
+    )
+    if (requestId === doctorNotesRequestId) {
+      doctorNotesContent.value = notes
+    }
+  } finally {
+    if (requestId === doctorNotesRequestId) {
+      doctorNotesLoading.value = false
+    }
+  }
 }
 </script>
 

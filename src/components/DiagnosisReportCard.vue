@@ -13,6 +13,12 @@
         <div class="diagnosis-card-top">
           <h3 class="diagnosis-area">{{ report.conditionArea }}</h3>
           <span
+            v-if="report.aiRanked"
+            class="source-badge source-badge--ai"
+          >
+            {{ t('diagnosis.aiBadge') }}
+          </span>
+          <span
             class="certainty-badge"
             :class="`certainty-badge--${report.certainty}`"
           >
@@ -244,6 +250,20 @@ function onToggle() {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.source-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+.source-badge--ai {
+  background: color-mix(in srgb, var(--accent-strong) 18%, transparent);
+  color: var(--accent-strong);
 }
 
 .certainty-badge {

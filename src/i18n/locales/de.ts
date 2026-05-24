@@ -17,6 +17,34 @@ export default {
     darkHint: 'Dunkelmodus — zum Hellmodus wechseln',
     lightHint: 'Hellmodus — zum Dunkelmodus wechseln',
   },
+  aiInsights: {
+    toggle: 'KI-Einblicke',
+    on: 'An',
+    hintOn:
+      'Tagebuch, Hypothesen und Diagnose-Texte nutzen KI bei Regenerieren oder neuen Einträgen.',
+    hintOff: 'Aktivieren, um Tagebuchtext an das konfigurierte LLM zu senden (Dev-Proxy).',
+    banner:
+      'KI-Einblicke sind aktiv — neue Einträge werden analysiert; Regenerieren aktualisiert Hypothesen; Diagnosen werden per KI aus dem Tagebuch gerankt.',
+    unavailable:
+      'KI benötigt LLM_API_KEY in .env.local und npm run dev (siehe .env.example).',
+  },
+  notifications: {
+    title: 'Benachrichtigungen',
+    bellLabel: 'Benachrichtigungen ({count} ungelesen)',
+    empty: 'Noch keine Benachrichtigungen.',
+    markAllRead: 'Alle gelesen',
+    dismiss: 'Schließen',
+    regeneration: {
+      slowToastTitle: 'Noch in Arbeit…',
+      slowToastMessage:
+        'Die Neu-Generierung kann dauern. Sie können andere Seiten nutzen — wir benachrichtigen Sie nach Abschluss.',
+      slowNotificationTitle: 'Einblicke werden neu generiert',
+      slowNotificationMessage:
+        'Hypothesen und Diagnosen werden aus Ihrem Tagebuch neu erstellt.',
+      successTitle: 'Einblicke bereit',
+      errorTitle: 'Neu-Generierung fehlgeschlagen',
+    },
+  },
   common: {
     close: 'Schließen',
     cancel: 'Abbrechen',
@@ -93,6 +121,7 @@ export default {
     },
     clinicalModelTitle: 'Aktuelles klinisches Modell',
     clinicalModelSubtitle: 'Aus Ihrem Gesundheitsjournal abgeleitet',
+    clinicalModelRefreshing: 'Klinisches Modell wird mit KI aktualisiert…',
     clinicalModelHint:
       'Protokollieren Sie Symptome und Besuche im Journal für spezifische Faktoren.',
   },
@@ -312,6 +341,8 @@ export default {
       'Journal-Einträge hinzufügen, dann „Neu generieren“ in der Kopfzeile.',
     regenerateConfirm:
       'Alle Hypothesen durch neue aus dem aktuellen Journal ersetzen?',
+    regenerateSlowHint:
+      'Die Neu-Generierung läuft noch. Sie können die Seite verlassen — wir benachrichtigen Sie, wenn alles fertig ist.',
     regenerateTitleEmpty: 'Zuerst Journal-Einträge hinzufügen',
     regenerateTitle: 'Aus aktuellem Journal neu generieren',
     regenerateFailed: 'Neu-Generierung fehlgeschlagen.',
@@ -344,10 +375,16 @@ export default {
   },
   diagnosis: {
     loading: 'Journal wird auf mögliche Erkrankungen analysiert…',
+    refreshing: 'Mögliche Erkrankungen werden aktualisiert…',
     empty:
       'Beschreiben Sie Symptome, Körperregion und Medikamente für Diagnose-Vorschläge mit Prozenten.',
     disclaimer:
       'Aus dem gesamten Journal abgeleitet — immer mit Ärztin/Arzt abklären.',
+    aiRankedNote:
+      'Prozent und Reihenfolge möglicher Erkrankungen wurden per KI aus Ihrem Tagebuch gerankt; Kriterien stützen sich weiter auf Ihre Einträge.',
+    ruleBasedNote:
+      'Rankings nutzen den eingebauten Katalog und Ihr Tagebuch (ohne KI). KI-Einblicke in der Kopfzeile aktivieren für LLM-Rankings.',
+    aiBadge: 'KI-Ranking',
     certaintyHigh: 'Wahrscheinlich',
     certaintyModerate: 'Führend',
     certaintyLow: 'Unsicher',
@@ -703,8 +740,19 @@ export default {
   },
   doctorNotes: {
     title: 'Notizen für Ihren Arzt',
+    generating: 'KI erstellt eine arztorientierte Zusammenfassung…',
     intro:
-      'Vor dem Drucken prüfen und bearbeiten. Zusammenfassung aus Journal-Einträgen zu dieser Hypothese.',
+      'Vor dem Drucken prüfen und bearbeiten. Mit KI-Einblicken: synthetisiertes Besuchsbriefing — kein Journal-Export.',
+    aiSynthesized: '(KI-Besuchsbriefing — bitte mit dem Journal abgleichen)',
+    aiChiefConcernTitle: 'HAUPTBESCHWERDE',
+    aiHypothesisTitle: 'FOKUS-HYPOTHESE',
+    aiClinicalPictureTitle: 'KLINISCHES BILD (synthetisiert)',
+    aiTimelineTitle: 'ZEITACHSE (wichtigste Punkte)',
+    aiMedicationsTitle: 'MEDIKAMENTE & BEHANDLUNG (aus dem Journal)',
+    aiRedFlagsTitle: 'WARNHINWEISE / DRINGLICHKEIT',
+    aiQuestionsTitle: 'FRAGEN AN DIE ÄRZTIN / DEN ARZT',
+    aiEvidenceNote:
+      'Basierend auf {count} Journal-Einträgen für {area}. Vollständige Einträge bleiben in Monday verfügbar.',
     copy: 'Text kopieren',
     copied: 'Kopiert',
     print: 'Drucken',
@@ -735,6 +783,7 @@ export default {
     general: '{area}: Gesundheitsmuster aus Journalaktivität',
   },
   clinicalModel: {
+    aiBadge: 'KI-verfeinert aus Ihrem Journal',
     title: 'Ihr klinisches Modell',
     emptySummary:
       'Noch keine Journal-Daten. Mit Symptomen, Medikamenten, Besuchen und Tests baut Monday ein longitudinalen Überblick über Ihre Körperregionen.',

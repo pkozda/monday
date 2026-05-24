@@ -9,6 +9,9 @@ import {
 } from '@/services/healthAnalysis'
 import { polishJournalEntryInput } from '@/services/journalEntryText'
 import { normalizeHealthEntryInput } from '@/services/translation'
+import { invalidateInsightsCache } from '@/composables/useInsightsCache'
+import { shouldUseAiInsights } from '@/services/llm/config'
+import { scheduleIdleWork } from '@/utils/scheduleIdleWork'
 import type { HealthEntry, HealthEntryInput, TimelineEvent } from '@/models/types'
 
 export async function createHealthEntry(
@@ -20,7 +23,18 @@ export async function createHealthEntry(
   const combinedText = combinedEntryText(englishInput)
   const entryType = resolveEntryType(englishInput.entryType, combinedText)
   const resolvedInput = { ...englishInput, entryType }
-  const analysis = analyzeHealthEntry(resolvedInput)
+  let analysis = analyzeHealthEntry(resolvedInput)
+
+  if (shouldUseAiInsights()) {
+    try {
+      const { analyzeHealthEntryWithAi } = await import(
+        '@/services/llm/aiHealthAnalysis'
+      )
+      analysis = await analyzeHealthEntryWithAi(resolvedInput, analysis)
+    } catch (err) {
+      console.warn('[Monday] AI journal analysis failed; using rule-based analysis.', err)
+    }
+  }
   const id = crypto.randomUUID()
   const timelineEventId = crypto.randomUUID()
   const now = new Date().toISOString()
@@ -71,6 +85,18 @@ export async function createHealthEntry(
       await upsertAppointmentFromJournalEntry(entry)
     }
   )
+
+  invalidateInsightsCache()
+
+  if (shouldUseAiInsights()) {
+    scheduleIdleWork(() => {
+      void import('@/api/hypothesisApi')
+        .then(({ tryGenerateHypothesis }) => tryGenerateHypothesis())
+        .catch((err) => {
+          console.warn('[Monday] Incremental hypothesis update failed:', err)
+        })
+    })
+  }
 
   return entry
 }
@@ -127,6 +153,8 @@ export async function clearAllJournalRecords(): Promise<ClearJournalResult> {
       await db.hypotheses.clear()
     }
   )
+
+  invalidateInsightsCache()
 
   return {
     entriesRemoved: entries.length,

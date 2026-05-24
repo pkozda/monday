@@ -1,6 +1,6 @@
 <template>
-  <div class="diagnosis-panel">
-    <p v-if="loading" class="diagnosis-empty">
+  <div class="diagnosis-panel" :class="{ 'diagnosis-panel--refreshing': refreshing }">
+    <p v-if="loading && reports.length === 0" class="diagnosis-empty">
       {{ t('diagnosis.loading') }}
     </p>
 
@@ -8,7 +8,10 @@
       {{ emptyText ?? t('diagnosis.empty') }}
     </p>
 
-    <template v-else-if="!loading">
+    <template v-else>
+      <p v-if="refreshing" class="diagnosis-refreshing" role="status">
+        {{ t('diagnosis.refreshing') }}
+      </p>
       <div class="diagnosis-list">
         <DiagnosisReportCard
           v-for="report in displayReports"
@@ -18,6 +21,18 @@
         />
       </div>
 
+      <p
+        v-if="diagnosisMode === 'ai' && hasAiRanked"
+        class="diagnosis-disclaimer diagnosis-disclaimer--ai"
+      >
+        {{ t('diagnosis.aiRankedNote') }}
+      </p>
+      <p
+        v-else-if="diagnosisMode === 'rule' && reports.length > 0"
+        class="diagnosis-disclaimer diagnosis-disclaimer--rule"
+      >
+        {{ t('diagnosis.ruleBasedNote') }}
+      </p>
       <p v-if="showDisclaimer" class="diagnosis-disclaimer">
         {{ t('diagnosis.disclaimer') }}
       </p>
@@ -39,13 +54,17 @@ const props = withDefaults(
     reports: DiagnosisReport[]
     journalEntries?: HealthEntry[]
     loading?: boolean
+    refreshing?: boolean
     showDisclaimer?: boolean
     emptyText?: string
+    diagnosisMode?: 'rule' | 'ai'
   }>(),
   {
     loading: false,
+    refreshing: false,
     showDisclaimer: true,
     journalEntries: () => [],
+    diagnosisMode: 'rule',
   }
 )
 
@@ -53,6 +72,8 @@ const props = withDefaults(
 const displayReports = computed(() =>
   props.reports.map((r) => localizeDiagnosisReportSync(r, t))
 )
+
+const hasAiRanked = computed(() => props.reports.some((r) => r.aiRanked))
 </script>
 
 <style scoped>
@@ -83,5 +104,24 @@ const displayReports = computed(() =>
   font-size: 0.72rem;
   color: var(--text-faint);
   line-height: 1.4;
+}
+
+.diagnosis-disclaimer--ai {
+  color: var(--text-muted);
+}
+
+.diagnosis-disclaimer--rule {
+  color: var(--text-faint);
+}
+
+.diagnosis-refreshing {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.diagnosis-panel--refreshing .diagnosis-list {
+  opacity: 0.72;
+  transition: opacity 0.15s ease;
 }
 </style>

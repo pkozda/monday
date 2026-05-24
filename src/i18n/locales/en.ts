@@ -17,6 +17,34 @@ export default {
     darkHint: 'Dark mode — click to switch to light',
     lightHint: 'Light mode — click to switch to dark',
   },
+  aiInsights: {
+    toggle: 'AI insights',
+    on: 'On',
+    hintOn:
+      'Journal analysis, hypotheses, and diagnosis text use AI when you regenerate or add entries.',
+    hintOff: 'Enable to send journal text to your configured LLM (dev proxy).',
+    banner:
+      'AI insights are on — symptom analysis runs on new entries; regenerate to refresh hypotheses; diagnoses are ranked and explained by AI from your journal.',
+    unavailable:
+      'AI insights need LLM_API_KEY in .env.local and npm run dev (see .env.example).',
+  },
+  notifications: {
+    title: 'Notifications',
+    bellLabel: 'Notifications ({count} unread)',
+    empty: 'No notifications yet.',
+    markAllRead: 'Mark all read',
+    dismiss: 'Dismiss',
+    regeneration: {
+      slowToastTitle: 'Still working…',
+      slowToastMessage:
+        'Regeneration can take a while. You can use other pages — we will notify you when it is finished.',
+      slowNotificationTitle: 'Regenerating insights',
+      slowNotificationMessage:
+        'Hypotheses and diagnoses are being rebuilt from your journal.',
+      successTitle: 'Insights ready',
+      errorTitle: 'Regeneration failed',
+    },
+  },
   common: {
     close: 'Close',
     cancel: 'Cancel',
@@ -90,6 +118,7 @@ export default {
     },
     clinicalModelTitle: 'Current clinical model',
     clinicalModelSubtitle: 'Synthesized from your health journal',
+    clinicalModelRefreshing: 'Refreshing clinical model with AI…',
     clinicalModelHint:
       'Log symptoms and visits in the Journal to populate condition-specific factors.',
   },
@@ -317,6 +346,8 @@ export default {
       'Add journal entries, then use Regenerate hypotheses & conditions in the header.',
     regenerateConfirm:
       'Replace all hypotheses with new ones from your current journal? Possible conditions will be recalculated from the same records.',
+    regenerateSlowHint:
+      'Regeneration is still running. You can leave this page — we will notify you when hypotheses and diagnoses are ready.',
     regenerateTitleEmpty: 'Add journal entries first',
     regenerateTitle: 'Regenerate from current journal',
     regenerateFailed: 'Regeneration failed.',
@@ -349,10 +380,16 @@ export default {
   },
   diagnosis: {
     loading: 'Analyzing your journal for possible conditions…',
+    refreshing: 'Updating possible conditions…',
     empty:
       'Add journal entries describing your symptoms, body area, and medications to see possible conditions with percentages.',
     disclaimer:
       'Conditions are inferred from your full journal (including related entries in other body areas). Always confirm with a qualified clinician.',
+    aiRankedNote:
+      'Percentages and order for possible conditions were ranked by AI from your journal; supporting criteria still come from your logged entries.',
+    ruleBasedNote:
+      'Rankings use the built-in medical catalog and your journal (no AI). Turn on AI insights in the header for LLM-ranked conditions.',
+    aiBadge: 'AI ranked',
     certaintyHigh: 'Likely',
     certaintyModerate: 'Leading',
     certaintyLow: 'Uncertain',
@@ -714,8 +751,19 @@ export default {
   },
   doctorNotes: {
     title: 'Notes for your doctor',
+    generating: 'Building a clinician-oriented summary with AI…',
     intro:
-      'Review and edit before printing. This summary is built from your journal entries related to this hypothesis.',
+      'Review and edit before printing. With AI insights on, this is a synthesized visit brief—not a raw journal export.',
+    aiSynthesized: '(AI-synthesized visit brief — verify against your journal)',
+    aiChiefConcernTitle: 'CHIEF CONCERN',
+    aiHypothesisTitle: 'FOCUS HYPOTHESIS',
+    aiClinicalPictureTitle: 'CLINICAL PICTURE (synthesized)',
+    aiTimelineTitle: 'KEY TIMELINE',
+    aiMedicationsTitle: 'MEDICATIONS & TREATMENTS (from journal)',
+    aiRedFlagsTitle: 'RED FLAGS / URGENCY',
+    aiQuestionsTitle: 'QUESTIONS FOR THE CLINICIAN',
+    aiEvidenceNote:
+      'Based on {count} journal entries for {area}. Full entries remain in Monday if needed during the visit.',
     copy: 'Copy text',
     copied: 'Copied',
     print: 'Print',
@@ -748,6 +796,7 @@ export default {
       '{area}: health pattern worth tracking based on journal activity',
   },
   clinicalModel: {
+    aiBadge: 'AI-refined from your journal',
     title: 'Your clinical model',
     emptySummary:
       'No journal data yet. As you log symptoms, medications, visits, and tests, Monday will build a longitudinal clinical model summarizing patterns across the body areas you track.',

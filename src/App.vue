@@ -14,22 +14,34 @@
             <router-link to="/appointments" class="nav-link">{{ t('nav.appointments') }}</router-link>
             <router-link to="/journal" class="nav-link">{{ t('nav.journal') }}</router-link>
           </div>
-          <LanguageSwitcher />
-          <ThemeToggle />
+          <div class="nav-divider" aria-hidden="true" />
+          <div class="nav-controls">
+            <NotificationCenter />
+            <AiInsightsToggle />
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </nav>
     <main class="app-main" :class="{ 'app-main--fill': fillViewport }">
       <router-view />
     </main>
+
+    <ToastStack />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import { useInsightsRegenerationMessages } from '@/composables/useInsightsRegenerationMessages'
+import { runInsightsRegeneration } from '@/services/insightsRegeneration'
+import AiInsightsToggle from '@/components/AiInsightsToggle.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import NotificationCenter from '@/components/notifications/NotificationCenter.vue'
+import ToastStack from '@/components/notifications/ToastStack.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const { t } = useI18n()
@@ -48,6 +60,28 @@ const logoSrc = computed(() => (theme.value === 'dark' ? logoDark : logoLight))
 const bgStyle = computed(() => ({
   '--app-bg-image': `url(${backgroundUrl})`,
 }))
+
+const regenerationMessages = useInsightsRegenerationMessages()
+
+function handleGlobalInsightsRegeneration() {
+  void runInsightsRegeneration({
+    messages: regenerationMessages,
+    onCleared: () => {
+      window.dispatchEvent(new CustomEvent('monday-insights-cleared'))
+    },
+    onSlow: () => {
+      window.dispatchEvent(new CustomEvent('monday-insights-regeneration-slow'))
+    },
+  })
+}
+
+onMounted(() => {
+  window.addEventListener('monday-ai-insights-changed', handleGlobalInsightsRegeneration)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('monday-ai-insights-changed', handleGlobalInsightsRegeneration)
+})
 </script>
 
 <style>
@@ -170,6 +204,21 @@ body:has(.app-main--fill) {
   flex-wrap: wrap;
 }
 
+.nav-divider {
+  width: 1px;
+  height: 1.5rem;
+  flex-shrink: 0;
+  background: var(--border-strong);
+  margin: 0 0.15rem;
+}
+
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .nav-link {
   text-decoration: none;
   color: var(--text-muted);
@@ -246,6 +295,15 @@ body:has(.app-main--fill) {
   .nav-end {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .nav-divider {
+    display: none;
+  }
+
+  .nav-controls {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .nav-logo-link {
