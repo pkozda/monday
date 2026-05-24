@@ -17,8 +17,21 @@
           :days-tracked="stats?.daysTracked ?? 0"
           :recommendations="recommendations"
           :nearest-appointment="nearestAppointment"
+          :show-appointment-doctor-notes="Boolean(clinicalModel && journalEntries.length)"
+          :appointment-doctor-notes-disabled="clinicalModelRefreshing"
+          :appointment-doctor-notes-loading="clinicalDoctorNotesLoading"
+          :appointment-doctor-notes-view="clinicalDoctorNotesSurface === 'appointment'"
+          :appointment-doctor-notes-content="clinicalDoctorNotesContent"
+          v-model:appointment-doctor-notes-specialty="clinicalDoctorSpecialty"
+          :appointment-doctor-notes-title="t('doctorNotes.clinicalTitle')"
+          :appointment-doctor-notes-intro="t('doctorNotes.clinicalIntro')"
+          :appointment-doctor-notes-generating-label="t('doctorNotes.clinicalGenerating')"
           @updated="onPatientUpdated"
           @journal-imported="onJournalImported"
+          @appointment-doctor-notes="openClinicalDoctorNotesFromAppointment"
+          @appointment-doctor-notes-back="onAppointmentDoctorNotesBack"
+          @appointment-modal-close="onAppointmentModalClose"
+          @appointment-doctor-notes-specialty-change="onClinicalDoctorSpecialtyChange"
         />
       </section>
 
@@ -34,41 +47,65 @@
             :label="t('dashboard.stats.journalEntries')"
             :value="stats?.totalJournalEntries ?? 0"
             :hint="t('dashboard.stats.allTime')"
+            :detail="statDetails.journal"
           />
           <StatCard
             variant="activity"
             :label="t('dashboard.stats.last30Days')"
             :value="stats?.entriesLast30Days ?? 0"
             :hint="t('dashboard.stats.recentActivity')"
+            :detail="statDetails.activity"
+          />
+          <StatCard
+            variant="tracking"
+            :label="t('dashboard.stats.daysTracked')"
+            :value="stats?.daysTracked ?? 0"
+            :hint="t('dashboard.stats.daysTrackedHint')"
+            :detail="statDetails.tracking"
           />
           <StatCard
             variant="conditions"
             :label="t('dashboard.stats.trackedConditions')"
             :value="stats?.conditions.length ?? 0"
             :hint="t('dashboard.stats.bodyAreasHint')"
+            :detail="statDetails.conditions"
           />
           <StatCard
             variant="severity"
             :label="t('dashboard.stats.avgSeverity')"
             :value="avgSeverityLabel"
             :hint="t('dashboard.stats.severityHint')"
+            :detail="statDetails.severity"
           />
           <StatCard
             variant="timeline"
             :label="t('dashboard.stats.timelineEvents')"
             :value="stats?.totalTimelineEvents ?? 0"
+            :hint="t('dashboard.stats.timelineEventsHint')"
+            :detail="statDetails.timeline"
           />
           <StatCard
             variant="hypotheses"
             :label="t('dashboard.stats.hypotheses')"
             :value="stats?.totalHypotheses ?? 0"
+            :hint="t('dashboard.stats.hypothesesHint')"
+            :detail="statDetails.hypotheses"
+          />
+          <AttentionStatCard
+            v-if="attentionLinks.length > 0"
+            :label="t('dashboard.stats.needsAttention')"
+            :value="attentionLinks.length"
+            :hint="t('dashboard.stats.attentionHint')"
+            :detail="statDetails.attention"
+            :links="attentionLinks"
           />
           <StatCard
+            v-else
             variant="attention"
             :label="t('dashboard.stats.needsAttention')"
             :value="stats?.attentionRequired ?? 0"
             :hint="t('dashboard.stats.attentionHint')"
-            :alert="(stats?.attentionRequired ?? 0) > 0"
+            :detail="statDetails.attentionEmpty"
           />
         </div>
       </section>
@@ -154,18 +191,45 @@
         </div>
       </section>
 
-      <section class="page-section dashboard-section">
+      <section class="page-section dashboard-section clinical-model-section">
         <SectionHeader
           :title="t('dashboard.clinicalModelTitle')"
-          :subtitle="t('dashboard.clinicalModelSubtitle')"
           class="page-section-title"
         />
         <MedicalCard
           v-if="clinicalModel"
           :title="clinicalModel.title"
+          :subtitle="t('dashboard.clinicalModelSubtitle')"
           :summary="clinicalModel.summary"
           :factors="clinicalModel.factors"
           :ai-generated="clinicalModel.aiGenerated"
+        >
+          <template #headerActions>
+            <button
+              type="button"
+              class="btn-clinical-doctor-notes"
+              :disabled="
+                clinicalDoctorNotesLoading ||
+                journalEntries.length === 0 ||
+                clinicalModelRefreshing
+              "
+              @click="openClinicalDoctorNotes"
+            >
+              {{ t('dashboard.generateDoctorNotes') }}
+            </button>
+          </template>
+        </MedicalCard>
+        <DoctorNotesModal
+          v-model:specialty="clinicalDoctorSpecialty"
+          :open="clinicalDoctorNotesSurface === 'dashboard'"
+          :content="clinicalDoctorNotesContent"
+          :loading="clinicalDoctorNotesLoading"
+          show-specialty-selector
+          :title="t('doctorNotes.clinicalTitle')"
+          :intro="t('doctorNotes.clinicalIntro')"
+          :generating-label="t('doctorNotes.clinicalGenerating')"
+          @close="closeClinicalDoctorNotes"
+          @specialty-change="onClinicalDoctorSpecialtyChange"
         />
         <p v-if="clinicalModelRefreshing" class="clinical-model-hint">
           {{ t('dashboard.clinicalModelRefreshing') }}
@@ -181,6 +245,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { format, parseISO } from 'date-fns'
 import { dateFnsLocaleFor } from '@/utils/dateLocale'
@@ -192,8 +257,18 @@ const { t, locale } = useI18n()
 import PageHeader from '@/components/PageHeader.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import MedicalCard from '@/components/MedicalCard.vue'
+import DoctorNotesModal from '@/components/DoctorNotesModal.vue'
+import {
+  generateClinicalDoctorNotesAsync,
+  type DoctorSpecialtyId,
+} from '@/services/clinicalDoctorNotes'
+import {
+  inferDefaultDoctorSpecialty,
+  inferDoctorSpecialtyFromAppointment,
+} from '@/services/doctorSpecialty'
 import PatientProfileCard from '@/components/dashboard/PatientProfileCard.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
+import AttentionStatCard from '@/components/dashboard/AttentionStatCard.vue'
 import BarChart from '@/components/dashboard/BarChart.vue'
 import DonutChart from '@/components/dashboard/DonutChart.vue'
 import SeverityLineChart from '@/components/dashboard/SeverityLineChart.vue'
@@ -206,6 +281,7 @@ import { findNearestUpcoming } from '@/services/appointmentUtils'
 import { getPatientProfile } from '@/api/patientApi'
 import { buildDashboardStats } from '@/services/dashboardStats'
 import { getHealthRecommendations } from '@/services/healthRecommendations'
+import { attentionJournalLinks } from '@/utils/journalLinks'
 import { scheduleIdleWork } from '@/utils/scheduleIdleWork'
 import type {
   ClinicalModel,
@@ -223,6 +299,11 @@ const clinicalModelRefreshing = ref(false)
 let clinicalModelRequestId = 0
 const journalEntries = ref<HealthEntry[]>([])
 const nearestAppointment = ref<DoctorAppointment | null>(null)
+const clinicalDoctorNotesSurface = ref<'dashboard' | 'appointment' | null>(null)
+const clinicalDoctorNotesContent = ref('')
+const clinicalDoctorNotesLoading = ref(false)
+const clinicalDoctorSpecialty = ref<DoctorSpecialtyId>('primary_care')
+let clinicalDoctorNotesRequestId = 0
 
 const avgSeverityLabel = computed(() => {
   const avg = stats.value?.averageSeverity
@@ -277,9 +358,129 @@ const severityTrendEmptyText = computed(() => {
   })
 })
 
+const attentionLinks = computed(() => attentionJournalLinks(journalEntries.value))
+
+const statDetails = computed(() => {
+  const s = stats.value
+  const days = s?.daysTracked ?? 0
+  const dateLocale = dateFnsLocaleFor(locale.value as AppLocale)
+  let trackingSinceLabel = ''
+  if (s?.trackingSince) {
+    try {
+      trackingSinceLabel = format(parseISO(s.trackingSince), 'MMM d, yyyy', {
+        locale: dateLocale,
+      })
+    } catch {
+      trackingSinceLabel = s.trackingSince
+    }
+  }
+  const conditionNames =
+    s?.conditions
+      .slice(0, 3)
+      .map((c) => c.name)
+      .join(', ') ?? ''
+
+  return {
+    journal: t('dashboard.stats.journalEntriesDetail', { days }),
+    activity: t('dashboard.stats.last30DaysDetail'),
+    tracking: trackingSinceLabel
+      ? t('dashboard.stats.daysTrackedDetail', { date: trackingSinceLabel })
+      : t('dashboard.stats.daysTrackedEmpty'),
+    conditions: conditionNames
+      ? t('dashboard.stats.trackedConditionsDetail', { areas: conditionNames })
+      : t('dashboard.stats.trackedConditionsEmpty'),
+    severity:
+      s?.averageSeverity != null
+        ? t('dashboard.stats.avgSeverityDetail', { avg: s.averageSeverity })
+        : t('dashboard.stats.avgSeverityEmpty'),
+    timeline: t('dashboard.stats.timelineEventsDetail'),
+    hypotheses: t('dashboard.stats.hypothesesDetail'),
+    attention: t('dashboard.stats.attentionDetail'),
+    attentionEmpty: t('dashboard.stats.attentionEmptyDetail'),
+  }
+})
+
 const recommendations = computed(() =>
-  getHealthRecommendations(patient.value, stats.value)
+  getHealthRecommendations(patient.value, stats.value, journalEntries.value)
 )
+
+async function loadClinicalDoctorNotes() {
+  if (!clinicalModel.value || journalEntries.value.length === 0) return
+
+  const requestId = ++clinicalDoctorNotesRequestId
+  clinicalDoctorNotesLoading.value = true
+
+  try {
+    const notes = await generateClinicalDoctorNotesAsync(
+      clinicalModel.value,
+      patient.value,
+      journalEntries.value,
+      clinicalDoctorSpecialty.value,
+      t,
+      dateFnsLocaleFor(locale.value as AppLocale),
+      locale.value as AppLocale
+    )
+    if (requestId === clinicalDoctorNotesRequestId) {
+      clinicalDoctorNotesContent.value = notes
+    }
+  } finally {
+    if (requestId === clinicalDoctorNotesRequestId) {
+      clinicalDoctorNotesLoading.value = false
+    }
+  }
+}
+
+function closeClinicalDoctorNotes() {
+  if (clinicalDoctorNotesSurface.value === 'dashboard') {
+    clinicalDoctorNotesSurface.value = null
+  }
+}
+
+function onAppointmentDoctorNotesBack() {
+  if (clinicalDoctorNotesSurface.value === 'appointment') {
+    clinicalDoctorNotesSurface.value = null
+  }
+}
+
+function onAppointmentModalClose() {
+  if (clinicalDoctorNotesSurface.value === 'appointment') {
+    clinicalDoctorNotesSurface.value = null
+  }
+}
+
+async function openClinicalDoctorNotes() {
+  if (!clinicalModel.value || journalEntries.value.length === 0) return
+  clinicalDoctorSpecialty.value = inferDefaultDoctorSpecialty(
+    journalEntries.value,
+    stats.value?.conditions ?? []
+  )
+  clinicalDoctorNotesSurface.value = 'dashboard'
+  clinicalDoctorNotesContent.value = ''
+  await loadClinicalDoctorNotes()
+}
+
+async function openClinicalDoctorNotesFromAppointment() {
+  if (
+    !clinicalModel.value ||
+    !nearestAppointment.value ||
+    journalEntries.value.length === 0
+  ) {
+    return
+  }
+  clinicalDoctorSpecialty.value = inferDoctorSpecialtyFromAppointment(
+    nearestAppointment.value,
+    journalEntries.value,
+    stats.value?.conditions ?? []
+  )
+  clinicalDoctorNotesSurface.value = 'appointment'
+  clinicalDoctorNotesContent.value = ''
+  await loadClinicalDoctorNotes()
+}
+
+function onClinicalDoctorSpecialtyChange() {
+  if (!clinicalDoctorNotesSurface.value) return
+  void loadClinicalDoctorNotes()
+}
 
 async function applyClinicalModel(entries: HealthEntry[]): Promise<void> {
   const requestId = ++clinicalModelRequestId
@@ -325,8 +526,18 @@ function onAiInsightsChanged(): void {
   }
 }
 
+function onInsightsRegenerated(): void {
+  if (journalEntries.value.length > 0) {
+    void applyClinicalModel(journalEntries.value)
+  }
+}
+
 onMounted(async () => {
   window.addEventListener('monday-ai-insights-changed', onAiInsightsChanged)
+  window.addEventListener(
+    'monday-insights-regenerated',
+    onInsightsRegenerated as EventListener
+  )
   try {
     const entries = await getHealthEntries()
     const [profile, timeline, hyps, appts] = await Promise.all([
@@ -347,6 +558,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('monday-ai-insights-changed', onAiInsightsChanged)
+  window.removeEventListener(
+    'monday-insights-regenerated',
+    onInsightsRegenerated as EventListener
+  )
 })
 
 async function refreshStats() {
@@ -393,26 +608,22 @@ function formatDate(iso: string): string {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
+  align-items: stretch;
+}
+
+.stats-grid > * {
+  min-height: 100%;
 }
 
 @media (max-width: 960px) {
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  /* Full-width last card when 7 items sit alone on a 2-column row */
-  .stats-grid > :nth-child(7):last-child {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 420px) {
   .stats-grid {
     grid-template-columns: 1fr;
-  }
-
-  .stats-grid > :nth-child(7):last-child {
-    grid-column: auto;
   }
 }
 
@@ -506,4 +717,30 @@ function formatDate(iso: string): string {
   font-size: 0.875rem;
   color: var(--text-faint);
 }
+
+.btn-clinical-doctor-notes {
+  padding: 0.55rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 40%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent-strong) 12%, var(--bg-surface));
+  color: var(--accent-strong);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.btn-clinical-doctor-notes:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-strong) 20%, var(--bg-surface));
+  border-color: var(--accent-strong);
+}
+
+.btn-clinical-doctor-notes:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 </style>

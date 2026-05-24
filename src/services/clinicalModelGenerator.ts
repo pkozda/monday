@@ -12,7 +12,9 @@ const ENTRY_TYPE_LABELS: Record<HealthEntryType, string> = {
   medication: 'medication updates',
   change: 'condition changes',
   doctor_visit: 'doctor visits',
-  imaging: 'tests / imaging',
+  imaging: 'imaging',
+  lab_test: 'lab results',
+  surgery: 'surgeries / procedures',
   other: 'notes',
 }
 

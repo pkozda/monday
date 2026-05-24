@@ -1,9 +1,13 @@
 export default {
   nav: {
+    main: 'Main navigation',
     dashboard: 'Dashboard',
     hypotheses: 'Hypotheses',
     appointments: 'Appointments',
     journal: 'Journal',
+    openMenu: 'Open menu',
+    settings: 'Preferences',
+    preferences: 'Preferences',
   },
   language: {
     label: 'Language',
@@ -12,6 +16,7 @@ export default {
     ru: 'Russian',
   },
   theme: {
+    appearance: 'Appearance',
     dark: 'Dark',
     light: 'Light',
     darkHint: 'Dark mode — click to switch to light',
@@ -42,6 +47,8 @@ export default {
       slowNotificationMessage:
         'Hypotheses and diagnoses are being rebuilt from your journal.',
       successTitle: 'Insights ready',
+      successToastMessage:
+        'Hypotheses and diagnoses are ready. Open Hypotheses & diagnoses to review.',
       errorTitle: 'Regeneration failed',
     },
   },
@@ -74,16 +81,43 @@ export default {
     stats: {
       journalEntries: 'Journal entries',
       allTime: 'All time',
+      journalEntriesDetail:
+        'Symptoms, visits, medications, and notes you have logged — {days} days of tracking on Monday.',
       last30Days: 'Last 30 days',
       recentActivity: 'Recent activity',
+      last30DaysDetail:
+        'Entries dated in the rolling past month — useful for spotting short-term changes.',
+      daysTracked: 'Days tracked',
+      daysTrackedHint: 'Since first entry',
+      daysTrackedDetail:
+        'Calendar span from your earliest logged event ({date}) through today.',
+      daysTrackedEmpty:
+        'Starts counting once you add your first journal entry.',
       trackedConditions: 'Tracked conditions',
       bodyAreasHint: 'Body areas / issues',
+      trackedConditionsDetail: 'Areas with journal activity: {areas}.',
+      trackedConditionsEmpty:
+        'Condition areas appear here as you log entries with body-region tags.',
       avgSeverity: 'Avg severity',
       severityHint: 'When reported (1–10)',
+      avgSeverityDetail:
+        'Mean of explicit 1–10 ratings across entries (currently {avg}).',
+      avgSeverityEmpty:
+        'Add severity scores in journal entries to see an average here.',
       timelineEvents: 'Timeline events',
+      timelineEventsHint: 'From your journal',
+      timelineEventsDetail:
+        'Structured events extracted from entries for your longitudinal timeline.',
       hypotheses: 'Hypotheses',
+      hypothesesHint: 'Possible conditions',
+      hypothesesDetail:
+        'AI- or rules-based possibilities generated from patterns in your journal.',
       needsAttention: 'Needs attention',
-      attentionHint: 'Urgent or emergency flags',
+      attentionHint: 'Urgent or emergency',
+      attentionDetail:
+        'Flagged entries below — open each link or view all flagged records.',
+      attentionEmptyDetail:
+        'No urgent or emergency-level entries right now. Keep logging if symptoms change.',
     },
     severityTrendTitle: 'Severity trend',
     severityTrendBase:
@@ -121,6 +155,7 @@ export default {
     clinicalModelRefreshing: 'Refreshing clinical model with AI…',
     clinicalModelHint:
       'Log symptoms and visits in the Journal to populate condition-specific factors.',
+    generateDoctorNotes: 'Generate notes for your doctor',
   },
   profile: {
     yearsOld: '{years} years old',
@@ -147,6 +182,39 @@ export default {
     dateOfBirth: 'Date of birth',
     biologicalSex: 'Biological sex',
     bloodType: 'Blood type',
+    height: 'Height (cm)',
+    weight: 'Weight (kg)',
+    heightPlaceholder: 'e.g. 175',
+    weightPlaceholder: 'e.g. 72',
+    heightValue: '{value} cm',
+    weightValue: '{value} kg',
+    bodyMetricsTitle: 'Body metrics & BMI',
+    bmiAddHeightWeight: 'Add height and weight in Edit profile to see BMI.',
+    bmiUnavailable: 'BMI could not be calculated from your height and weight.',
+    bmi: 'BMI',
+    bmiValue: '{value}',
+    bmiScaleAria: 'BMI {value}, {category}',
+    bmiCategory: {
+      underweight: 'Underweight',
+      normal: 'Healthy range',
+      overweight: 'Overweight',
+      obese: 'Obese',
+    },
+    bmiCategoryShort: {
+      underweight: 'Low',
+      normal: 'Healthy',
+      overweight: 'High',
+      obese: 'Very high',
+    },
+    bmiHint: {
+      underweight:
+        'Below the usual healthy range for adults. Worth discussing with a clinician if unintended.',
+      normal: 'Within the usual healthy range for adults (BMI 18.5–24.9).',
+      overweight:
+        'Above the usual healthy range. Lifestyle or clinical review may help.',
+      obese:
+        'Well above the usual healthy range. A clinician can help plan next steps.',
+    },
     sexNotSpecified: 'Not specified',
     sexFemale: 'Female',
     sexMale: 'Male',
@@ -160,10 +228,24 @@ export default {
     headlineNone: 'No suggestions yet',
     headlineOne: '1 suggestion',
     headlineMany: '{count} suggestions',
+    heroSubtitle:
+      'Personal tips to stay on top of screenings, habits, and your journal.',
+    statPriority: 'priority',
+    statTotal: 'tips for you',
+    summaryBold: 'Tailored for you.',
     summary:
-      'Preventive care suggestions based on your age, profile, and journal',
+      ' Based on your age, profile, and what you have logged in your journal.',
     disclaimer:
       'General guidance—not a substitute for advice from your clinician.',
+    sectionPriority: 'Worth doing soon',
+    sectionMore: 'Also good to know',
+    gotIt: 'Got it, thanks',
+    viewEntries: 'Open in your journal',
+    viewAllAttention: 'View all flagged entries',
+    viewAllAttentionCount: 'View all {count} flagged entries',
+    openAttentionJournal: 'Open flagged entries in journal',
+    viewInJournal: 'Go to journal',
+    emptyTitle: 'We need a bit more about you',
     empty:
       'Add your date of birth in your profile to unlock personalized screening suggestions.',
     categories: {
@@ -288,6 +370,7 @@ export default {
     emptyText:
       'You do not have an upcoming visit on your calendar yet.',
     goToAppointments: 'Go to Appointments',
+    backToDetails: 'Appointment',
   },
   appointmentsPage: {
     eyebrow: 'Scheduling',
@@ -327,6 +410,7 @@ export default {
     remove: 'Remove',
   },
   healthEntryCard: {
+    edit: 'Edit',
     medications: 'Medications:',
     severity: 'Severity:',
     clinicalSummary: 'Clinical summary:',
@@ -336,28 +420,39 @@ export default {
     title: 'Hypotheses & diagnoses',
     subtitle:
       'Regenerate pulls the latest journal data into possible conditions and hypotheses.',
+    generate: 'Generate hypotheses & conditions',
+    generateTitle: 'Build hypotheses and possible conditions from your journal',
     regenerate: 'Regenerate hypotheses & conditions',
     regenerating: 'Regenerating…',
     loading: 'Loading insights…',
+    notGeneratedTitle: 'Nothing generated yet',
+    notGeneratedText:
+      'Hypotheses and possible conditions are built from your journal when you run Generate. Nothing is created automatically when you open this page.',
     tabDiagnoses: 'Diagnoses',
     tabHypotheses: 'Hypotheses',
     noHypothesesTitle: 'No hypotheses yet',
     noHypothesesText:
       'Add journal entries, then use Regenerate hypotheses & conditions in the header.',
-    regenerateConfirm:
-      'Replace all hypotheses with new ones from your current journal? Possible conditions will be recalculated from the same records.',
+    regenerateConfirmTitle: 'Regenerate insights?',
+    regenerateConfirmMessage:
+      'This replaces all hypotheses with new ones from your current journal. Possible conditions will be recalculated from the same records.',
+    regenerateConfirmAction: 'Regenerate',
     regenerateSlowHint:
       'Regeneration is still running. You can leave this page — we will notify you when hypotheses and diagnoses are ready.',
     regenerateTitleEmpty: 'Add journal entries first',
     regenerateTitle: 'Regenerate from current journal',
     regenerateFailed: 'Regeneration failed.',
     regenerateMessages: {
+      aiRequired:
+        'Turn on AI insights in the navigation bar and configure your LLM API key to generate hypotheses and diagnoses.',
       needEntries:
         'Add journal entries first, then regenerate hypotheses and possible conditions.',
       success:
         'Regenerated {hypothesisCount} hypotheses from {journalEntryCount} journal entries across {areaCount} areas. Possible conditions use the same records.',
       noHypotheses:
         'Reviewed {journalEntryCount} journal entries but could not derive hypotheses — add more detail per body area and try again.',
+      successNoDiagnoses:
+        'Created {hypothesisCount} hypotheses from {journalEntryCount} journal entries, but the AI could not suggest possible conditions to discuss — add more journal detail or try Generate possible conditions on the Diagnoses tab.',
     },
   },
   journalPage: {
@@ -374,21 +469,74 @@ export default {
       'Click New entry in the header to log your first note.',
     entrySaved: 'Entry saved — classified as {classification}.',
     entrySavedTimeline: 'Added to your timeline.',
+    entryUpdated: 'Entry updated — classified as {classification}.',
     newEntryModalTitle: 'New journal entry',
     newEntryModalIntro:
       'Log symptoms, medications, or visits. Monday classifies each entry and adds it to your timeline.',
+    editEntryModalTitle: 'Edit journal entry',
+    editEntryModalIntro:
+      'Change the date or text. Monday re-analyzes the entry and updates your timeline.',
+    attentionFilterBanner:
+      'Showing journal entries flagged as urgent or emergency — the same records counted under Needs attention on your dashboard.',
+    showAllEntries: 'Show all entries',
+    backNavLabel: 'Leave single entry view',
+    backToAllEntries: 'Back to all entries',
+    backToAttentionEntries: 'Back to flagged entries',
+    singleEntryHint: 'You are viewing one journal entry. Use the link above to see your full journal.',
+    singleEntryTitle: 'Journal entry',
+    singleEntrySubtitle: 'Opened from a recommendation or link — return to the full list to browse other records.',
+    entryNotFoundTitle: 'Entry not found',
+    entryNotFoundText:
+      'This journal entry may have been removed or the link is outdated. Go back to see all records.',
+    attentionRecordsTitle: 'Entries needing attention',
+    attentionRecordsSubtitle:
+      '{count} urgent or emergency-level records from your journal.',
+    noAttentionTitle: 'No urgent entries right now',
+    noAttentionText:
+      'None of your journal records are currently flagged as urgent or emergency. You can view all entries instead.',
   },
   diagnosis: {
     loading: 'Analyzing your journal for possible conditions…',
     refreshing: 'Updating possible conditions…',
+    generateAction: 'Generate possible conditions',
+    generatedSuccess:
+      'Generated possible conditions for {count} body area(s) from your journal.',
     empty:
-      'Add journal entries describing your symptoms, body area, and medications to see possible conditions with percentages.',
+      'Use Generate on this page (with AI insights on) to build possible conditions from your journal.',
+    emptyNotGeneratedTitle: 'Possible conditions not generated yet',
+    emptyNotGeneratedHint:
+      'Use Generate in the page header (with AI insights on) to build hypotheses and possible conditions together.',
+    emptyIncompleteTitle: 'Possible conditions were not saved',
+    emptyIncompleteHint:
+      'Your hypotheses are saved, but possible conditions did not finish generating (for example after an interrupted run). Use the button below or Regenerate in the header.',
+    emptyAiOffTitle: 'AI insights are off',
+    emptyAiOffHint:
+      'Turn on AI insights in the navigation bar to generate possible conditions from your journal.',
+    emptyNeedEntriesTitle: 'Add journal entries first',
+    emptyNeedEntriesHint:
+      'Possible conditions are built from your health journal. Log symptoms, visits, or test results, then generate again.',
+    emptyNoSuggestionsTitle: 'No possible conditions suggested',
+    emptyNoSuggestionsHint:
+      'The AI reviewed your journal and hypotheses but could not name exploratory conditions to discuss with a clinician. This is not a diagnosis — try adding more specific symptoms, timing, and test results, then generate again.',
+    emptyNeedsMoreJournalTitle: 'More journal detail may help',
+    emptyNeedsMoreJournalHint:
+      'With only a brief journal record, the AI may not suggest ranked possible conditions. Add entries for symptoms, medications, imaging, or visits, then tap Generate possible conditions.',
+    emptyFailedTitle: 'Could not generate possible conditions',
+    emptyFailedHint:
+      'Something went wrong while calling the AI. Check your API key and network, then try again.',
+    outcomeBanner: {
+      no_suggestions:
+        'No possible conditions were suggested from your current journal. Add more detail and try again.',
+      needs_more_journal:
+        'Add more journal entries or richer symptom notes, then generate possible conditions again.',
+      failed: 'Possible conditions could not be generated. Check AI settings and try again.',
+    },
     disclaimer:
-      'Conditions are inferred from your full journal (including related entries in other body areas). Always confirm with a qualified clinician.',
+      'Possible conditions are exploratory suggestions from AI based on your journal text. Always confirm with a qualified clinician.',
     aiRankedNote:
-      'Percentages and order for possible conditions were ranked by AI from your journal; supporting criteria still come from your logged entries.',
+      'Percentages and condition names were generated by AI from your de-identified journal entries only.',
     ruleBasedNote:
-      'Rankings use the built-in medical catalog and your journal (no AI). Turn on AI insights in the header for LLM-ranked conditions.',
+      'Turn on AI insights and use Generate to create possible conditions.',
     aiBadge: 'AI ranked',
     certaintyHigh: 'Likely',
     certaintyModerate: 'Leading',
@@ -441,8 +589,8 @@ export default {
     aboutTitle: 'What is this condition?',
     whatYouLoggedTitle: 'What you logged that supports this',
     whatYouLoggedIntro:
-      'These are your actual journal entries we linked to this possibility — not generic symptom labels.',
-    whyThisSupports: 'Why this is linked',
+      'Your journal entries linked to this possible condition. Each note includes an AI explanation of what in your text connects to this disease — not a confirmed diagnosis.',
+    whyThisSupports: 'Why this supports this possibility',
     supportReason: {
       symptom_logged:
         'You logged symptoms or changes that match what we look for with this condition.',
@@ -498,13 +646,27 @@ export default {
     importSuccess: 'Imported {count} journal entries.',
     importFailed: 'Import failed.',
   },
+  translation: {
+    skippedTitle: 'Saved in Russian',
+    skippedMessage:
+      'Translation was unavailable (AI rate limit or offline). Your entry was saved in Russian. Wait a few minutes or check your OpenAI quota, then try again.',
+  },
   entryForm: {
     langHint:
-      'English and Russian (Русский) are supported. Russian text is translated to English for analysis when you save.',
-    translating: 'Translating and saving…',
+      'English and Russian (Русский) are supported. With the app in English, English entries are saved as-is. Russian text is translated when you save.',
+    translating: 'AI translating and saving…',
     eventDate: 'When did this happen?',
     conditionArea: 'Body area / condition',
+    conditionAreaOptional: 'Body area (optional)',
+    conditionAreaHintRequired: 'Which part of the body is affected?',
+    conditionAreaHintOptional:
+      'Optional — leave blank for whole-body records like blood tests, or note a region (e.g. knee).',
     entryType: 'What are you recording?',
+    entryTypeHint: 'Pick the option that best matches — this helps organize your journal.',
+    typeGroupFeel: 'How you feel',
+    typeGroupCare: 'Care & treatment',
+    typeGroupTests: 'Tests & procedures',
+    typeGroupOther: 'Other',
     description: 'Full details',
     descriptionHint:
       'Write the full story here — what happened, when, and any test or treatment details.',
@@ -516,21 +678,55 @@ export default {
     clearSeverity: 'Clear',
     saveEntry: 'Save entry',
     saveHealthRecord: 'Save health record',
+    saveChanges: 'Save changes',
     savingAnalyzing: 'Saving & analyzing…',
     clearForm: 'Clear form',
-    optionSymptom: 'Symptoms',
-    optionChange: 'Change in condition',
-    optionMedication: 'Medication / prescription',
-    optionDoctorVisit: 'Doctor visit or advice',
-    optionImaging: 'Test or imaging',
-    optionOther: 'Other health note',
+    validationMissingBody: 'Please enter the body area or condition affected.',
+    validationMissingCore: 'Please fill in the short title and full details.',
+    validationMedication: 'Please list the medication name and dosage.',
+    types: {
+      symptom: {
+        label: 'Symptoms',
+        hint: 'Pain, discomfort, or how you feel in a body area',
+      },
+      change: {
+        label: 'Change in condition',
+        hint: 'Getting better, worse, or a new development',
+      },
+      medication: {
+        label: 'Medication',
+        hint: 'Started, stopped, or changed a drug',
+      },
+      doctor_visit: {
+        label: 'Doctor visit',
+        hint: 'Appointment, advice, or follow-up (not surgery)',
+      },
+      lab_test: {
+        label: 'Blood test / lab results',
+        hint: 'Blood work, panels, or other lab values — body area optional',
+      },
+      imaging: {
+        label: 'Imaging scan',
+        hint: 'MRI, X-ray, CT, ultrasound, etc.',
+      },
+      surgery: {
+        label: 'Surgery or procedure',
+        hint: 'Operation, procedure, or hospital treatment',
+      },
+      other: {
+        label: 'Other note',
+        hint: 'Only if nothing else fits',
+      },
+    },
   },
   entryTypes: {
     symptom: 'Symptom report',
     medication: 'Medication update',
     change: 'Condition change',
     doctor_visit: 'Doctor visit',
-    imaging: 'Imaging / test',
+    imaging: 'Imaging study',
+    lab_test: 'Lab results',
+    surgery: 'Surgery / procedure',
     other: 'Health note',
   },
   urgency: {
@@ -549,7 +745,9 @@ export default {
     medication: 'Medication',
     change: 'Changes',
     doctor_visit: 'Doctor visits',
-    imaging: 'Tests / imaging',
+    imaging: 'Imaging',
+    lab_test: 'Lab results',
+    surgery: 'Surgery',
     other: 'Other notes',
   },
   classification: {
@@ -749,8 +947,58 @@ export default {
       reason: 'ongoing concerns tracked for this area',
     },
   },
+  doctorSpecialty: {
+    primary_care: 'Family / primary care doctor',
+    orthopedics: 'Orthopedist (bones & joints)',
+    dermatology: 'Dermatologist (skin)',
+    cardiology: 'Cardiologist (heart)',
+    gastroenterology: 'Gastroenterologist (digestive)',
+    neurology: 'Neurologist',
+    endocrinology: 'Endocrinologist (hormones & metabolism)',
+    pulmonology: 'Pulmonologist (lungs)',
+    urology: 'Urologist',
+    gynecology: 'Gynecologist',
+    ophthalmology: 'Ophthalmologist (eyes)',
+    ent: 'ENT specialist (ear, nose, throat)',
+    psychiatry: 'Psychiatrist / mental health',
+    rheumatology: 'Rheumatologist (joints & autoimmune)',
+  },
   doctorNotes: {
     title: 'Notes for your doctor',
+    specialtyLabel: 'Which doctor is this for?',
+    preparedForSpecialty: 'Prepared for: {specialty}',
+    specialtyFocus: {
+      primary_care:
+        'Notes emphasize overall care, medications, prevention, and referrals.',
+      orthopedics:
+        'Notes emphasize pain, mobility, joints, spine, imaging, and physical therapy.',
+      dermatology: 'Notes emphasize skin symptoms, rashes, and treatments tried.',
+      cardiology: 'Notes emphasize chest/heart symptoms and cardiovascular risk.',
+      gastroenterology: 'Notes emphasize GI symptoms, diet, and digestive meds.',
+      neurology: 'Notes emphasize headache, numbness, dizziness, and neurologic symptoms.',
+      endocrinology: 'Notes emphasize weight, glucose, thyroid, and metabolic concerns.',
+      pulmonology: 'Notes emphasize cough, breathlessness, and lung treatments.',
+      urology: 'Notes emphasize urinary symptoms and kidney/bladder concerns.',
+      gynecology: "Notes emphasize pelvic and women's health topics.",
+      ophthalmology: 'Notes emphasize vision and eye symptoms.',
+      ent: 'Notes emphasize ear, nose, throat, and sinus symptoms.',
+      psychiatry: 'Notes emphasize mood, anxiety, sleep, and mental health care.',
+      rheumatology: 'Notes emphasize inflammatory joint symptoms and stiffness.',
+    },
+    clinicalTitle: 'Visit brief from your clinical model',
+    clinicalIntro:
+      'A clinician-oriented summary from your whole journal and clinical model. Review and edit before printing.',
+    clinicalGenerating: 'Building your visit brief with AI…',
+    clinicalModelBadge: '(From your clinical model and journal)',
+    clinicalModelSectionTitle: 'CLINICAL MODEL SUMMARY',
+    clinicalModelFactorsTitle: 'KEY FACTORS',
+    clinicalModelAiFactorsTitle: 'PRIORITY THEMES (AI)',
+    clinicalJournalSectionTitle: 'RECENT JOURNAL ENTRIES ({count} total)',
+    clinicalJournalTruncated:
+      '(Showing {shown} most recent entries of {total} — full journal in Monday.)',
+    clinicalNoJournal: 'Add journal entries before generating doctor notes.',
+    clinicalDiscussReview: 'Review the clinical model themes above against current symptoms.',
+    clinicalDiscussTrajectory: 'Discuss whether patterns are improving, stable, or worsening.',
     generating: 'Building a clinician-oriented summary with AI…',
     intro:
       'Review and edit before printing. With AI insights on, this is a synthesized visit brief—not a raw journal export.',
@@ -821,7 +1069,9 @@ export default {
       medication: 'medication updates',
       change: 'condition changes',
       doctorVisit: 'doctor visits',
-      imaging: 'tests / imaging',
+      imaging: 'imaging',
+      labTest: 'lab results',
+      surgery: 'surgeries / procedures',
       other: 'notes',
     },
     factor: {

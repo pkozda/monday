@@ -9,19 +9,11 @@
         <button
           type="button"
           class="btn-regenerate"
-          :disabled="loading || isRegenerating || journalEntries.length === 0"
-          :title="
-            journalEntries.length === 0
-              ? t('hypothesesPage.regenerateTitleEmpty')
-              : t('hypothesesPage.regenerateTitle')
-          "
+          :disabled="isRegenerating || journalEntries.length === 0 || !aiActive"
+          :title="generateButtonTitle"
           @click="onRegenerateInsights"
         >
-          {{
-            isRegenerating
-              ? t('hypothesesPage.regenerating')
-              : t('hypothesesPage.regenerate')
-          }}
+          {{ generateButtonLabel }}
         </button>
       </template>
     </PageHeader>
@@ -51,16 +43,33 @@
       {{ regenerateMessage }}
     </div>
 
-    <div v-if="loading" class="page-loading">{{ t('hypothesesPage.loading') }}</div>
-
     <div
-      v-else-if="isRegenerating && hypotheses.length === 0 && diagnosisReports.length === 0"
+      v-if="isRegenerating && !hasGeneratedInsights"
       class="page-loading"
     >
       {{ t('hypothesesPage.regenerating') }}
     </div>
 
-    <template v-else-if="!isRegenerating || hypotheses.length > 0 || diagnosisReports.length > 0">
+    <div
+      v-else-if="!hasGeneratedInsights && !isRegenerating"
+      class="page-empty page-empty--generate"
+    >
+      <span class="page-empty__title">{{ t('hypothesesPage.notGeneratedTitle') }}</span>
+      <p>{{ t('hypothesesPage.notGeneratedText') }}</p>
+      <button
+        type="button"
+        class="btn-regenerate btn-regenerate--cta"
+        :disabled="journalEntries.length === 0 || !aiActive"
+        @click="onRegenerateInsights"
+      >
+        {{ t('hypothesesPage.generate') }}
+      </button>
+      <p v-if="journalEntries.length === 0" class="page-empty__hint">
+        {{ t('hypothesesPage.regenerateMessages.needEntries') }}
+      </p>
+    </div>
+
+    <template v-else-if="hasGeneratedInsights || isRegenerating">
       <div class="hypotheses-tabs page-panel page-panel--compact" role="tablist" aria-label="Hypotheses and diagnoses">
         <button
           type="button"
@@ -97,8 +106,15 @@
         <DiagnosisPanel
           :reports="diagnosisReports"
           :journal-entries="journalEntries"
-          :refreshing="diagnosesRefreshing"
+          :loading="diagnosisEmptyState?.loading ?? false"
+          :refreshing="diagnosesRefreshing || isRegenerating"
           :diagnosis-mode="diagnosisMode"
+          :empty-title="diagnosisEmptyState?.title"
+          :empty-hint="diagnosisEmptyState?.hint"
+          :show-empty-action="diagnosisEmptyState?.showAction ?? false"
+          :empty-action-disabled="isRegenerating || diagnosesRefreshing"
+          :empty-action-label="t('diagnosis.generateAction')"
+          @empty-action="generateDiagnosesOnly"
         />
       </div>
 
@@ -128,6 +144,16 @@
         </div>
       </div>
     </template>
+
+    <ConfirmDialog
+      v-model:open="regenerateConfirmOpen"
+      :title="t('hypothesesPage.regenerateConfirmTitle')"
+      :message="t('hypothesesPage.regenerateConfirmMessage')"
+      :confirm-label="t('hypothesesPage.regenerateConfirmAction')"
+      :cancel-label="t('common.cancel')"
+      variant="primary"
+      @confirm="confirmRegenerateInsights"
+    />
   </div>
 </template>
 
@@ -135,11 +161,16 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
 import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
 import { getHypotheses } from '@/api/mockApi'
-import { getDiagnosisReports } from '@/api/diagnosisApi'
+import { generateDiagnosisReports } from '@/api/diagnosisApi'
+import { getStoredClinicalInsights } from '@/api/diagnosisStorageApi'
+import { enrichAiDiagnosisReports } from '@/services/llm/aiDiagnosisJournalSupport'
+import { fillJournalLinkExplanations } from '@/services/llm/aiDiagnosisJournalLinks'
+import { saveDiagnosisReports } from '@/api/diagnosisStorageApi'
 import { useAiInsights } from '@/composables/useAiInsights'
 import { useInsightsRegenerationMessages } from '@/composables/useInsightsRegenerationMessages'
 import {
@@ -156,16 +187,17 @@ import {
   useInsightsRegeneration,
   type InsightsRegeneratedDetail,
 } from '@/services/insightsRegeneration'
+import { consolidateHypothesesForDisplay } from '@/services/hypothesisDisplay'
 
 const { t } = useI18n()
 const { active: aiActive } = useAiInsights()
 const { isRunning: isRegenerating } = useInsightsRegeneration()
 const regenerationMessages = useInsightsRegenerationMessages()
-import { consolidateHypothesesForDisplay } from '@/services/hypothesisDisplay'
 import { areasMatch } from '@/services/bodyAreaDetection'
 import { getHealthEntries } from '@/api/healthApi'
 import { getPatientProfile } from '@/api/patientApi'
 import type {
+  DiagnosisGenerationOutcome,
   DiagnosisReport,
   DiagnosisVariant,
   HealthEntry,
@@ -187,7 +219,6 @@ type TabId = 'diagnoses' | 'hypotheses'
 
 const route = useRoute()
 const router = useRouter()
-const loading = ref(false)
 const diagnosesRefreshing = ref(false)
 const activeTab = ref<TabId>('diagnoses')
 const hypotheses = ref<Hypothesis[]>([])
@@ -197,7 +228,97 @@ const patient = ref<PatientProfile | null>(null)
 const regenerateMessage = ref('')
 const regenerateMessageType = ref<'success' | 'error' | 'info'>('success')
 const regenerateSlowHint = ref(false)
+const regenerateConfirmOpen = ref(false)
 const diagnosisMode = ref<'rule' | 'ai'>('rule')
+const diagnosisOutcome = ref<DiagnosisGenerationOutcome | null>(null)
+const diagnosisOutcomeMessage = ref<string | undefined>(undefined)
+
+interface DiagnosisEmptyState {
+  loading?: boolean
+  title: string
+  hint?: string
+  showAction?: boolean
+}
+
+const diagnosisEmptyState = computed((): DiagnosisEmptyState | null => {
+  if (diagnosisReports.value.length > 0) return null
+
+  if (diagnosesRefreshing.value || isRegenerating.value) {
+    return { loading: true, title: '' }
+  }
+
+  if (!aiActive.value) {
+    return {
+      title: t('diagnosis.emptyAiOffTitle'),
+      hint: t('diagnosis.emptyAiOffHint'),
+    }
+  }
+
+  if (journalEntries.value.length === 0) {
+    return {
+      title: t('diagnosis.emptyNeedEntriesTitle'),
+      hint: t('diagnosis.emptyNeedEntriesHint'),
+    }
+  }
+
+  if (!hypotheses.value.some((h) => Boolean(h.aiInsight))) {
+    return {
+      title: t('diagnosis.emptyNotGeneratedTitle'),
+      hint: t('diagnosis.emptyNotGeneratedHint'),
+    }
+  }
+
+  switch (diagnosisOutcome.value) {
+    case 'no_suggestions':
+      return {
+        title: t('diagnosis.emptyNoSuggestionsTitle'),
+        hint: t('diagnosis.emptyNoSuggestionsHint'),
+        showAction: true,
+      }
+    case 'needs_more_journal':
+      return {
+        title: t('diagnosis.emptyNeedsMoreJournalTitle'),
+        hint: t('diagnosis.emptyNeedsMoreJournalHint'),
+        showAction: true,
+      }
+    case 'failed':
+      return {
+        title: t('diagnosis.emptyFailedTitle'),
+        hint:
+          diagnosisOutcomeMessage.value?.trim() ||
+          t('diagnosis.emptyFailedHint'),
+        showAction: true,
+      }
+    default:
+      return {
+        title: t('diagnosis.emptyIncompleteTitle'),
+        hint: t('diagnosis.emptyIncompleteHint'),
+        showAction: true,
+      }
+  }
+})
+
+const hasGeneratedInsights = computed(
+  () =>
+    diagnosisReports.value.length > 0 ||
+    hypotheses.value.some((h) => Boolean(h.aiInsight))
+)
+
+const generateButtonLabel = computed(() => {
+  if (isRegenerating.value) return t('hypothesesPage.regenerating')
+  return hasGeneratedInsights.value
+    ? t('hypothesesPage.regenerate')
+    : t('hypothesesPage.generate')
+})
+
+const generateButtonTitle = computed(() => {
+  if (journalEntries.value.length === 0) {
+    return t('hypothesesPage.regenerateTitleEmpty')
+  }
+  return hasGeneratedInsights.value
+    ? t('hypothesesPage.regenerateTitle')
+    : t('hypothesesPage.generateTitle')
+})
 
 function relatedVariantsForHypothesis(hypothesis: Hypothesis): DiagnosisVariant[] {
   const report = diagnosisReports.value.find((r) =>
@@ -213,36 +334,134 @@ function applyCache(cached: InsightsCacheSnapshot) {
   patient.value = cached.patient
 }
 
-async function loadInsights(options: { silent?: boolean } = {}) {
-  const silent = options.silent === true
-  if (silent) {
-    diagnosesRefreshing.value = true
-  }
+/** Read IndexedDB only — never calls the LLM. */
+async function loadPageState(): Promise<void> {
+  const [hyps, entries, profile, storedInsights] = await Promise.all([
+    getHypotheses(),
+    getHealthEntries(),
+    getPatientProfile(),
+    getStoredClinicalInsights(),
+  ])
+  const displayHyps = consolidateHypothesesForDisplay(hyps)
+  const storedReports = storedInsights?.diagnosisReports ?? []
+  hypotheses.value = displayHyps
+  journalEntries.value = entries
+  patient.value = profile
+  diagnosisReports.value =
+    storedReports.length > 0
+      ? enrichAiDiagnosisReports(storedReports, entries)
+      : []
+  diagnosisOutcome.value = storedInsights?.diagnosisOutcome ?? null
+  diagnosisOutcomeMessage.value = storedInsights?.diagnosisOutcomeMessage
+  diagnosisMode.value = shouldUseAiInsights() ? 'ai' : 'rule'
 
-  try {
-    const [hyps, entries, profile] = await Promise.all([
-      getHypotheses(),
-      getHealthEntries(),
-      getPatientProfile(),
-    ])
-    const displayHyps = consolidateHypothesesForDisplay(hyps)
-    hypotheses.value = displayHyps
-    journalEntries.value = entries
-    patient.value = profile
-    diagnosisReports.value = await getDiagnosisReports()
-    diagnosisMode.value = shouldUseAiInsights() ? 'ai' : 'rule'
-
+  if (displayHyps.length > 0) {
     setInsightsCache({
       hypotheses: displayHyps,
       journalEntries: entries,
-      diagnosisReports: diagnosisReports.value,
+      diagnosisReports: storedReports,
       patient: profile,
     })
-  } finally {
-    if (silent) {
-      diagnosesRefreshing.value = false
-    }
   }
+}
+
+function applyDiagnosisGeneration(
+  reports: DiagnosisReport[],
+  outcome: DiagnosisGenerationOutcome,
+  outcomeMessage?: string
+) {
+  diagnosisReports.value = reports
+  diagnosisOutcome.value = outcome
+  diagnosisOutcomeMessage.value = outcomeMessage
+
+  const cached = getInsightsCache()
+  if (cached) {
+    setInsightsCache({
+      ...cached,
+      diagnosisReports: reports,
+    })
+  }
+}
+
+async function generateDiagnosesOnly(): Promise<void> {
+  if (isRegenerating.value || diagnosesRefreshing.value) return
+  if (!aiActive.value) return
+
+  diagnosesRefreshing.value = true
+  try {
+    const result = await generateDiagnosisReports({ forceRegenerate: true })
+    applyDiagnosisGeneration(
+      result.reports,
+      result.outcome,
+      result.outcomeMessage
+    )
+
+    if (result.reports.length > 0) {
+      regenerateMessageType.value = 'success'
+      regenerateMessage.value = t('diagnosis.generatedSuccess', {
+        count: result.reports.length,
+      })
+      activeTab.value = 'diagnoses'
+      return
+    }
+
+    regenerateMessageType.value =
+      result.outcome === 'failed' ? 'error' : 'info'
+    regenerateMessage.value = t(`diagnosis.outcomeBanner.${result.outcome}`)
+  } finally {
+    diagnosesRefreshing.value = false
+  }
+}
+
+/** Hypotheses saved but diagnoses missing (e.g. interrupted generation). */
+function reportsNeedLinkExplanations(reports: DiagnosisReport[]): boolean {
+  return reports.some((r) =>
+    r.variants.some(
+      (v) =>
+        v.aiRanked &&
+        v.confirmCriteria.some(
+          (c) =>
+            c.status === 'met' &&
+            Boolean(c.sourceEntryId) &&
+            !c.linkExplanation?.trim()
+        )
+    )
+  )
+}
+
+async function ensureJournalLinkExplanations(): Promise<void> {
+  if (!aiActive.value || isRegenerating.value || diagnosesRefreshing.value) {
+    return
+  }
+  if (!reportsNeedLinkExplanations(diagnosisReports.value)) return
+
+  diagnosesRefreshing.value = true
+  try {
+    const updated = await fillJournalLinkExplanations(
+      diagnosisReports.value,
+      journalEntries.value
+    )
+    applyDiagnosisGeneration(updated, diagnosisOutcome.value ?? 'ok')
+    await saveDiagnosisReports(updated, diagnosisOutcome.value ?? 'ok')
+  } catch (err) {
+    console.warn('[Monday] journal link explanations', err)
+  } finally {
+    diagnosesRefreshing.value = false
+  }
+}
+
+async function backfillDiagnosesIfNeeded(): Promise<void> {
+  const hasAiHypotheses = hypotheses.value.some((h) => Boolean(h.aiInsight))
+  if (!hasAiHypotheses || diagnosisReports.value.length > 0) return
+  if (!aiActive.value || isRegenerating.value) return
+  if (
+    diagnosisOutcome.value === 'no_suggestions' ||
+    diagnosisOutcome.value === 'needs_more_journal'
+  ) {
+    return
+  }
+
+  await generateDiagnosesOnly()
 }
 
 const regenerateBannerVariant = computed(() => {
@@ -255,16 +474,27 @@ const regenerateBannerVariant = computed(() => {
 function clearInsightsDisplay() {
   hypotheses.value = []
   diagnosisReports.value = []
+  diagnosisOutcome.value = null
+  diagnosisOutcomeMessage.value = undefined
   regenerateSlowHint.value = false
   regenerateMessage.value = ''
 }
 
 function applyRegeneratedDetail(detail: InsightsRegeneratedDetail) {
   applyCache(detail.snapshot)
+  applyDiagnosisGeneration(
+    detail.diagnosis.reports,
+    detail.diagnosis.outcome,
+    detail.diagnosis.outcomeMessage
+  )
   diagnosisMode.value = detail.snapshot.aiInsightsEnabled ? 'ai' : 'rule'
   regenerateSlowHint.value = false
   regenerateMessageType.value =
-    detail.result.hypothesisCount > 0 ? 'success' : 'info'
+    detail.result.hypothesisCount > 0 && detail.diagnosis.reports.length > 0
+      ? 'success'
+      : detail.result.hypothesisCount > 0
+        ? 'info'
+        : 'info'
   regenerateMessage.value = formatRegenerateMessage(detail.result)
   if (detail.result.hypothesisCount > 0 && diagnosisReports.value.length > 0) {
     activeTab.value = 'diagnoses'
@@ -287,7 +517,7 @@ function startBackgroundRegeneration() {
     onComplete: applyRegeneratedDetail,
     onError: () => {
       regenerateSlowHint.value = false
-      void loadInsights({ silent: true })
+      void loadPageState()
     },
   })
 }
@@ -305,20 +535,16 @@ onMounted(async () => {
   window.addEventListener('monday-insights-regeneration-slow', onRegenerationSlow)
   window.addEventListener(INSIGHTS_REGENERATED_EVENT, onInsightsRegenerated as EventListener)
 
+  const entries = await getHealthEntries()
+  journalEntries.value = entries
+
   const cached = getInsightsCache()
-  const [entries] = await Promise.all([getHealthEntries()])
-  if (cached && isInsightsCacheValid(cached, entries)) {
+  if (cached && isInsightsCacheValid(cached, entries) && cached.hypotheses.length > 0) {
     applyCache(cached)
     diagnosisMode.value = cached.aiInsightsEnabled ? 'ai' : 'rule'
-    void loadInsights({ silent: true })
   } else {
-    invalidateInsightsCache()
-    loading.value = true
-    try {
-      await loadInsights()
-    } finally {
-      loading.value = false
-    }
+    if (cached) invalidateInsightsCache()
+    await loadPageState()
   }
 
   const tab = route.query.tab
@@ -327,6 +553,9 @@ onMounted(async () => {
   } else if (diagnosisReports.value.length === 0 && hypotheses.value.length > 0) {
     activeTab.value = 'hypotheses'
   }
+
+  await backfillDiagnosesIfNeeded()
+  await ensureJournalLinkExplanations()
 })
 
 onUnmounted(() => {
@@ -341,13 +570,15 @@ onUnmounted(() => {
 function onRegenerateInsights() {
   if (isRegenerating.value) return
 
-  if (
-    hypotheses.value.length > 0 &&
-    !window.confirm(t('hypothesesPage.regenerateConfirm'))
-  ) {
+  if (hypotheses.value.length > 0) {
+    regenerateConfirmOpen.value = true
     return
   }
 
+  startBackgroundRegeneration()
+}
+
+function confirmRegenerateInsights() {
   startBackgroundRegeneration()
 }
 
@@ -499,5 +730,26 @@ watch(activeTab, (tab) => {
   display: flex;
   flex-direction: column;
   gap: 0;
+}
+
+.page-empty--generate {
+  max-width: 32rem;
+  margin: 2rem auto;
+  text-align: center;
+}
+
+.page-empty--generate p {
+  margin: 0.75rem 0 1.25rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.page-empty__hint {
+  margin-top: 1rem !important;
+  font-size: 0.875rem;
+}
+
+.btn-regenerate--cta {
+  margin-top: 0.25rem;
 }
 </style>

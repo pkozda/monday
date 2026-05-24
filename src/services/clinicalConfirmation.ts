@@ -16,7 +16,8 @@ export type DiagnosisSupportReason =
   | 'journal_pattern'
 
 export function entryHasDiagnosisSupport(entry: HealthEntry): boolean {
-  if (entry.entryType === 'imaging') return true
+  if (entry.entryType === 'imaging' || entry.entryType === 'lab_test') return true
+  if (entry.entryType === 'surgery') return true
   if (entry.entryType === 'symptom' || entry.entryType === 'change') return true
 
   const text = entryText(entry)
@@ -76,7 +77,11 @@ export function supportReasonForEntry(
 ): DiagnosisSupportReason {
   const text = entryText(entry)
 
-  if (entry.entryType === 'imaging' || /\b(mri|x-?ray|ct\s+scan|ultrasound|biopsy)\b/i.test(text)) {
+  if (
+    entry.entryType === 'imaging' ||
+    entry.entryType === 'lab_test' ||
+    /\b(mri|x-?ray|ct\s+scan|ultrasound|biopsy|blood\s+test|lab\s+result)\b/i.test(text)
+  ) {
     return 'imaging_or_test'
   }
 

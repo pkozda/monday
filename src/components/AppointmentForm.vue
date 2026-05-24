@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createAppointment } from '@/api/appointmentsApi'
 
@@ -96,36 +96,91 @@ import {
   combineDateAndTime,
   defaultAppointmentDateTime,
 } from '@/services/appointmentUtils'
+import {
+  clearFormDraft,
+  readFormDraft,
+  writeFormDraft,
+} from '@/utils/formDraftStorage'
 import type { DoctorAppointment } from '@/models/types'
+
+const APPOINTMENT_DRAFT_KEY = 'monday-appointment-draft'
+
+interface AppointmentDraft {
+  date: string
+  time: string
+  doctorName: string
+  clinicName: string
+  specialty: string
+  address: string
+  notes: string
+}
 
 const emit = defineEmits<{
   submitted: [appointment: DoctorAppointment]
 }>()
 
-const defaults = defaultAppointmentDateTime()
+function emptyForm(): AppointmentDraft {
+  const defaults = defaultAppointmentDateTime()
+  return {
+    date: defaults.date,
+    time: defaults.time,
+    doctorName: '',
+    clinicName: '',
+    specialty: '',
+    address: '',
+    notes: '',
+  }
+}
 
-const form = reactive({
-  date: defaults.date,
-  time: defaults.time,
-  doctorName: '',
-  clinicName: '',
-  specialty: '',
-  address: '',
-  notes: '',
-})
+function isDraftEmpty(draft: AppointmentDraft): boolean {
+  return (
+    !draft.doctorName.trim() &&
+    !draft.clinicName.trim() &&
+    !draft.specialty.trim() &&
+    !draft.address.trim() &&
+    !draft.notes.trim()
+  )
+}
+
+function loadInitialForm(): AppointmentDraft {
+  const saved = readFormDraft<AppointmentDraft>(APPOINTMENT_DRAFT_KEY)
+  return saved ? { ...emptyForm(), ...saved } : emptyForm()
+}
+
+const form = reactive(loadInitialForm())
 
 const submitting = ref(false)
 const error = ref('')
 
+let draftSaveTimer: ReturnType<typeof setTimeout> | undefined
+
+watch(
+  form,
+  () => {
+    if (draftSaveTimer) clearTimeout(draftSaveTimer)
+    draftSaveTimer = setTimeout(() => {
+      const snapshot: AppointmentDraft = {
+        date: form.date,
+        time: form.time,
+        doctorName: form.doctorName,
+        clinicName: form.clinicName,
+        specialty: form.specialty,
+        address: form.address,
+        notes: form.notes,
+      }
+      if (isDraftEmpty(snapshot)) {
+        clearFormDraft(APPOINTMENT_DRAFT_KEY)
+      } else {
+        writeFormDraft(APPOINTMENT_DRAFT_KEY, snapshot)
+      }
+    }, 250)
+  },
+  { deep: true }
+)
+
 function resetForm() {
-  const d = defaultAppointmentDateTime()
-  form.date = d.date
-  form.time = d.time
-  form.doctorName = ''
-  form.clinicName = ''
-  form.specialty = ''
-  form.address = ''
-  form.notes = ''
+  clearFormDraft(APPOINTMENT_DRAFT_KEY)
+  Object.assign(form, emptyForm())
   error.value = ''
 }
 

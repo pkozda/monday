@@ -18,6 +18,8 @@ const ENTRY_TYPE_KEYS: Record<HealthEntryType, string> = {
   change: 'clinicalModel.entryTypes.change',
   doctor_visit: 'clinicalModel.entryTypes.doctorVisit',
   imaging: 'clinicalModel.entryTypes.imaging',
+  lab_test: 'clinicalModel.entryTypes.labTest',
+  surgery: 'clinicalModel.entryTypes.surgery',
   other: 'clinicalModel.entryTypes.other',
 }
 

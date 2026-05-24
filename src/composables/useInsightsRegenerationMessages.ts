@@ -11,6 +11,7 @@ export function useInsightsRegenerationMessages(): InsightsRegenerationMessages 
     slowNotificationTitle: t('notifications.regeneration.slowNotificationTitle'),
     slowNotificationMessage: t('notifications.regeneration.slowNotificationMessage'),
     successTitle: t('notifications.regeneration.successTitle'),
+    successToastMessage: t('notifications.regeneration.successToastMessage'),
     successMessage: (result: RegenerateInsightsResult) =>
       t(`hypothesesPage.regenerateMessages.${result.messageKey}`, {
         hypothesisCount: result.hypothesisCount,

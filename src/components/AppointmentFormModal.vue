@@ -1,10 +1,11 @@
 <template>
   <Teleport to="body">
     <div
-      v-if="open"
+      v-show="open"
       class="appointment-modal-overlay"
       role="dialog"
       aria-modal="true"
+      :aria-hidden="!open"
       aria-labelledby="appointment-modal-title"
       @click.self="close"
     >
@@ -32,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppointmentForm from '@/components/AppointmentForm.vue'
 
@@ -50,19 +51,12 @@ const emit = defineEmits<{
 
 const formRef = ref<InstanceType<typeof AppointmentForm> | null>(null)
 
-watch(
-  () => props.open,
-  (isOpen) => {
-    if (isOpen) return
-    formRef.value?.resetForm()
-  }
-)
-
 function close() {
   emit('close')
 }
 
 function onSubmitted(appt: DoctorAppointment) {
+  formRef.value?.resetForm()
   emit('submitted', appt)
   emit('close')
 }

@@ -1,17 +1,30 @@
 <template>
   <div ref="rootRef" class="notification-center">
-    <button
-      type="button"
-      class="notification-bell"
+    <NavIconButton
       :aria-expanded="open"
+      :active="open"
       :aria-label="t('notifications.bellLabel', { count: unreadCount })"
       @click="open = !open"
     >
-      <span class="notification-bell__icon" aria-hidden="true">🔔</span>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M13.73 21a2 2 0 01-3.46 0"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+        />
+      </svg>
       <span v-if="unreadCount > 0" class="notification-bell__badge">{{
         unreadCount > 9 ? '9+' : unreadCount
       }}</span>
-    </button>
+    </NavIconButton>
 
     <div v-if="open" class="notification-panel" role="dialog" :aria-label="t('notifications.title')">
       <header class="notification-panel__header">
@@ -88,6 +101,7 @@ import {
   useNotifications,
 } from '@/composables/useNotifications'
 import type { AppNotification } from '@/types/notifications'
+import NavIconButton from '@/components/nav/NavIconButton.vue'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -140,27 +154,8 @@ onUnmounted(() => {
   position: relative;
 }
 
-.notification-bell {
+.notification-center :deep(.nav-icon-btn) {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--bg-muted);
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.notification-bell:hover {
-  background: var(--bg-surface);
-}
-
-.notification-bell__icon {
-  font-size: 1rem;
-  line-height: 1;
 }
 
 .notification-bell__badge {

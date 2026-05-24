@@ -132,6 +132,34 @@ export function clearToastGroup(groupId: string): void {
   dismissToastGroup(groupId)
 }
 
+/** Replace in-progress regeneration toast with a visible success toast + notification. */
+export function notifyInsightsRegenerationComplete(
+  groupId: string,
+  title: string,
+  message: string,
+  actionRoute?: string
+): void {
+  clearToastGroup(groupId)
+
+  pushToast({
+    kind: 'success',
+    title,
+    message,
+    groupId,
+    durationMs: 12_000,
+  })
+
+  pushNotification({
+    kind: 'success',
+    title,
+    message,
+    actionRoute,
+    groupId,
+    showToast: false,
+    read: false,
+  })
+}
+
 export function useNotifications() {
   const unreadCount = computed(
     () => centerItems.value.filter((n) => !n.read).length

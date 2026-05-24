@@ -4,9 +4,23 @@
       {{ t('diagnosis.loading') }}
     </p>
 
-    <p v-else-if="reports.length === 0" class="diagnosis-empty">
-      {{ emptyText ?? t('diagnosis.empty') }}
-    </p>
+    <div v-else-if="reports.length === 0" class="diagnosis-empty">
+      <p class="diagnosis-empty__title">
+        {{ emptyTitle ?? emptyText ?? t('diagnosis.empty') }}
+      </p>
+      <p v-if="emptyHint" class="diagnosis-empty__hint">
+        {{ emptyHint }}
+      </p>
+      <button
+        v-if="showEmptyAction"
+        type="button"
+        class="diagnosis-empty__action"
+        :disabled="emptyActionDisabled"
+        @click="emit('empty-action')"
+      >
+        {{ emptyActionLabel ?? t('diagnosis.generateAction') }}
+      </button>
+    </div>
 
     <template v-else>
       <p v-if="refreshing" class="diagnosis-refreshing" role="status">
@@ -56,7 +70,13 @@ const props = withDefaults(
     loading?: boolean
     refreshing?: boolean
     showDisclaimer?: boolean
+    /** @deprecated Prefer emptyTitle + emptyHint */
     emptyText?: string
+    emptyTitle?: string
+    emptyHint?: string
+    showEmptyAction?: boolean
+    emptyActionLabel?: string
+    emptyActionDisabled?: boolean
     diagnosisMode?: 'rule' | 'ai'
   }>(),
   {
@@ -64,9 +84,15 @@ const props = withDefaults(
     refreshing: false,
     showDisclaimer: true,
     journalEntries: () => [],
+    showEmptyAction: false,
+    emptyActionDisabled: false,
     diagnosisMode: 'rule',
   }
 )
+
+const emit = defineEmits<{
+  'empty-action': []
+}>()
 
 /** Sync i18n only — cards render immediately; per-field MT via TranslatedText. */
 const displayReports = computed(() =>
@@ -91,6 +117,43 @@ const hasAiRanked = computed(() => props.reports.some((r) => r.aiRanked))
   background: var(--bg-surface);
   border: 1px dashed var(--border-strong);
   border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.diagnosis-empty__title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.diagnosis-empty__hint {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.diagnosis-empty__action {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--accent-strong);
+  color: #fff;
+  font-family: inherit;
+}
+
+.diagnosis-empty__action:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.diagnosis-empty__action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .diagnosis-list {

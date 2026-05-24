@@ -5,7 +5,7 @@
     </p>
 
     <div class="form-grid">
-      <div class="form-field">
+      <div class="form-field form-field--full">
         <label for="eventDate">{{ t('entryForm.eventDate') }}</label>
         <input
           id="eventDate"
@@ -16,28 +16,57 @@
         />
       </div>
 
-      <div class="form-field">
-        <label for="conditionArea">{{ t('entryForm.conditionArea') }}</label>
+      <fieldset class="form-field form-field--full entry-type-fieldset">
+        <legend class="entry-type-legend">{{ t('entryForm.entryType') }}</legend>
+        <p class="field-hint entry-type-intro">
+          {{ t('entryForm.entryTypeHint') }}
+        </p>
+
+        <div
+          v-for="group in entryTypeGroups"
+          :key="group.titleKey"
+          class="entry-type-group"
+        >
+          <h3 class="entry-type-group-title">
+            {{ t(group.titleKey) }}
+          </h3>
+          <div class="entry-type-grid">
+            <label
+              v-for="entryType in group.types"
+              :key="entryType"
+              class="entry-type-card"
+              :class="{ 'entry-type-card--active': form.entryType === entryType }"
+            >
+              <input
+                v-model="form.entryType"
+                type="radio"
+                class="entry-type-radio"
+                :value="entryType"
+              />
+              <span class="entry-type-card-label">
+                {{ t(`entryForm.types.${entryType}.label`) }}
+              </span>
+              <span class="entry-type-card-hint">
+                {{ t(`entryForm.types.${entryType}.hint`) }}
+              </span>
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="form-field form-field--full">
+        <label for="conditionArea">{{ conditionAreaLabel }}</label>
         <input
           id="conditionArea"
           v-model="form.conditionArea"
           type="text"
-          required
-          placeholder="e.g. Left leg / левая нога"
+          :required="bodyAreaRequired"
+          :placeholder="conditionAreaPlaceholder"
           autocomplete="off"
         />
-      </div>
-
-      <div class="form-field form-field--full">
-        <label for="entryType">{{ t('entryForm.entryType') }}</label>
-        <select id="entryType" v-model="form.entryType" required>
-          <option value="symptom">{{ t('entryForm.optionSymptom') }}</option>
-          <option value="change">{{ t('entryForm.optionChange') }}</option>
-          <option value="medication">{{ t('entryForm.optionMedication') }}</option>
-          <option value="doctor_visit">{{ t('entryForm.optionDoctorVisit') }}</option>
-          <option value="imaging">{{ t('entryForm.optionImaging') }}</option>
-          <option value="other">{{ t('entryForm.optionOther') }}</option>
-        </select>
+        <p class="field-hint">
+          {{ conditionAreaHint }}
+        </p>
       </div>
 
       <div class="form-field form-field--full">
@@ -85,7 +114,10 @@
         />
       </div>
 
-      <div class="form-field">
+      <div
+        v-if="showSeverity"
+        class="form-field form-field--full"
+      >
         <label for="severity">
           {{ t('entryForm.severity') }}
           <span v-if="form.severity" class="severity-value">{{ form.severity }}/10</span>
@@ -115,7 +147,22 @@
       <button type="submit" class="btn-primary" :disabled="submitting">
         {{ submitLabel }}
       </button>
-      <button type="button" class="btn-secondary" :disabled="submitting" @click="resetForm">
+      <button
+        v-if="isEditMode"
+        type="button"
+        class="btn-secondary"
+        :disabled="submitting"
+        @click="handleCancel"
+      >
+        {{ t('common.cancel') }}
+      </button>
+      <button
+        v-else
+        type="button"
+        class="btn-secondary"
+        :disabled="submitting"
+        @click="resetForm"
+      >
         {{ t('entryForm.clearForm') }}
       </button>
     </div>
@@ -123,29 +170,53 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { createHealthEntry } from '@/api/healthApi'
-
-const { t } = useI18n()
+import { createHealthEntry, updateHealthEntry } from '@/api/healthApi'
+import { useLocale } from '@/composables/useLocale'
+import type { AppLocale } from '@/i18n'
 import { buildJournalShortTitle } from '@/services/journalEntryText'
 import { entryNeedsTranslation } from '@/services/translation'
+import {
+  ENTRY_FORM_TYPE_GROUPS,
+  entryTypeRequiresBodyArea,
+  entryTypeShowsMedications,
+  entryTypeShowsSeverity,
+  resolveConditionAreaForSave,
+} from '@/services/entryTypeFormConfig'
+import {
+  clearFormDraft,
+  readFormDraft,
+  writeFormDraft,
+} from '@/utils/formDraftStorage'
 import type { HealthEntry, HealthEntryInput, HealthEntryType } from '@/models/types'
+
+const { t } = useI18n()
+const { locale } = useLocale()
+
+const HEALTH_ENTRY_DRAFT_KEY = 'monday-health-entry-draft'
+
+type HealthEntryDraft = HealthEntryInput & { severity?: number }
 
 const props = withDefaults(
   defineProps<{
     initialConditionArea?: string
+    editEntry?: HealthEntry | null
   }>(),
-  { initialConditionArea: '' }
+  { initialConditionArea: '', editEntry: null }
 )
 
 const emit = defineEmits<{
   submitted: [entry: HealthEntry]
+  cancel: []
 }>()
 
+const entryTypeGroups = ENTRY_FORM_TYPE_GROUPS
+
+const isEditMode = computed(() => Boolean(props.editEntry?.id))
 const today = new Date().toISOString().slice(0, 10)
 
-function defaultForm(): HealthEntryInput & { severity?: number } {
+function emptyForm(): HealthEntryDraft {
   return {
     eventDate: today,
     conditionArea: props.initialConditionArea,
@@ -157,16 +228,70 @@ function defaultForm(): HealthEntryInput & { severity?: number } {
   }
 }
 
-const form = reactive(defaultForm())
+function isDraftEmpty(draft: HealthEntryDraft): boolean {
+  return (
+    !draft.conditionArea.trim() &&
+    !draft.title.trim() &&
+    !draft.description.trim() &&
+    !(draft.medications?.trim() ?? '') &&
+    draft.severity === undefined
+  )
+}
+
+function entryToDraft(entry: HealthEntry): HealthEntryDraft {
+  const eventDate = entry.eventDate.slice(0, 10)
+  return {
+    eventDate,
+    conditionArea: entry.conditionArea,
+    entryType: entry.entryType,
+    title: entry.title,
+    description: entry.description,
+    medications: entry.medications ?? '',
+    severity: entry.severity,
+  }
+}
+
+function loadInitialForm(): HealthEntryDraft {
+  if (props.editEntry) return entryToDraft(props.editEntry)
+  const saved = readFormDraft<HealthEntryDraft>(HEALTH_ENTRY_DRAFT_KEY)
+  if (!saved) return emptyForm()
+  return {
+    ...emptyForm(),
+    ...saved,
+    medications: saved.medications ?? '',
+  }
+}
+
+const form = reactive(loadInitialForm())
 const submitting = ref(false)
 const error = ref('')
 
-const showMedications = computed(
-  () =>
-    form.entryType === 'medication' ||
-    form.entryType === 'doctor_visit' ||
-    Boolean(form.medications?.trim())
+const bodyAreaRequired = computed(() =>
+  entryTypeRequiresBodyArea(form.entryType)
 )
+
+const conditionAreaLabel = computed(() =>
+  bodyAreaRequired.value
+    ? t('entryForm.conditionArea')
+    : t('entryForm.conditionAreaOptional')
+)
+
+const conditionAreaHint = computed(() =>
+  bodyAreaRequired.value
+    ? t('entryForm.conditionAreaHintRequired')
+    : t('entryForm.conditionAreaHintOptional')
+)
+
+const conditionAreaPlaceholder = computed(() => {
+  if (bodyAreaRequired.value) return 'e.g. Left leg / левая нога'
+  if (form.entryType === 'lab_test') return 'e.g. General / общий (optional)'
+  if (form.entryType === 'surgery') return 'e.g. Right knee / правое колено (optional)'
+  return 'e.g. General health (optional)'
+})
+
+const showMedications = computed(() => entryTypeShowsMedications(form.entryType))
+
+const showSeverity = computed(() => entryTypeShowsSeverity(form.entryType))
 
 const titlePlaceholder = computed(() => {
   const map: Record<HealthEntryType, string> = {
@@ -174,7 +299,9 @@ const titlePlaceholder = computed(() => {
     change: 'e.g. Swelling reduced',
     medication: 'e.g. Pregabalin started',
     doctor_visit: 'e.g. Orthopedist · 2019',
+    lab_test: 'e.g. CBC · Mar 2024',
     imaging: 'e.g. MRI — knee',
+    surgery: 'e.g. Knee arthroscopy · 2019',
     other: 'e.g. Sleep and pain',
   }
   return map[form.entryType]
@@ -190,13 +317,26 @@ const descriptionPlaceholder = computed(() => {
       'Drug name, dose, when started, side effects… / Назначение, доза, побочные эффекты…',
     doctor_visit:
       'Who you saw, what was discussed, plan and follow-up… / Кто, что сказали, рекомендации…',
+    lab_test:
+      'Test name, key values, reference ranges, date… / Какой анализ, результаты, дата…',
     imaging:
       'What was done, findings, and next steps… / Что делали, результаты, что дальше…',
+    surgery:
+      'Procedure, hospital, recovery, complications… / Операция, стационар, восстановление…',
     other:
       'Full context for this note… / Всё важное о вашем состоянии…',
   }
   return map[form.entryType]
 })
+
+watch(
+  () => form.entryType,
+  (type) => {
+    if (!entryTypeShowsSeverity(type)) {
+      form.severity = undefined
+    }
+  }
+)
 
 function maybeSuggestTitle() {
   const description = form.description.trim()
@@ -209,7 +349,11 @@ function maybeSuggestTitle() {
 }
 
 const submitLabel = computed(() => {
-  if (!submitting.value) return t('entryForm.saveHealthRecord')
+  if (!submitting.value) {
+    return isEditMode.value
+      ? t('entryForm.saveChanges')
+      : t('entryForm.saveHealthRecord')
+  }
   const draft: HealthEntryInput = {
     eventDate: form.eventDate,
     conditionArea: form.conditionArea,
@@ -219,26 +363,84 @@ const submitLabel = computed(() => {
     medications: form.medications?.trim() || undefined,
     severity: form.severity,
   }
-  return entryNeedsTranslation(draft)
+  return entryNeedsTranslation(draft, locale.value as AppLocale)
     ? t('entryForm.translating')
     : t('entryForm.savingAnalyzing')
 })
 
+let draftSaveTimer: ReturnType<typeof setTimeout> | undefined
+
+watch(
+  () => props.editEntry,
+  (entry) => {
+    if (entry) {
+      Object.assign(form, entryToDraft(entry))
+      error.value = ''
+    }
+  }
+)
+
+watch(
+  form,
+  () => {
+    if (isEditMode.value) return
+    if (draftSaveTimer) clearTimeout(draftSaveTimer)
+    draftSaveTimer = setTimeout(() => {
+      const snapshot: HealthEntryDraft = {
+        eventDate: form.eventDate,
+        conditionArea: form.conditionArea,
+        entryType: form.entryType,
+        title: form.title,
+        description: form.description,
+        medications: form.medications,
+        severity: form.severity,
+      }
+      if (isDraftEmpty(snapshot)) {
+        clearFormDraft(HEALTH_ENTRY_DRAFT_KEY)
+      } else {
+        writeFormDraft(HEALTH_ENTRY_DRAFT_KEY, snapshot)
+      }
+    }, 250)
+  },
+  { deep: true }
+)
+
 function resetForm() {
-  Object.assign(form, defaultForm())
+  if (isEditMode.value && props.editEntry) {
+    Object.assign(form, entryToDraft(props.editEntry))
+    error.value = ''
+    return
+  }
+  clearFormDraft(HEALTH_ENTRY_DRAFT_KEY)
+  Object.assign(form, emptyForm())
   error.value = ''
+}
+
+function handleCancel() {
+  resetForm()
+  emit('cancel')
 }
 
 async function handleSubmit() {
   error.value = ''
 
-  if (!form.conditionArea.trim() || !form.title.trim() || !form.description.trim()) {
-    error.value = 'Please fill in the body area, short title, and full details.'
+  const conditionArea = resolveConditionAreaForSave(
+    form.conditionArea,
+    form.entryType
+  )
+
+  if (entryTypeRequiresBodyArea(form.entryType) && !conditionArea) {
+    error.value = t('entryForm.validationMissingBody')
+    return
+  }
+
+  if (!form.title.trim() || !form.description.trim()) {
+    error.value = t('entryForm.validationMissingCore')
     return
   }
 
   if (form.entryType === 'medication' && !form.medications?.trim()) {
-    error.value = 'Please list the medication name and dosage.'
+    error.value = t('entryForm.validationMedication')
     return
   }
 
@@ -246,17 +448,25 @@ async function handleSubmit() {
   try {
     const input: HealthEntryInput = {
       eventDate: form.eventDate,
-      conditionArea: form.conditionArea,
+      conditionArea,
       entryType: form.entryType,
       title: form.title,
       description: form.description,
       medications: form.medications?.trim() || undefined,
       severity: form.severity,
     }
-    const entry = await createHealthEntry(input)
-    const savedArea = form.conditionArea
-    resetForm()
-    form.conditionArea = savedArea
+    const entry = isEditMode.value
+      ? await updateHealthEntry(props.editEntry!.id, input, {
+          appLocale: locale.value as AppLocale,
+        })
+      : await createHealthEntry(input, {
+          appLocale: locale.value as AppLocale,
+        })
+    if (!isEditMode.value) {
+      const savedArea = form.conditionArea
+      resetForm()
+      form.conditionArea = savedArea
+    }
     emit('submitted', entry)
   } catch (e) {
     error.value =
@@ -290,7 +500,7 @@ defineExpose({ resetForm })
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1.25rem;
 }
 
@@ -298,12 +508,89 @@ defineExpose({ resetForm })
   grid-column: 1 / -1;
 }
 
-.form-field label {
+.form-field label,
+.entry-type-legend {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-secondary);
   margin-bottom: 0.5rem;
+}
+
+.entry-type-fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entry-type-intro {
+  margin-top: 0;
+}
+
+.entry-type-group {
+  margin-top: 1rem;
+}
+
+.entry-type-group-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.entry-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.entry-type-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.entry-type-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-input);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.entry-type-card:hover {
+  border-color: var(--accent);
+}
+
+.entry-type-card--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-input));
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.entry-type-card-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin: 0 0 0.4rem;
+}
+
+.entry-type-card-hint {
+  display: block;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  margin: 0;
 }
 
 .field-hint {
@@ -415,11 +702,5 @@ defineExpose({ resetForm })
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--border);
-}
-
-@media (max-width: 640px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

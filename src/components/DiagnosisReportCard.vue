@@ -36,7 +36,7 @@
         <ul v-if="!expanded" class="diagnosis-variant-rows">
           <li
             v-for="(variant, index) in compactVariants"
-            :key="variant.id"
+            :key="variantTabKey(variant)"
             class="diagnosis-variant-row"
             :class="{ 'diagnosis-variant-row--lead': index === 0 }"
           >
@@ -82,18 +82,19 @@
         >
           <button
             v-for="(variant, index) in topVariants"
-            :id="`variant-tab-${variant.id}`"
-            :key="variant.id"
+            :id="`variant-tab-${variantTabKey(variant)}`"
+            :key="variantTabKey(variant)"
             type="button"
             role="tab"
             class="diagnosis-variant-tab"
             :class="{
-              'diagnosis-variant-tab--active': variant.id === activeVariantId,
+              'diagnosis-variant-tab--active':
+                variantTabKey(variant) === activeVariantId,
               'diagnosis-variant-tab--lead': index === 0,
             }"
-            :aria-selected="variant.id === activeVariantId"
-            :aria-controls="`variant-panel-${variant.id}`"
-            @click="activeVariantId = variant.id"
+            :aria-selected="variantTabKey(variant) === activeVariantId"
+            :aria-controls="`variant-panel-${variantTabKey(variant)}`"
+            @click.stop="selectVariant(variant)"
           >
             <span class="diagnosis-variant-tab__pct">{{ variant.percentage }}%</span>
             <span class="diagnosis-variant-tab__name">
@@ -104,15 +105,16 @@
 
         <div
           v-if="activeVariant"
-          :id="`variant-panel-${activeVariant.id}`"
+          :id="`variant-panel-${variantTabKey(activeVariant)}`"
           role="tabpanel"
           class="diagnosis-variant-panel"
-          :aria-labelledby="`variant-tab-${activeVariant.id}`"
+          :aria-labelledby="`variant-tab-${variantTabKey(activeVariant)}`"
         >
           <DiagnosisVariantCard
+            :key="variantTabKey(activeVariant)"
             :variant="activeVariant"
             :journal-entries="journalEntries"
-            :lead="activeVariant.id === topVariants[0]?.id"
+            :lead="variantTabKey(activeVariant) === variantTabKey(topVariants[0]!)"
             in-tabs
           />
         </div>
@@ -130,7 +132,8 @@ import {
   localizedDiagnosisSpecialistAdvice,
   localizedDiagnosisSpecialistName,
 } from '@/services/localizeClinical'
-import type { DiagnosisReport, HealthEntry } from '@/models/types'
+import { diagnosisVariantKey } from '@/services/llm/aiDiagnosisJournalSupport'
+import type { DiagnosisReport, DiagnosisVariant, HealthEntry } from '@/models/types'
 
 const { t } = useI18n()
 
@@ -178,9 +181,19 @@ const certaintyShort = computed(() => {
   }
 })
 
+function variantTabKey(variant: DiagnosisVariant): string {
+  return diagnosisVariantKey(variant)
+}
+
 const activeVariant = computed(() =>
-  topVariants.value.find((v) => v.id === activeVariantId.value) ?? topVariants.value[0] ?? null
+  topVariants.value.find((v) => variantTabKey(v) === activeVariantId.value) ??
+    topVariants.value[0] ??
+    null
 )
+
+function selectVariant(variant: DiagnosisVariant): void {
+  activeVariantId.value = variantTabKey(variant)
+}
 
 watch(
   topVariants,
@@ -189,8 +202,8 @@ watch(
       activeVariantId.value = null
       return
     }
-    if (!variants.some((v) => v.id === activeVariantId.value)) {
-      activeVariantId.value = variants[0].id
+    if (!variants.some((v) => variantTabKey(v) === activeVariantId.value)) {
+      activeVariantId.value = variantTabKey(variants[0]!)
     }
   },
   { immediate: true }
@@ -200,7 +213,7 @@ function onToggle() {
   const opening = !expanded.value
   expanded.value = !expanded.value
   if (opening && topVariants.value.length && !activeVariantId.value) {
-    activeVariantId.value = topVariants.value[0].id
+    activeVariantId.value = variantTabKey(topVariants.value[0]!)
   }
 }
 

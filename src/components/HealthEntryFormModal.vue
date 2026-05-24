@@ -1,16 +1,17 @@
 <template>
   <Teleport to="body">
     <div
-      v-if="open"
+      v-show="open"
       class="health-entry-modal-overlay"
       role="dialog"
       aria-modal="true"
+      :aria-hidden="!open"
       aria-labelledby="health-entry-modal-title"
       @click.self="close"
     >
       <div class="health-entry-modal-dialog">
         <header class="health-entry-modal-header">
-          <h2 id="health-entry-modal-title">{{ t('journalPage.newEntryModalTitle') }}</h2>
+          <h2 id="health-entry-modal-title">{{ modalTitle }}</h2>
           <button
             type="button"
             class="health-entry-modal-close"
@@ -22,25 +23,31 @@
         </header>
 
         <p class="health-entry-modal-intro">
-          {{ t('journalPage.newEntryModalIntro') }}
+          {{ modalIntro }}
         </p>
 
-        <HealthEntryForm ref="formRef" @submitted="onSubmitted" />
+        <HealthEntryForm
+          ref="formRef"
+          :edit-entry="editEntry"
+          @submitted="onSubmitted"
+          @cancel="close"
+        />
       </div>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import HealthEntryForm from '@/components/HealthEntryForm.vue'
+import type { HealthEntry } from '@/models/types'
 
 const { t } = useI18n()
-import type { HealthEntry } from '@/models/types'
 
 const props = defineProps<{
   open: boolean
+  editEntry?: HealthEntry | null
 }>()
 
 const emit = defineEmits<{
@@ -50,11 +57,27 @@ const emit = defineEmits<{
 
 const formRef = ref<InstanceType<typeof HealthEntryForm> | null>(null)
 
+const isEditMode = computed(() => Boolean(props.editEntry?.id))
+
+const modalTitle = computed(() =>
+  isEditMode.value
+    ? t('journalPage.editEntryModalTitle')
+    : t('journalPage.newEntryModalTitle')
+)
+
+const modalIntro = computed(() =>
+  isEditMode.value
+    ? t('journalPage.editEntryModalIntro')
+    : t('journalPage.newEntryModalIntro')
+)
+
 watch(
   () => props.open,
   (isOpen) => {
-    if (isOpen) return
-    formRef.value?.resetForm()
+    if (!isOpen) return
+    if (props.editEntry && formRef.value) {
+      formRef.value.resetForm()
+    }
   }
 )
 
@@ -63,6 +86,9 @@ function close() {
 }
 
 function onSubmitted(entry: HealthEntry) {
+  if (!isEditMode.value) {
+    formRef.value?.resetForm()
+  }
   emit('submitted', entry)
   emit('close')
 }

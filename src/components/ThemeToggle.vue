@@ -1,25 +1,46 @@
 <template>
   <label
     class="theme-toggle"
+    :class="{ 'theme-toggle--menu': layout === 'menu' }"
     :title="theme === 'dark' ? t('theme.darkHint') : t('theme.lightHint')"
   >
-    <span class="theme-toggle__icon" aria-hidden="true">{{ theme === 'dark' ? '🌙' : '☀️' }}</span>
-    <span class="theme-toggle__track">
-      <input
-        type="checkbox"
-        class="theme-toggle__input"
-        :checked="theme === 'light'"
-        @change="onToggle"
-      />
-      <span class="theme-toggle__thumb" />
+    <span v-if="layout === 'menu'" class="theme-toggle__menu-label">
+      {{ t('theme.appearance') }}
     </span>
-    <span class="theme-toggle__label">{{ theme === 'dark' ? t('theme.dark') : t('theme.light') }}</span>
+    <template v-else>
+      <span class="theme-toggle__icon" aria-hidden="true">{{ theme === 'dark' ? '🌙' : '☀️' }}</span>
+    </template>
+    <span class="theme-toggle__control" :class="{ 'theme-toggle__control--menu': layout === 'menu' }">
+      <span v-if="layout === 'menu'" class="theme-toggle__menu-value">{{
+        theme === 'dark' ? t('theme.dark') : t('theme.light')
+      }}</span>
+      <span class="theme-toggle__track">
+        <input
+          type="checkbox"
+          class="theme-toggle__input"
+          :checked="theme === 'light'"
+          :aria-label="layout === 'menu' ? t('theme.appearance') : undefined"
+          @change="onToggle"
+        />
+        <span class="theme-toggle__thumb" />
+      </span>
+    </span>
+    <span v-if="layout !== 'menu'" class="theme-toggle__label">{{
+      theme === 'dark' ? t('theme.dark') : t('theme.light')
+    }}</span>
   </label>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useTheme } from '@/composables/useTheme'
+
+withDefaults(
+  defineProps<{
+    layout?: 'default' | 'menu'
+  }>(),
+  { layout: 'default' }
+)
 
 const { t } = useI18n()
 const { theme, setTheme } = useTheme()
@@ -103,5 +124,30 @@ function onToggle(event: Event) {
 .theme-toggle:focus-within .theme-toggle__thumb {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.theme-toggle--menu {
+  width: 100%;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.theme-toggle__menu-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.theme-toggle__control--menu {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.theme-toggle__menu-value {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 </style>

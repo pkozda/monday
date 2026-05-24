@@ -24,11 +24,25 @@ const CERTAINTY_KEYS: Record<DiagnosisCertainty, string> = {
   low: 'diagnosis.certaintyReportLow',
 }
 
+function normalizeDiagnosisCertainty(
+  certainty: DiagnosisCertainty | 'medium'
+): DiagnosisCertainty {
+  if (certainty === 'medium') return 'moderate'
+  if (certainty === 'high' || certainty === 'moderate' || certainty === 'low') {
+    return certainty
+  }
+  return 'low'
+}
+
 export function localizeDiagnosisCertaintyLabel(
   certainty: DiagnosisCertainty,
   t: TFunction
 ): string {
-  return String(t(CERTAINTY_KEYS[certainty]))
+  const normalized = normalizeDiagnosisCertainty(
+    certainty as DiagnosisCertainty | 'medium'
+  )
+  const key = CERTAINTY_KEYS[normalized]
+  return String(t(key))
 }
 
 export function localizeJournalAlignment(

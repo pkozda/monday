@@ -1,6 +1,15 @@
 <template>
   <div class="medical-card">
-    <h3 class="card-title">{{ title }}</h3>
+    <div class="medical-card__head">
+      <div class="medical-card__head-text">
+        <h3 class="card-title">{{ title }}</h3>
+        <p v-if="subtitle" class="card-subtitle">{{ subtitle }}</p>
+      </div>
+      <div v-if="$slots.headerActions" class="medical-card__head-actions">
+        <slot name="headerActions" />
+      </div>
+    </div>
+
     <p v-if="aiGenerated" class="card-ai-badge">{{ t('clinicalModel.aiBadge') }}</p>
     <p v-if="summary" class="card-summary">{{ summary }}</p>
     <div v-if="factors && factors.length > 0" class="card-factors">
@@ -10,6 +19,9 @@
           <strong>{{ factor.name }}:</strong> {{ factor.description }}
         </li>
       </ul>
+    </div>
+    <div v-if="$slots.actions" class="card-actions">
+      <slot name="actions" />
     </div>
   </div>
 </template>
@@ -22,6 +34,7 @@ const { t } = useI18n()
 
 defineProps<{
   title: string
+  subtitle?: string
   summary?: string
   factors?: ClinicalFactor[]
   aiGenerated?: boolean
@@ -37,11 +50,37 @@ defineProps<{
   margin-bottom: 1rem;
 }
 
+.medical-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.medical-card__head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.medical-card__head-actions {
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+}
+
 .card-title {
   font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 0.75rem 0;
+  margin: 0;
   color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.card-subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .card-ai-badge {
@@ -85,5 +124,22 @@ defineProps<{
 
 .factor-item strong {
   color: var(--text-primary);
+}
+
+.card-actions {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 560px) {
+  .medical-card__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .medical-card__head-actions :deep(.btn-clinical-doctor-notes) {
+    width: 100%;
+  }
 }
 </style>

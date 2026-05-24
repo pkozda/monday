@@ -1,5 +1,9 @@
 <template>
-  <article class="health-entry-card" :class="urgencyClass">
+  <article
+    :id="`journal-entry-${entry.id}`"
+    class="health-entry-card"
+    :class="[urgencyClass, { 'health-entry-card--highlighted': highlighted }]"
+  >
     <header class="entry-header">
       <div class="entry-meta">
         <time :datetime="entry.eventDate">{{ formattedDate }}</time>
@@ -8,7 +12,16 @@
           <TranslatedText :text="entry.conditionArea" tag="span" />
         </span>
       </div>
-      <span class="urgency-badge" :class="urgencyClass">{{ urgencyLabel }}</span>
+      <div class="entry-header-actions">
+        <button
+          type="button"
+          class="btn-edit-entry"
+          @click="emit('edit', entry)"
+        >
+          {{ t('healthEntryCard.edit') }}
+        </button>
+        <span class="urgency-badge" :class="urgencyClass">{{ urgencyLabel }}</span>
+      </div>
     </header>
 
     <h3 class="entry-title">
@@ -45,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, withDefaults } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
 import { useLocale } from '@/composables/useLocale'
@@ -59,8 +72,16 @@ const { locale } = useLocale()
 import { journalDescriptionAddsDetail } from '@/services/journalEntryText'
 import type { HealthEntry } from '@/models/types'
 
-const props = defineProps<{
-  entry: HealthEntry
+const props = withDefaults(
+  defineProps<{
+    entry: HealthEntry
+    highlighted?: boolean
+  }>(),
+  { highlighted: false }
+)
+
+const emit = defineEmits<{
+  edit: [entry: HealthEntry]
 }>()
 
 const formattedDate = computed(() =>
@@ -107,6 +128,32 @@ function formatFlag(flag: string): string {
   margin-bottom: 0.75rem;
 }
 
+.entry-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-edit-entry {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-edit-entry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .entry-meta {
   display: flex;
   flex-wrap: wrap;
@@ -145,6 +192,12 @@ function formatFlag(flag: string): string {
 
 .health-entry-card.urgency--urgent {
   border-left-color: var(--urgency-urgent-text);
+}
+
+.health-entry-card--highlighted {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-strong) 22%, transparent);
 }
 
 .health-entry-card.urgency--emergency {

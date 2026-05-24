@@ -1,9 +1,13 @@
 export default {
   nav: {
+    main: 'Hauptnavigation',
     dashboard: 'Dashboard',
     hypotheses: 'Hypothesen',
     appointments: 'Termine',
     journal: 'Journal',
+    openMenu: 'Menü öffnen',
+    settings: 'Einstellungen',
+    preferences: 'Einstellungen',
   },
   language: {
     label: 'Sprache',
@@ -12,6 +16,7 @@ export default {
     ru: 'Russisch',
   },
   theme: {
+    appearance: 'Darstellung',
     dark: 'Dunkel',
     light: 'Hell',
     darkHint: 'Dunkelmodus — zum Hellmodus wechseln',
@@ -42,6 +47,8 @@ export default {
       slowNotificationMessage:
         'Hypothesen und Diagnosen werden aus Ihrem Tagebuch neu erstellt.',
       successTitle: 'Einblicke bereit',
+      successToastMessage:
+        'Hypothesen und Diagnosen sind fertig. Öffnen Sie die Seite Hypothesen & Diagnosen.',
       errorTitle: 'Neu-Generierung fehlgeschlagen',
     },
   },
@@ -74,16 +81,43 @@ export default {
     stats: {
       journalEntries: 'Journal-Einträge',
       allTime: 'Gesamt',
+      journalEntriesDetail:
+        'Symptome, Besuche, Medikamente und Notizen — {days} Tage Tracking mit Monday.',
       last30Days: 'Letzte 30 Tage',
       recentActivity: 'Aktuelle Aktivität',
+      last30DaysDetail:
+        'Einträge im rollierenden letzten Monat — gut für kurzfristige Veränderungen.',
+      daysTracked: 'Tage erfasst',
+      daysTrackedHint: 'Seit erstem Eintrag',
+      daysTrackedDetail:
+        'Zeitspanne vom frühesten Ereignis ({date}) bis heute.',
+      daysTrackedEmpty:
+        'Zählt ab dem ersten Journal-Eintrag.',
       trackedConditions: 'Verfolgte Beschwerden',
       bodyAreasHint: 'Körperregionen / Themen',
+      trackedConditionsDetail: 'Bereiche mit Journal-Aktivität: {areas}.',
+      trackedConditionsEmpty:
+        'Beschwerdebereiche erscheinen, sobald Sie Einträge mit Regionen loggen.',
       avgSeverity: 'Ø Schweregrad',
       severityHint: 'Wenn angegeben (1–10)',
+      avgSeverityDetail:
+        'Mittelwert expliziter 1–10-Bewertungen (aktuell {avg}).',
+      avgSeverityEmpty:
+        'Schweregrade in Einträgen ergänzen, um hier einen Durchschnitt zu sehen.',
       timelineEvents: 'Timeline-Ereignisse',
+      timelineEventsHint: 'Aus Ihrem Journal',
+      timelineEventsDetail:
+        'Strukturierte Ereignisse aus Einträgen für Ihre Verlaufs-Timeline.',
       hypotheses: 'Hypothesen',
+      hypothesesHint: 'Mögliche Zustände',
+      hypothesesDetail:
+        'KI- oder regelbasierte Möglichkeiten aus Mustern im Journal.',
       needsAttention: 'Erfordert Aufmerksamkeit',
       attentionHint: 'Dringend oder Notfall',
+      attentionDetail:
+        'Markierte Einträge unten — Link öffnen oder alle markierten anzeigen.',
+      attentionEmptyDetail:
+        'Derzeit keine dringenden/notfall Einträge. Bei Verschlechterung weiter loggen.',
     },
     severityTrendTitle: 'Schweregrad-Verlauf',
     severityTrendBase:
@@ -124,6 +158,7 @@ export default {
     clinicalModelRefreshing: 'Klinisches Modell wird mit KI aktualisiert…',
     clinicalModelHint:
       'Protokollieren Sie Symptome und Besuche im Journal für spezifische Faktoren.',
+    generateDoctorNotes: 'Notizen für den Arzt erstellen',
   },
   profile: {
     yearsOld: '{years} Jahre alt',
@@ -150,6 +185,40 @@ export default {
     dateOfBirth: 'Geburtsdatum',
     biologicalSex: 'Biologisches Geschlecht',
     bloodType: 'Blutgruppe',
+    height: 'Größe (cm)',
+    weight: 'Gewicht (kg)',
+    heightPlaceholder: 'z. B. 175',
+    weightPlaceholder: 'z. B. 72',
+    heightValue: '{value} cm',
+    weightValue: '{value} kg',
+    bodyMetricsTitle: 'Körpermaße & BMI',
+    bmiAddHeightWeight:
+      'Größe und Gewicht unter „Profil bearbeiten“ hinzufügen, um den BMI zu sehen.',
+    bmiUnavailable: 'BMI konnte aus Größe und Gewicht nicht berechnet werden.',
+    bmi: 'BMI',
+    bmiValue: '{value}',
+    bmiScaleAria: 'BMI {value}, {category}',
+    bmiCategory: {
+      underweight: 'Untergewicht',
+      normal: 'Normalbereich',
+      overweight: 'Übergewicht',
+      obese: 'Adipositas',
+    },
+    bmiCategoryShort: {
+      underweight: 'Niedrig',
+      normal: 'Normal',
+      overweight: 'Erhöht',
+      obese: 'Hoch',
+    },
+    bmiHint: {
+      underweight:
+        'Unter dem üblichen Normalbereich für Erwachsene. Bei ungewolltem Gewichtsverlust ärztlich besprechen.',
+      normal: 'Im üblichen Normalbereich für Erwachsene (BMI 18,5–24,9).',
+      overweight:
+        'Über dem üblichen Normalbereich. Lebensstil oder ärztliche Beratung können helfen.',
+      obese:
+        'Deutlich über dem üblichen Normalbereich. Ärztliche Begleitung kann sinnvoll sein.',
+    },
     sexNotSpecified: 'Nicht angegeben',
     sexFemale: 'Weiblich',
     sexMale: 'Männlich',
@@ -163,10 +232,24 @@ export default {
     headlineNone: 'Noch keine Vorschläge',
     headlineOne: '1 Vorschlag',
     headlineMany: '{count} Vorschläge',
+    heroSubtitle:
+      'Persönliche Tipps zu Vorsorge, Gewohnheiten und Ihrem Journal.',
+    statPriority: 'prioritär',
+    statTotal: 'Tipps für Sie',
+    summaryBold: 'Für Sie zusammengestellt.',
     summary:
-      'Präventive Hinweise basierend auf Alter, Profil und Journal',
+      ' Basierend auf Alter, Profil und Ihren Journal-Einträgen.',
     disclaimer:
       'Allgemeine Orientierung — kein Ersatz für ärztlichen Rat.',
+    sectionPriority: 'Bald erledigen',
+    sectionMore: 'Auch hilfreich',
+    gotIt: 'Alles klar',
+    viewEntries: 'Im Journal öffnen',
+    viewAllAttention: 'Alle markierten Einträge anzeigen',
+    viewAllAttentionCount: 'Alle {count} markierten Einträge anzeigen',
+    openAttentionJournal: 'Markierte Einträge im Journal',
+    viewInJournal: 'Zum Journal',
+    emptyTitle: 'Noch etwas mehr über Sie',
     empty:
       'Geburtsdatum im Profil ergänzen für personalisierte Vorschläge.',
     categories: {
@@ -283,6 +366,7 @@ export default {
     nothingScheduled: 'Nichts geplant',
     emptyText: 'Kein anstehender Besuch im Kalender.',
     goToAppointments: 'Zu Terminen',
+    backToDetails: 'Termin',
   },
   appointmentsPage: {
     eyebrow: 'Planung',
@@ -322,6 +406,7 @@ export default {
     remove: 'Entfernen',
   },
   healthEntryCard: {
+    edit: 'Bearbeiten',
     medications: 'Medikamente:',
     severity: 'Schweregrad:',
     clinicalSummary: 'Klinische Zusammenfassung:',
@@ -331,28 +416,39 @@ export default {
     title: 'Hypothesen & Diagnosen',
     subtitle:
       'Neu generieren lädt aktuelle Journal-Daten in Diagnosen und Hypothesen.',
+    generate: 'Hypothesen & Diagnosen erstellen',
+    generateTitle: 'Hypothesen und mögliche Diagnosen aus dem Journal erstellen',
     regenerate: 'Hypothesen & Diagnosen neu generieren',
     regenerating: 'Wird generiert…',
     loading: 'Einblicke werden geladen…',
+    notGeneratedTitle: 'Noch nichts generiert',
+    notGeneratedText:
+      'Hypothesen und mögliche Diagnosen werden erstellt, wenn Sie auf Erstellen klicken. Beim Öffnen dieser Seite läuft nichts automatisch.',
     tabDiagnoses: 'Diagnosen',
     tabHypotheses: 'Hypothesen',
     noHypothesesTitle: 'Noch keine Hypothesen',
     noHypothesesText:
       'Journal-Einträge hinzufügen, dann „Neu generieren“ in der Kopfzeile.',
-    regenerateConfirm:
-      'Alle Hypothesen durch neue aus dem aktuellen Journal ersetzen?',
+    regenerateConfirmTitle: 'Einblicke neu generieren?',
+    regenerateConfirmMessage:
+      'Alle Hypothesen werden durch neue aus dem aktuellen Journal ersetzt. Mögliche Erkrankungen werden aus denselben Einträgen neu berechnet.',
+    regenerateConfirmAction: 'Neu generieren',
     regenerateSlowHint:
       'Die Neu-Generierung läuft noch. Sie können die Seite verlassen — wir benachrichtigen Sie, wenn alles fertig ist.',
     regenerateTitleEmpty: 'Zuerst Journal-Einträge hinzufügen',
     regenerateTitle: 'Aus aktuellem Journal neu generieren',
     regenerateFailed: 'Neu-Generierung fehlgeschlagen.',
     regenerateMessages: {
+      aiRequired:
+        'Aktivieren Sie KI-Einblicke in der Navigation und konfigurieren Sie den LLM-API-Schlüssel.',
       needEntries:
         'Zuerst Journal-Einträge hinzufügen, dann Hypothesen und Diagnosen neu generieren.',
       success:
         '{hypothesisCount} Hypothesen aus {journalEntryCount} Journal-Einträgen über {areaCount} Bereiche neu generiert. Diagnosen nutzen dieselben Daten.',
       noHypotheses:
         '{journalEntryCount} Einträge geprüft, keine Hypothesen ableitbar — mehr Details pro Körperregion und erneut versuchen.',
+      successNoDiagnoses:
+        '{hypothesisCount} Hypothesen aus {journalEntryCount} Einträgen erstellt, aber die KI konnte keine möglichen Erkrankungen vorschlagen — mehr Journal-Details oder „Mögliche Erkrankungen generieren“ im Tab Diagnosen.',
     },
   },
   journalPage: {
@@ -369,15 +465,71 @@ export default {
       '„Neuer Eintrag“ in der Kopfzeile für die erste Notiz.',
     entrySaved: 'Eintrag gespeichert — klassifiziert als {classification}.',
     entrySavedTimeline: 'Zur Timeline hinzugefügt.',
+    entryUpdated: 'Eintrag aktualisiert — klassifiziert als {classification}.',
     newEntryModalTitle: 'Neuer Journal-Eintrag',
     newEntryModalIntro:
       'Symptome, Medikamente oder Besuche loggen — mit Timeline-Verknüpfung.',
+    editEntryModalTitle: 'Journal-Eintrag bearbeiten',
+    editEntryModalIntro:
+      'Datum oder Text ändern. Monday analysiert den Eintrag neu und aktualisiert die Timeline.',
+    attentionFilterBanner:
+      'Einträge mit Dringlichkeit „Dringend“ oder „Notfall“ — dieselben wie unter „Braucht Aufmerksamkeit“ auf dem Dashboard.',
+    showAllEntries: 'Alle Einträge anzeigen',
+    backNavLabel: 'Einzelansicht verlassen',
+    backToAllEntries: 'Zurück zu allen Einträgen',
+    backToAttentionEntries: 'Zurück zu markierten Einträgen',
+    singleEntryHint:
+      'Sie sehen einen Eintrag. Über den Link oben gelangen Sie zurück zur vollständigen Liste.',
+    singleEntryTitle: 'Tagebucheintrag',
+    singleEntrySubtitle:
+      'Über einen Link geöffnet — zur Liste zurückkehren, um weitere Einträge zu sehen.',
+    entryNotFoundTitle: 'Eintrag nicht gefunden',
+    entryNotFoundText:
+      'Dieser Eintrag wurde entfernt oder der Link ist veraltet. Zurück zur Gesamtliste.',
+    attentionRecordsTitle: 'Einträge mit Aufmerksamkeitsbedarf',
+    attentionRecordsSubtitle:
+      '{count} Einträge mit Dringlichkeit Dringend/Notfall.',
+    noAttentionTitle: 'Keine dringenden Einträge',
+    noAttentionText:
+      'Aktuell keine Einträge mit Dringend/Notfall. Alle Einträge anzeigen?',
   },
   diagnosis: {
     loading: 'Journal wird auf mögliche Erkrankungen analysiert…',
     refreshing: 'Mögliche Erkrankungen werden aktualisiert…',
+    generateAction: 'Mögliche Erkrankungen generieren',
+    generatedSuccess:
+      'Mögliche Erkrankungen für {count} Körperbereich(e) aus dem Journal erstellt.',
     empty:
       'Beschreiben Sie Symptome, Körperregion und Medikamente für Diagnose-Vorschläge mit Prozenten.',
+    emptyNotGeneratedTitle: 'Mögliche Erkrankungen noch nicht erstellt',
+    emptyNotGeneratedHint:
+      '„Erstellen“ in der Kopfzeile nutzen (mit KI-Einblicke an), um Hypothesen und mögliche Erkrankungen zusammen zu erzeugen.',
+    emptyIncompleteTitle: 'Mögliche Erkrankungen nicht gespeichert',
+    emptyIncompleteHint:
+      'Ihre Hypothesen sind gespeichert, aber mögliche Erkrankungen wurden nicht fertig generiert. Button unten oder „Neu generieren“ in der Kopfzeile.',
+    emptyAiOffTitle: 'KI-Einblicke sind aus',
+    emptyAiOffHint:
+      'KI-Einblicke in der Navigation aktivieren, um mögliche Erkrankungen zu erzeugen.',
+    emptyNeedEntriesTitle: 'Zuerst Journal-Einträge',
+    emptyNeedEntriesHint:
+      'Mögliche Erkrankungen stammen aus dem Gesundheitsjournal. Symptome, Besuche oder Befunde eintragen und erneut generieren.',
+    emptyNoSuggestionsTitle: 'Keine möglichen Erkrankungen vorgeschlagen',
+    emptyNoSuggestionsHint:
+      'Die KI hat Journal und Hypothesen geprüft, konnte aber keine Erkundungsvorschläge nennen. Mehr Symptome, Zeitverlauf und Befunde eintragen und erneut versuchen.',
+    emptyNeedsMoreJournalTitle: 'Mehr Journal-Details können helfen',
+    emptyNeedsMoreJournalHint:
+      'Bei nur kurzen Einträgen schlägt die KI oft keine Rangliste vor. Weitere Symptome, Medikamente oder Befunde eintragen und erneut generieren.',
+    emptyFailedTitle: 'Erzeugung fehlgeschlagen',
+    emptyFailedHint:
+      'Beim KI-Aufruf ist ein Fehler aufgetreten. API-Schlüssel und Netzwerk prüfen und erneut versuchen.',
+    outcomeBanner: {
+      no_suggestions:
+        'Keine möglichen Erkrankungen aus dem aktuellen Journal. Mehr Details eintragen und erneut versuchen.',
+      needs_more_journal:
+        'Weitere oder ausführlichere Journal-Einträge hinzufügen und erneut generieren.',
+      failed:
+        'Mögliche Erkrankungen konnten nicht erzeugt werden. KI-Einstellungen prüfen und erneut versuchen.',
+    },
     disclaimer:
       'Aus dem gesamten Journal abgeleitet — immer mit Ärztin/Arzt abklären.',
     aiRankedNote:
@@ -436,8 +588,8 @@ export default {
     aboutTitle: 'Was ist diese Erkrankung?',
     whatYouLoggedTitle: 'Was Sie dokumentiert haben',
     whatYouLoggedIntro:
-      'Ihre echten Journal-Einträge, die wir mit dieser Möglichkeit verknüpft haben — keine allgemeinen Symptom-Texte.',
-    whyThisSupports: 'Warum das verknüpft ist',
+      'Verknüpfte Journal-Einträge mit KI-Erklärung, welcher Text zu dieser möglichen Erkrankung passt — keine bestätigte Diagnose.',
+    whyThisSupports: 'Warum das diese Möglichkeit stützt',
     supportReason: {
       symptom_logged:
         'Sie haben Symptome oder Veränderungen dokumentiert, die zu dieser Möglichkeit passen.',
@@ -488,13 +640,27 @@ export default {
     importSuccess: '{count} Journal-Einträge importiert.',
     importFailed: 'Import fehlgeschlagen.',
   },
+  translation: {
+    skippedTitle: 'Auf Russisch gespeichert',
+    skippedMessage:
+      'Übersetzung nicht verfügbar (KI-Limit oder offline). Eintrag auf Russisch gespeichert. Einige Minuten warten oder OpenAI-Kontingent prüfen.',
+  },
   entryForm: {
     langHint:
-      'Englisch und Russisch werden unterstützt. Russischer Text wird beim Speichern ins Englische übersetzt.',
-    translating: 'Übersetzen und speichern…',
+      'Englisch und Russisch werden unterstützt. Russischer Text wird beim Speichern per KI übersetzt (auch bei Tippfehlern). LLM_API_KEY in .env.local.',
+    translating: 'KI übersetzt und speichert…',
     eventDate: 'Wann ist es passiert?',
     conditionArea: 'Körperregion / Beschwerde',
+    conditionAreaOptional: 'Körperregion (optional)',
+    conditionAreaHintRequired: 'Welcher Körperbereich ist betroffen?',
+    conditionAreaHintOptional:
+      'Optional — leer lassen bei Blutwerten o. Ä., oder Region angeben (z. B. Knie).',
     entryType: 'Was möchten Sie erfassen?',
+    entryTypeHint: 'Wählen Sie die passendste Kategorie.',
+    typeGroupFeel: 'Wie Sie sich fühlen',
+    typeGroupCare: 'Behandlung & Besuche',
+    typeGroupTests: 'Tests & Eingriffe',
+    typeGroupOther: 'Sonstiges',
     description: 'Ausführliche Details',
     descriptionHint:
       'Vollständiger Verlauf — was passiert ist, wann, Tests und Behandlung.',
@@ -506,21 +672,55 @@ export default {
     clearSeverity: 'Löschen',
     saveEntry: 'Eintrag speichern',
     saveHealthRecord: 'Gesundheitsdaten speichern',
+    saveChanges: 'Änderungen speichern',
     savingAnalyzing: 'Speichern & analysieren…',
     clearForm: 'Formular leeren',
-    optionSymptom: 'Symptome',
-    optionChange: 'Veränderung',
-    optionMedication: 'Medikament / Rezept',
-    optionDoctorVisit: 'Arztbesuch oder Rat',
-    optionImaging: 'Test oder Bildgebung',
-    optionOther: 'Sonstige Gesundheitsnotiz',
+    validationMissingBody: 'Bitte Körperregion oder Beschwerde angeben.',
+    validationMissingCore: 'Bitte Kurztitel und Details ausfüllen.',
+    validationMedication: 'Bitte Medikament und Dosis angeben.',
+    types: {
+      symptom: {
+        label: 'Symptome',
+        hint: 'Schmerz, Beschwerden in einer Körperregion',
+      },
+      change: {
+        label: 'Veränderung',
+        hint: 'Besser, schlechter oder neue Entwicklung',
+      },
+      medication: {
+        label: 'Medikament',
+        hint: 'Begonnen, abgesetzt oder geändert',
+      },
+      doctor_visit: {
+        label: 'Arztbesuch',
+        hint: 'Termin, Beratung, Nachsorge (keine Operation)',
+      },
+      lab_test: {
+        label: 'Bluttest / Labor',
+        hint: 'Blutwerte, Labor — Körperregion optional',
+      },
+      imaging: {
+        label: 'Bildgebung',
+        hint: 'MRT, Röntgen, CT, Ultraschall usw.',
+      },
+      surgery: {
+        label: 'Operation / Eingriff',
+        hint: 'OP, Eingriff oder stationäre Behandlung',
+      },
+      other: {
+        label: 'Sonstige Notiz',
+        hint: 'Nur wenn nichts anderes passt',
+      },
+    },
   },
   entryTypes: {
     symptom: 'Symptombericht',
     medication: 'Medikamenten-Update',
     change: 'Veränderung',
     doctor_visit: 'Arztbesuch',
-    imaging: 'Bildgebung / Test',
+    imaging: 'Bildgebung',
+    lab_test: 'Laborergebnisse',
+    surgery: 'Operation / Eingriff',
     other: 'Gesundheitsnotiz',
   },
   urgency: {
@@ -539,7 +739,9 @@ export default {
     medication: 'Medikamente',
     change: 'Veränderungen',
     doctor_visit: 'Arztbesuche',
-    imaging: 'Tests / Bildgebung',
+    imaging: 'Bildgebung',
+    lab_test: 'Labor',
+    surgery: 'Operationen',
     other: 'Sonstige Notizen',
   },
   classification: {
@@ -738,8 +940,56 @@ export default {
       reason: 'laufende Beschwerden in dieser Region',
     },
   },
+  doctorSpecialty: {
+    primary_care: 'Haus- / Hausarzt',
+    orthopedics: 'Orthopäde (Knochen & Gelenke)',
+    dermatology: 'Hautarzt',
+    cardiology: 'Kardiologe',
+    gastroenterology: 'Gastroenterologe',
+    neurology: 'Neurologe',
+    endocrinology: 'Endokrinologe',
+    pulmonology: 'Pneumologe',
+    urology: 'Urologe',
+    gynecology: 'Gynäkologe',
+    ophthalmology: 'Augenarzt',
+    ent: 'HNO-Arzt',
+    psychiatry: 'Psychiater / Psychische Gesundheit',
+    rheumatology: 'Rheumatologe',
+  },
   doctorNotes: {
     title: 'Notizen für Ihren Arzt',
+    specialtyLabel: 'Für welche Ärztin / welchen Arzt?',
+    preparedForSpecialty: 'Vorbereitet für: {specialty}',
+    specialtyFocus: {
+      primary_care: 'Schwerpunkt: Gesamtversorgung, Medikamente, Vorsorge, Überweisungen.',
+      orthopedics: 'Schwerpunkt: Schmerz, Bewegung, Gelenke, Wirbelsäule, Bildgebung.',
+      dermatology: 'Schwerpunkt: Hautsymptome, Ausschläge, Behandlungen.',
+      cardiology: 'Schwerpunkt: Herz-/Brustsymptome und Risikofaktoren.',
+      gastroenterology: 'Schwerpunkt: Verdauung, Bauch, Ernährung, Medikamente.',
+      neurology: 'Schwerpunkt: Kopfschmerz, Taubheit, Schwindel, neurologische Symptome.',
+      endocrinology: 'Schwerpunkt: Gewicht, Stoffwechsel, Schilddrüse, Hormone.',
+      pulmonology: 'Schwerpunkt: Husten, Atemnot, Lungenbehandlung.',
+      urology: 'Schwerpunkt: Harntrakt, Nieren, Blase.',
+      gynecology: 'Schwerpunkt: Becken, Zyklus, Frauengesundheit.',
+      ophthalmology: 'Schwerpunkt: Sehen, Augenbeschwerden.',
+      ent: 'Schwerpunkt: Ohr, Nase, Hals, Nebenhöhlen.',
+      psychiatry: 'Schwerpunkt: Stimmung, Angst, Schlaf, psychische Gesundheit.',
+      rheumatology: 'Schwerpunkt: Entzündliche Gelenke, Steifigkeit.',
+    },
+    clinicalTitle: 'Besuchsbriefing aus dem klinischen Modell',
+    clinicalIntro:
+      'Arztorientierte Zusammenfassung aus Journal und klinischem Modell. Vor dem Druck prüfen und bearbeiten.',
+    clinicalGenerating: 'Besuchsbriefing wird mit KI erstellt…',
+    clinicalModelBadge: '(Aus klinischem Modell und Journal)',
+    clinicalModelSectionTitle: 'KLINISCHES MODELL',
+    clinicalModelFactorsTitle: 'SCHLÜSSELFAKTOREN',
+    clinicalModelAiFactorsTitle: 'PRIORITÄTEN (KI)',
+    clinicalJournalSectionTitle: 'AKTUELLE JOURNAL-EINTRÄGE ({count} gesamt)',
+    clinicalJournalTruncated:
+      '(Die {shown} neuesten von {total} Einträgen — vollständiges Journal in Monday.)',
+    clinicalNoJournal: 'Zuerst Journal-Einträge hinzufügen.',
+    clinicalDiscussReview: 'Klinische Modell-Themen mit aktuellen Symptomen abgleichen.',
+    clinicalDiscussTrajectory: 'Verlauf: Besserung, stabil oder Verschlechterung?',
     generating: 'KI erstellt eine arztorientierte Zusammenfassung…',
     intro:
       'Vor dem Drucken prüfen und bearbeiten. Mit KI-Einblicken: synthetisiertes Besuchsbriefing — kein Journal-Export.',
@@ -808,7 +1058,9 @@ export default {
       medication: 'Medikamenten-Updates',
       change: 'Veränderungen',
       doctorVisit: 'Arztbesuche',
-      imaging: 'Tests / Bildgebung',
+      imaging: 'Bildgebung',
+      labTest: 'Laborergebnisse',
+      surgery: 'Operationen / Eingriffe',
       other: 'Notizen',
     },
     factor: {

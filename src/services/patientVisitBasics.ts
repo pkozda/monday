@@ -1,6 +1,12 @@
 import { format, parseISO } from 'date-fns'
 import { summarizeWeightTrend } from '@/services/weightTrend'
 import type { HealthEntry, PatientProfile } from '@/models/types'
+import {
+  formatProfileBmi,
+  formatProfileHeightCm,
+  formatProfileWeightKg,
+  getBmiCategory,
+} from '@/utils/profileAnthropometrics'
 
 function formatSex(profile: PatientProfile): string | null {
   if (!profile.biologicalSex) return null
@@ -32,6 +38,26 @@ export function buildPatientVisitBasicsLines(
     const sex = formatSex(profile)
     if (sex) lines.push(`Biological sex: ${sex}`)
     if (profile.bloodType) lines.push(`Blood type: ${profile.bloodType}`)
+    if (profile.heightCm != null) {
+      lines.push(`Height: ${formatProfileHeightCm(profile.heightCm)}`)
+    }
+    if (profile.weightKg != null) {
+      lines.push(`Weight: ${formatProfileWeightKg(profile.weightKg)}`)
+    }
+  }
+
+  if (profile?.weightKg != null && profile.heightCm != null) {
+    const bmi = formatProfileBmi(profile.weightKg, profile.heightCm)
+    if (bmi != null) {
+      const category = getBmiCategory(bmi)
+      const categoryLabel: Record<string, string> = {
+        underweight: 'underweight',
+        normal: 'healthy range',
+        overweight: 'overweight',
+        obese: 'obese',
+      }
+      lines.push(`BMI: ${bmi} (${categoryLabel[category.id] ?? category.id})`)
+    }
   }
 
   const weightLine = formatWeightBaselineLine(entries)

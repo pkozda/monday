@@ -18,6 +18,14 @@ export async function getPatientProfile(): Promise<PatientProfile> {
   return profile
 }
 
+const CLEARABLE_PROFILE_FIELDS = [
+  'dateOfBirth',
+  'biologicalSex',
+  'bloodType',
+  'heightCm',
+  'weightKg',
+] as const satisfies readonly (keyof PatientProfile)[]
+
 export async function savePatientProfile(
   updates: Partial<Omit<PatientProfile, 'id' | 'createdAt'>>
 ): Promise<PatientProfile> {
@@ -25,6 +33,11 @@ export async function savePatientProfile(
   const updated: PatientProfile = {
     ...current,
     ...updates,
+  }
+  for (const key of CLEARABLE_PROFILE_FIELDS) {
+    if (key in updates && updates[key] === undefined) {
+      delete updated[key]
+    }
   }
   await db.patientProfiles.put(updated)
   return updated
