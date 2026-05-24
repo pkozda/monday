@@ -63,6 +63,32 @@
         </ul>
       </section>
 
+      <section v-if="relatedVariants.length" class="hypothesis-section">
+        <h4 class="section-label">{{ t('diseaseInsight.possibleConditionsTitle') }}</h4>
+        <p class="possible-conditions-hint">
+          {{ t('diseaseInsight.possibleConditionsHint') }}
+        </p>
+        <div class="possible-conditions-list">
+          <article
+            v-for="variant in relatedVariants"
+            :key="variant.id"
+            class="possible-condition-card"
+          >
+            <header class="possible-condition-header">
+              <span class="possible-condition-percent">{{ variant.percentage }}%</span>
+              <h5 class="possible-condition-name">
+                <TranslatedText :text="variant.diseaseName" tag="span" />
+              </h5>
+            </header>
+            <DiseaseEducationBlock
+              :variant="variant"
+              :journal-entries="journalEntries"
+              compact
+            />
+          </article>
+        </div>
+      </section>
+
       <section v-if="historyNewestFirst.length" class="hypothesis-section">
         <h4 class="section-label">{{ t('hypothesisCard.history') }}</h4>
         <ol class="history-list">
@@ -138,6 +164,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format, parseISO } from 'date-fns'
 import DoctorNotesModal from '@/components/DoctorNotesModal.vue'
+import DiseaseEducationBlock from '@/components/disease/DiseaseEducationBlock.vue'
 import TranslatedText from '@/components/TranslatedText.vue'
 import { localizeHypothesisTitle } from '@/services/localizeHypothesisTitle'
 import { useLocale } from '@/composables/useLocale'
@@ -153,17 +180,22 @@ import { buildLocalizedHypothesisDetail } from '@/services/localizeHypothesisDet
 import { generateLocalizedDoctorNotes } from '@/services/localizeDoctorNotes'
 import { journalDescriptionAddsDetail } from '@/services/journalEntryText'
 import type {
+  DiagnosisVariant,
   HealthEntry,
   Hypothesis,
   HypothesisHistoryKind,
   PatientProfile,
 } from '@/models/types'
 
-const props = defineProps<{
-  hypothesis: Hypothesis
-  journalEntries: HealthEntry[]
-  patient?: PatientProfile | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    hypothesis: Hypothesis
+    journalEntries: HealthEntry[]
+    patient?: PatientProfile | null
+    relatedVariants?: DiagnosisVariant[]
+  }>(),
+  { relatedVariants: () => [] }
+)
 
 const { t } = useI18n()
 const { locale } = useLocale()
@@ -482,6 +514,48 @@ function openDoctorNotes() {
 
 .recommendations-list li + li {
   margin-top: 0.35rem;
+}
+
+.possible-conditions-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.possible-conditions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.possible-condition-card {
+  padding: 0.75rem 0.85rem;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.possible-condition-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.possible-condition-percent {
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-strong);
+}
+
+.possible-condition-name {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
 }
 
 .evidence-list {

@@ -8,6 +8,13 @@ import type {
 import { translateUiText } from '@/services/uiTranslation'
 import type { AppLocale } from '@/i18n'
 import { localizeHypothesisConfidence } from '@/services/localizeClinical'
+import {
+  getDiagnosisMatchProfile,
+  resolveVariantDiseaseId,
+} from '@/services/diagnosisUserCopy'
+
+export { getDiagnosisMatchProfile } from '@/services/diagnosisUserCopy'
+export type { JournalAlignment } from '@/services/diagnosisUserCopy'
 
 type TFunction = Composer['t']
 
@@ -24,10 +31,33 @@ export function localizeDiagnosisCertaintyLabel(
   return String(t(CERTAINTY_KEYS[certainty]))
 }
 
+export function localizeJournalAlignment(
+  variant: Pick<
+    DiagnosisVariant,
+    'id' | 'diseaseId' | 'percentage' | 'confirmCriteria' | 'excludeCriteria'
+  >,
+  t: TFunction
+): string {
+  const exclusions = variant.excludeCriteria.filter(
+    (c) => c.status === 'exclusion_present'
+  ).length
+
+  const profile = getDiagnosisMatchProfile({
+    percentage: variant.percentage,
+    diseaseId: resolveVariantDiseaseId(variant),
+    confirmCriteria: variant.confirmCriteria,
+    exclusions,
+  })
+
+  return String(t(`diagnosis.journalMatch.${profile.alignment}`))
+}
+
 export function localizeDiagnosisRationale(
   variant: Pick<
     DiagnosisVariant,
-    | 'precisionScore'
+    | 'id'
+    | 'diseaseId'
+    | 'percentage'
     | 'primaryJournalCount'
     | 'crossBodyJournalCount'
     | 'confirmCriteria'
@@ -36,12 +66,19 @@ export function localizeDiagnosisRationale(
   >,
   t: TFunction
 ): string {
-  const confirmMet = variant.confirmCriteria.filter((c) => c.status === 'met')
-    .length
-  const confirmTotal = variant.confirmCriteria.length
   const exclusions = variant.excludeCriteria.filter(
     (c) => c.status === 'exclusion_present'
   ).length
+
+  const profile = getDiagnosisMatchProfile({
+    percentage: variant.percentage,
+    diseaseId: resolveVariantDiseaseId(variant),
+    confirmCriteria: variant.confirmCriteria,
+    exclusions,
+  })
+
+  const confirmMet = profile.confirmMet
+  const confirmTotal = profile.confirmTotal
 
   const scopeParts: string[] = []
   if (variant.primaryJournalCount > 0) {
@@ -79,32 +116,36 @@ export function localizeDiagnosisRationale(
       ? scopeParts.join(` ${String(t('diagnosis.rationale.scopeAnd'))} `)
       : String(t('diagnosis.rationale.fullHistory'))
 
-  let criteriaNote = ''
-  if (confirmTotal > 0) {
-    criteriaNote = String(
-      t('diagnosis.rationale.criteriaMet', { met: confirmMet, total: confirmTotal })
-    )
-  }
-  if (exclusions > 0) {
-    criteriaNote += String(
-      t('diagnosis.rationale.exclusions', {
-        count: exclusions,
-        factors: t(
-          exclusions === 1
-            ? 'diagnosis.rationale.factor'
-            : 'diagnosis.rationale.factors'
-        ),
-      })
+  const sentences: string[] = [
+    String(t('diagnosis.rationale.intro', { scope })),
+  ]
+
+  if (profile.symptomsMatch !== 'skip') {
+    sentences.push(
+      String(
+        t(`diagnosis.rationale.symptoms_${profile.symptomsMatch}`, {
+          met: confirmMet,
+          total: confirmTotal,
+          typicalMet: profile.typicalMatched,
+          typicalTotal: profile.typicalTotal,
+        })
+      )
     )
   }
 
-  return String(
-    t('diagnosis.rationale.body', {
-      score: variant.precisionScore,
-      scope,
-      criteriaNote,
-    })
-  )
+  if (exclusions > 0) {
+    sentences.push(
+      String(
+        t('diagnosis.rationale.exclusions', {
+          count: exclusions,
+        })
+      )
+    )
+  }
+
+  sentences.push(String(t('diagnosis.rationale.disclaimer')))
+
+  return sentences.join(' ')
 }
 
 async function localizeCriterion(

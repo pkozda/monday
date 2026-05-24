@@ -14,6 +14,7 @@
           v-for="report in displayReports"
           :key="report.conditionArea"
           :report="report"
+          :journal-entries="journalEntries"
         />
       </div>
 
@@ -29,13 +30,14 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DiagnosisReportCard from '@/components/DiagnosisReportCard.vue'
 import { localizeDiagnosisReportSync } from '@/services/localizeDiagnosisContent'
-import type { DiagnosisReport } from '@/models/types'
+import type { DiagnosisReport, HealthEntry } from '@/models/types'
 
 const { t } = useI18n()
 
 const props = withDefaults(
   defineProps<{
     reports: DiagnosisReport[]
+    journalEntries?: HealthEntry[]
     loading?: boolean
     showDisclaimer?: boolean
     emptyText?: string
@@ -43,6 +45,7 @@ const props = withDefaults(
   {
     loading: false,
     showDisclaimer: true,
+    journalEntries: () => [],
   }
 )
 

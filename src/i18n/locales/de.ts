@@ -354,35 +354,83 @@ export default {
     seeSpecialist: 'Siehe: {name}',
     whoToSee: 'Wen aufsuchen:',
     crossBodyNote:
-      'Bewertung kann Einträge aus anderen Körperregionen einbeziehen.',
+      'Wir haben auch passende Einträge aus anderen Körperbereichen berücksichtigt, wenn sie zur gleichen Erkrankung passen könnten.',
     uncertainNote:
-      'Keine dominante Übereinstimmung — Varianten vergleichen und mit Ärztin/Arzt besprechen.',
-    historyFit: 'Journal-Passung {score}/100',
-    whySuggested: 'Warum vorgeschlagen',
+      'Keine Erkrankung sticht klar hervor — vergleichen Sie die Optionen unten und besprechen Sie sie mit Ärztin/Arzt.',
+    journalMatch: {
+      strong: 'Passt gut zu Ihrem Journal',
+      partial: 'Passt teilweise zu Ihrem Journal',
+      limited: 'Bisher nur wenig Passung im Journal',
+    },
+    whySuggested: 'Warum wir das vorschlagen',
     criteriaSupport: 'Kriterien dafür',
     criteriaAgainst: 'Kriterien dagegen',
     suggestedWorkup: 'Vorgeschlagene Abklärung',
     evidenceJournal: 'Belege aus dem Journal',
+    variantTabsLabel: 'Mögliche Erkrankungen für {area}',
     notDocumented: 'Noch nicht dokumentiert — mit Ärztin/Arzt besprechen',
     certaintyReportHigh: 'Wahrscheinlichste Übereinstimmung',
     certaintyReportModerate: 'Führende Möglichkeit',
     certaintyReportLow: 'Mehrere Möglichkeiten — alle Varianten prüfen',
     rationale: {
-      primaryScope: '{count} {entries} in {area}',
-      crossScope: '{count} bereichsübergreifende {entries}',
+      primaryScope: '{count} Journal-{entries} zu {area}',
+      crossScope: '{count} verwandte {entries} aus anderen Körperbereichen',
       scopeAnd: 'und',
-      fullHistory: 'Ihre gesamte Krankengeschichte',
-      criteriaMet: ' {met} von {total} unterstützenden Kriterien im Journal erfüllt.',
-      exclusions: ' {count} Ausschluss-{factors} vorhanden.',
-      factor: 'faktor',
-      factors: 'faktoren',
-      body: 'Präzisionswert {score}/100 aus {scope}, Symptommustern und klinischen Kriterien.{criteriaNote} Keine bestätigte Diagnose — Kriterien unten mit Ärztin/Arzt besprechen.',
+      fullHistory: 'Ihr Gesundheitsjournal',
+      intro: 'Wir haben {scope} ausgewertet.',
+      symptoms_all:
+        'Typische Anzeichen dieser Erkrankung stehen in Ihren Einträgen ({typicalMet} von {typicalTotal} häufigen Anzeichen plus passende Journal-Hinweise).',
+      symptoms_some:
+        'Nur ein Teil passt zu Ihrem Journal ({typicalMet} von {typicalTotal} typischen Anzeichen; {met} von {total} unterstützenden Prüfungen). Mehr Einträge können die Einschätzung ändern.',
+      symptoms_none:
+        'Wenige typische Anzeichen dieser Erkrankung sind bisher im Journal — Prozentwerte können sich bei neuen Einträgen ändern.',
+      exclusions:
+        '{count} Einträge im Journal sprechen eher gegen diese Möglichkeit — bitte mit Ärztin/Arzt besprechen.',
+      disclaimer:
+        'Das ist ein Hinweis zum Besprechen, keine bestätigte Diagnose.',
     },
     variantFooter: {
       journalIn: '{count} Journal-{entries} in {area}',
       crossFrom: '+ {count} aus anderen Körper-{areas}',
       hypothesisLine: 'Hypothese: {pattern} · {confidence}',
     },
+  },
+  diseaseInsight: {
+    aboutTitle: 'Was ist diese Erkrankung?',
+    whatYouLoggedTitle: 'Was Sie dokumentiert haben',
+    whatYouLoggedIntro:
+      'Ihre echten Journal-Einträge, die wir mit dieser Möglichkeit verknüpft haben — keine allgemeinen Symptom-Texte.',
+    whyThisSupports: 'Warum das verknüpft ist',
+    supportReason: {
+      symptom_logged:
+        'Sie haben Symptome oder Veränderungen dokumentiert, die zu dieser Möglichkeit passen.',
+      imaging_or_test:
+        'Ihre Notiz enthält Bildgebung, Labor oder Testergebnisse — nicht nur einen Termin.',
+      finding_in_visit_note:
+        'Ihr Besuchs-Eintrag nennt Befunde oder Ergebnisse, nicht nur den Besuch.',
+      medication_change:
+        'Ihre Medikations-Notiz ist für diese Verfolgung relevant.',
+      explicit_diagnosis:
+        'Ihr Journal nennt eine Diagnose oder bestätigte Erkrankung.',
+      journal_pattern: 'Ihr Eintrag passt zu Mustern für diese Möglichkeit.',
+    },
+    noJournalProofYet:
+      'Noch kein klarer Eintrag im Journal. Symptome genauer notieren oder typische Anzeichen unten lesen.',
+    typicalSymptomsTitle: 'Typische Anzeichen dieser Erkrankung',
+    typicalSymptomsIntro:
+      'Zur Orientierung — was Ärztinnen oft prüfen. Für die Bewertung zählen Ihre Einträge oben.',
+    journalCompareTitle: 'Lücken in Ihrem Journal',
+    journalCompareIntro:
+      'Häufige Anzeichen dieser Erkrankung, die Sie noch nicht dokumentiert haben.',
+    missingToConfirmTitle: 'Noch nicht in Ihrem Journal',
+    missingToConfirmHint:
+      'Diese Anzeichen sind bei dieser Erkrankung häufig, stehen aber nicht in Ihren Einträgen. Falls Sie sie haben: beim Arztbesuch erwähnen oder im Journal nachtragen.',
+    cautionTitle: 'Widersprüchliche Hinweise im Journal',
+    whenToSeekTitle: 'Wann ärztliche Hilfe suchen',
+    possibleConditionsTitle: 'Mögliche Erkrankungen zum Besprechen',
+    possibleConditionsHint:
+      'Aus Ihrem Journal und Körperbereich — Prozentangaben sind Schätzungen, keine Diagnose.',
+    variantPercent: '{percent} % Übereinstimmung',
   },
   anamnesis: {
     title: 'Gesundheitsgeschichte (Anamnese)',

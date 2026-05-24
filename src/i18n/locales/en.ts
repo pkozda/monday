@@ -359,35 +359,86 @@ export default {
     seeSpecialist: 'See: {name}',
     whoToSee: 'Who to see:',
     crossBodyNote:
-      'Scoring includes journal entries from other body areas when they may relate to the same condition.',
+      'We also used related journal entries from other body areas when they may fit the same condition.',
     uncertainNote:
-      'No single match is dominant — compare variants and discuss with a clinician.',
-    historyFit: 'History fit {score}/100',
-    whySuggested: 'Why this was suggested',
+      'No single condition stands out — compare the options below and discuss with a clinician.',
+    journalMatch: {
+      strong: 'Closely matches your journal',
+      partial: 'Partly matches your journal',
+      limited: 'Limited match in your journal so far',
+    },
+    whySuggested: 'Why we suggested this',
     criteriaSupport: 'Criteria that support this diagnosis',
     criteriaAgainst: 'Criteria that argue against it',
     suggestedWorkup: 'Suggested workup to confirm or exclude',
     evidenceJournal: 'Evidence from your journal',
+    variantTabsLabel: 'Possible conditions for {area}',
     notDocumented: 'Not yet documented — discuss with your clinician',
     certaintyReportHigh: 'Most likely match',
     certaintyReportModerate: 'Leading possibility',
     certaintyReportLow: 'Several possibilities — review all variants',
     rationale: {
-      primaryScope: '{count} {entries} in {area}',
-      crossScope: '{count} cross-area {entries}',
+      primaryScope: '{count} journal {entries} about {area}',
+      crossScope: '{count} related {entries} from other body areas',
       scopeAnd: 'and',
-      fullHistory: 'your full medical history',
-      criteriaMet: ' {met} of {total} supporting criteria met in your journal.',
-      exclusions: ' {count} exclusion {factors} present.',
-      factor: 'factor',
-      factors: 'factors',
-      body: 'Precision score {score}/100 from {scope}, symptom patterns, and clinical criteria.{criteriaNote} Not a confirmed diagnosis — use confirm/exclude criteria below with your clinician.',
+      fullHistory: 'your health journal',
+      intro: 'We looked at {scope}.',
+      symptoms_all:
+        'Typical signs for this condition show up in what you logged ({typicalMet} of {typicalTotal} common signs, plus supporting journal checks).',
+      symptoms_some:
+        'Only part of the picture is in your journal ({typicalMet} of {typicalTotal} typical signs; {met} of {total} supporting checks). Log more detail if you can.',
+      symptoms_none:
+        'Few typical signs for this condition appear in your journal so far — percentages may change if you add more entries.',
+      exclusions:
+        '{count} journal notes may point away from this condition—worth discussing with your clinician.',
+      disclaimer:
+        'This is a suggestion to explore with a clinician, not a confirmed diagnosis.',
     },
     variantFooter: {
       journalIn: '{count} journal {entries} in {area}',
       crossFrom: '+ {count} from other body {areas}',
       hypothesisLine: 'Hypothesis: {pattern} · {confidence}',
     },
+  },
+  diseaseInsight: {
+    aboutTitle: 'What is this condition?',
+    whatYouLoggedTitle: 'What you logged that supports this',
+    whatYouLoggedIntro:
+      'These are your actual journal entries we linked to this possibility — not generic symptom labels.',
+    whyThisSupports: 'Why this is linked',
+    supportReason: {
+      symptom_logged:
+        'You logged symptoms or changes that match what we look for with this condition.',
+      imaging_or_test:
+        'Your note documents imaging, labs, or test results — not just an appointment.',
+      finding_in_visit_note:
+        'Your visit note includes specific findings or results, not only that you went.',
+      medication_change:
+        'Your medication note is relevant to how this condition is tracked.',
+      explicit_diagnosis:
+        'Your journal mentions a diagnosis or confirmed condition name.',
+      journal_pattern: 'Your journal entry matches patterns for this condition.',
+    },
+    noJournalProofYet:
+      'None of your journal entries clearly match yet. Add symptom detail or see typical signs below.',
+    typicalSymptomsTitle: 'Typical signs for this condition',
+    typicalSymptomsIntro:
+      'For reference — what doctors often look for. Your own notes above are what we used to score this match.',
+    journalCompareTitle: 'Gaps in your journal',
+    journalCompareIntro:
+      'Common signs for this condition that you have not logged yet (you may still have them).',
+    missingToConfirmTitle: 'Not in your journal yet',
+    missingToConfirmHint:
+      'These signs are often seen with this condition but are not in your logged entries. If you have them, mention them at your visit or add a journal note.',
+    notReportedTitle: 'Not in your journal yet',
+    notReportedHint:
+      'Absence in your log does not rule out a symptom — mention anything relevant at your visit.',
+    cautionTitle: 'Conflicting signals in your journal',
+    whenToSeekTitle: 'When to seek care',
+    possibleConditionsTitle: 'Possible conditions to discuss',
+    possibleConditionsHint:
+      'From your journal and body area — percentages are estimates, not a diagnosis.',
+    variantPercent: '{percent}% match',
   },
   anamnesis: {
     title: 'Health history (anamnesis)',

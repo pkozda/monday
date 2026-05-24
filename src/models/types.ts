@@ -87,6 +87,8 @@ export interface DiagnosisCriterion {
 
 export interface DiagnosisVariant {
   id: string
+  /** Catalog id for education lookup */
+  diseaseId?: string
   /** Medical disease / condition name */
   diseaseName: string
   label: string

@@ -18,6 +18,13 @@ import {
   regenerateAllHypothesesFromJournal,
 } from '@/api/hypothesisApi'
 import { clearAllJournalRecords } from '@/api/healthApi'
+import {
+  downloadSnapshotJson,
+  exportDbSnapshot,
+  importDbSnapshot,
+  snapshotSummary,
+  type MondayDbSnapshot,
+} from '@/db/snapshot'
 import { initTheme } from '@/composables/useTheme'
 import { scheduleIdleWork } from '@/utils/scheduleIdleWork'
 
@@ -118,12 +125,92 @@ async function runRegenerateInsightsFromQuery(): Promise<void> {
   window.location.reload()
 }
 
+function isLocalDevHost(): boolean {
+  return (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  )
+}
+
+async function runDbSnapshotFromQuery(): Promise<void> {
+  const params = new URLSearchParams(window.location.search)
+  if (!params.has('dbSnapshot')) return
+  if (!isLocalDevHost()) return
+
+  const action = params.get('dbSnapshot')
+  const skipConfirm = params.get('confirm') === '1'
+
+  const cleanupUrl = () => {
+    window.history.replaceState({}, '', window.location.pathname)
+  }
+
+  if (action === 'export') {
+    const snapshot = await exportDbSnapshot()
+
+    if (params.get('save') === '1') {
+      const res = await fetch('/__monday/db-snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(snapshot),
+      })
+      const payload = (await res.json()) as { path?: string; error?: string }
+      if (!res.ok) {
+        window.alert(payload.error ?? 'Snapshot save failed.')
+      } else {
+        window.alert(
+          `Database snapshot saved:\n${payload.path ?? 'db-snapshots/'}\n\n${snapshotSummary(snapshot)}`
+        )
+      }
+    } else {
+      downloadSnapshotJson(snapshot)
+      window.alert(`Downloaded snapshot.\n\n${snapshotSummary(snapshot)}`)
+    }
+
+    cleanupUrl()
+    return
+  }
+
+  if (action === 'restore') {
+    if (
+      !skipConfirm &&
+      !window.confirm(
+        'Replace all local Monday data with this snapshot? Current data on this device will be overwritten.'
+      )
+    ) {
+      cleanupUrl()
+      return
+    }
+
+    const file = params.get('file')
+    const useLatest = params.has('latest') || !file
+    const url = useLatest
+      ? '/__monday/db-snapshot/latest'
+      : `/__monday/db-snapshot/file/${encodeURIComponent(file!)}`
+
+    const res = await fetch(url)
+    if (!res.ok) {
+      const err = (await res.json()) as { error?: string }
+      window.alert(err.error ?? 'Could not load snapshot file.')
+      cleanupUrl()
+      return
+    }
+
+    const snapshot = (await res.json()) as MondayDbSnapshot
+    await importDbSnapshot(snapshot)
+    window.alert(`Restored snapshot.\n\n${snapshotSummary(snapshot)}`)
+    cleanupUrl()
+    window.location.reload()
+  }
+}
+
 function exposeDevClearHelpers(): void {
   ;(
     window as Window & {
       clearMondayJournal?: typeof clearAllJournalRecords
       clearMondayHypotheses?: typeof clearAllHypotheses
       regenerateMondayInsights?: typeof regenerateAllHypothesesFromJournal
+      exportMondayDbSnapshot?: typeof exportDbSnapshot
+      importMondayDbSnapshot?: typeof importDbSnapshot
     }
   ).clearMondayJournal = clearAllJournalRecords
   ;(
@@ -134,6 +221,12 @@ function exposeDevClearHelpers(): void {
       regenerateMondayInsights?: typeof regenerateAllHypothesesFromJournal
     }
   ).regenerateMondayInsights = regenerateAllHypothesesFromJournal
+  ;(
+    window as Window & { exportMondayDbSnapshot?: typeof exportDbSnapshot }
+  ).exportMondayDbSnapshot = exportDbSnapshot
+  ;(
+    window as Window & { importMondayDbSnapshot?: typeof importDbSnapshot }
+  ).importMondayDbSnapshot = importDbSnapshot
 }
 
 /** Fast migrations so IndexedDB is not busy during the first dashboard paint. */
@@ -206,6 +299,7 @@ async function runStartupMigrations(): Promise<void> {
   await runClearHypothesesFromQuery()
   await runClearJournalFromQuery()
   await runRegenerateInsightsFromQuery()
+  await runDbSnapshotFromQuery()
 
   scheduleIdleWork(() => {
     void runDeferredStartupMigrations().catch((err) => {
