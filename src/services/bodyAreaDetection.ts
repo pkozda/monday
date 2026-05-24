@@ -1,4 +1,10 @@
 import { combinedEntryText } from '@/services/healthAnalysis'
+import {
+  buildJournalFocusPlan,
+  collectFocusAreaLabels,
+  entriesForFocusArea,
+  type JournalFocusPlan,
+} from '@/services/journalFocusAreas'
 import { isWeightRelatedText } from '@/services/weightEntry'
 import type { DiagnosisReport, HealthEntry, Hypothesis } from '@/models/types'
 
@@ -114,8 +120,13 @@ export function entryRelatesToArea(entry: HealthEntry, area: string): boolean {
 
 export function entriesForDiagnosisArea(
   area: string,
-  entries: HealthEntry[]
+  entries: HealthEntry[],
+  focusPlan?: JournalFocusPlan
 ): HealthEntry[] {
+  if (focusPlan) {
+    return entriesForFocusArea(area, entries, focusPlan)
+  }
+
   if (isGeneralHealthArea(area)) return [...entries]
   return entries.filter((entry) => entryRelatesToArea(entry, area))
 }
@@ -124,35 +135,8 @@ export function collectConditionAreas(
   entries: HealthEntry[],
   hypotheses: Hypothesis[]
 ): string[] {
-  const map = new Map<string, string>()
-
-  for (const entry of entries) {
-    for (const area of areasForEntry(entry)) {
-      if (isGeneralHealthArea(area)) continue
-      map.set(normalizeAreaKey(area), area)
-    }
-  }
-
-  for (const hypothesis of hypotheses) {
-    const text = [hypothesis.conditionArea ?? '', hypothesis.title].join(' ')
-    const fromField =
-      hypothesis.conditionArea?.trim() ||
-      hypothesis.title.split(':')[0]?.trim() ||
-      ''
-    if (fromField && !isGeneralHealthArea(fromField)) {
-      map.set(normalizeAreaKey(fromField), fromField)
-    }
-    for (const area of detectAllBodyAreasFromText(text)) {
-      if (isGeneralHealthArea(area)) continue
-      map.set(normalizeAreaKey(area), area)
-    }
-  }
-
-  const specific = [...map.values()]
-  if (entries.length > 0 || hypotheses.length > 0) {
-    return [GENERAL_HEALTH_AREA, ...specific]
-  }
-  return specific
+  const plan = buildJournalFocusPlan(entries)
+  return collectFocusAreaLabels(plan, hypotheses)
 }
 
 export function sortDiagnosisReportsByArea(

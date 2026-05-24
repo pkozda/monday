@@ -1,12 +1,13 @@
 import { MEDICAL_DISEASE_CATALOG } from '@/data/medicalDiseaseCatalog'
 import {
   areasMatch,
-  collectConditionAreas,
   detectAllBodyAreasFromText,
   entriesForDiagnosisArea,
   isGeneralHealthArea,
   sortDiagnosisReportsByArea,
 } from '@/services/bodyAreaDetection'
+import type { JournalFocusPlan } from '@/services/journalFocusAreas'
+import { buildJournalFocusPlan, collectFocusAreaLabels } from '@/services/journalFocusAreas'
 import {
   inferDiseasesForArea,
   type InferredDisease,
@@ -35,17 +36,17 @@ import type {
   HypothesisPattern,
 } from '@/models/types'
 
-const CERTAINTY_LABELS: Record<DiagnosisCertainty, string> = {
+export const CERTAINTY_LABELS: Record<DiagnosisCertainty, string> = {
   high: 'Most likely match',
   moderate: 'Leading possibility',
   low: 'Several possibilities — review all variants',
 }
 
-const MIN_VARIANT_PERCENT = 3
-const MAX_VARIANTS = 8
+export const MIN_VARIANT_PERCENT = 3
+export const MAX_DIAGNOSIS_VARIANTS = 8
 const MIN_PRECISION_FRACTION = 0.35
 
-function normalizePercentages(weights: number[]): number[] {
+export function normalizePercentages(weights: number[]): number[] {
   if (weights.length === 0) return []
   const total = weights.reduce((sum, w) => sum + w, 0)
   if (total <= 0) return weights.map(() => 0)
@@ -66,7 +67,7 @@ function normalizePercentages(weights: number[]): number[] {
   return result
 }
 
-function resolveCertainty(percentages: number[]): DiagnosisCertainty {
+export function resolveCertainty(percentages: number[]): DiagnosisCertainty {
   if (percentages.length === 0) return 'low'
   const sorted = [...percentages].sort((a, b) => b - a)
   const top = sorted[0] ?? 0
@@ -76,7 +77,7 @@ function resolveCertainty(percentages: number[]): DiagnosisCertainty {
   return 'low'
 }
 
-function findLinkedHypothesis(
+export function findLinkedHypothesis(
   diseaseId: string,
   hypotheses: Hypothesis[]
 ): Hypothesis | undefined {
@@ -91,7 +92,7 @@ function findLinkedHypothesis(
   )
 }
 
-function buildRationale(disease: InferredDisease, primaryArea: string): string {
+export function buildRationale(disease: InferredDisease, primaryArea: string): string {
   const confirmMet = disease.confirmCriteria.filter((c) => c.status === 'met')
     .length
   const confirmTotal = disease.confirmCriteria.length
@@ -150,11 +151,12 @@ function buildAreaReport(
   area: string,
   entries: HealthEntry[],
   hypotheses: Hypothesis[],
-  sharedHistory: MedicalHistoryContext
+  sharedHistory: MedicalHistoryContext,
+  focusPlan: JournalFocusPlan
 ): DiagnosisReport | null {
   const areaHypotheses = hypotheses.filter((h) => hypothesisRelatesToArea(h, area))
 
-  const areaEntries = entriesForDiagnosisArea(area, entries)
+  const areaEntries = entriesForDiagnosisArea(area, entries, focusPlan)
 
   if (
     !isGeneralHealthArea(area) &&
@@ -176,7 +178,7 @@ function buildAreaReport(
   const topPrecision = inferred[0].precisionScore
   const candidates = inferred.filter(
     (d, index) =>
-      index < MAX_VARIANTS &&
+      index < MAX_DIAGNOSIS_VARIANTS &&
       d.precisionScore >= topPrecision * MIN_PRECISION_FRACTION
   )
 
@@ -265,20 +267,24 @@ function buildAreaReport(
 /** Ranked disease names (with %) inferred from journal + hypotheses per body area. */
 export function buildDiagnosisReports(
   hypotheses: Hypothesis[],
-  entries: HealthEntry[] = []
+  entries: HealthEntry[] = [],
+  focusPlan?: JournalFocusPlan
 ): DiagnosisReport[] {
   if (hypotheses.length === 0 && entries.length === 0) return []
 
+  const plan = focusPlan ?? buildJournalFocusPlan(entries)
   const sharedHistory = buildMedicalHistoryContext(entries)
-  const areas = collectConditionAreas(entries, hypotheses)
+  const areas = collectFocusAreaLabels(plan, hypotheses)
   const reports = areas
-    .map((area) => buildAreaReport(area, entries, hypotheses, sharedHistory))
+    .map((area) =>
+      buildAreaReport(area, entries, hypotheses, sharedHistory, plan)
+    )
     .filter((r): r is DiagnosisReport => Boolean(r))
 
   return sortDiagnosisReportsByArea(reports)
 }
 
-function hypothesisRelatesToArea(hypothesis: Hypothesis, area: string): boolean {
+export function hypothesisRelatesToArea(hypothesis: Hypothesis, area: string): boolean {
   if (isGeneralHealthArea(area)) return true
   const hArea =
     hypothesis.conditionArea?.trim() || hypothesis.title.split(':')[0]?.trim() || ''

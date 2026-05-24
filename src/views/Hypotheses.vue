@@ -9,7 +9,7 @@
         <button
           type="button"
           class="btn-regenerate"
-          :disabled="loading || regenerating || journalEntries.length === 0"
+          :disabled="loading || isRegenerating || journalEntries.length === 0"
           :title="
             journalEntries.length === 0
               ? t('hypothesesPage.regenerateTitleEmpty')
@@ -18,13 +18,29 @@
           @click="onRegenerateInsights"
         >
           {{
-            regenerating
+            isRegenerating
               ? t('hypothesesPage.regenerating')
               : t('hypothesesPage.regenerate')
           }}
         </button>
       </template>
     </PageHeader>
+
+    <div
+      v-if="aiActive"
+      class="page-banner page-banner--info ai-banner"
+      role="status"
+    >
+      {{ t('aiInsights.banner') }}
+    </div>
+
+    <div
+      v-if="regenerateSlowHint"
+      class="page-banner page-banner--info regenerate-slow-hint"
+      role="status"
+    >
+      {{ t('hypothesesPage.regenerateSlowHint') }}
+    </div>
 
     <div
       v-if="regenerateMessage"
@@ -37,7 +53,14 @@
 
     <div v-if="loading" class="page-loading">{{ t('hypothesesPage.loading') }}</div>
 
-    <template v-else>
+    <div
+      v-else-if="isRegenerating && hypotheses.length === 0 && diagnosisReports.length === 0"
+      class="page-loading"
+    >
+      {{ t('hypothesesPage.regenerating') }}
+    </div>
+
+    <template v-else-if="!isRegenerating || hypotheses.length > 0 || diagnosisReports.length > 0">
       <div class="hypotheses-tabs page-panel page-panel--compact" role="tablist" aria-label="Hypotheses and diagnoses">
         <button
           type="button"
@@ -74,6 +97,8 @@
         <DiagnosisPanel
           :reports="diagnosisReports"
           :journal-entries="journalEntries"
+          :refreshing="diagnosesRefreshing"
+          :diagnosis-mode="diagnosisMode"
         />
       </div>
 
@@ -107,17 +132,35 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-
-const { t } = useI18n()
 import PageHeader from '@/components/PageHeader.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
 import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
-import { regenerateAllHypothesesFromJournal } from '@/api/hypothesisApi'
 import { getHypotheses } from '@/api/mockApi'
-import { buildDiagnosisReports } from '@/services/diagnosisGenerator'
+import { getDiagnosisReports } from '@/api/diagnosisApi'
+import { useAiInsights } from '@/composables/useAiInsights'
+import { useInsightsRegenerationMessages } from '@/composables/useInsightsRegenerationMessages'
+import {
+  getInsightsCache,
+  invalidateInsightsCache,
+  isInsightsCacheValid,
+  setInsightsCache,
+  type InsightsCacheSnapshot,
+} from '@/composables/useInsightsCache'
+import { shouldUseAiInsights } from '@/services/llm/config'
+import {
+  INSIGHTS_REGENERATED_EVENT,
+  runInsightsRegeneration,
+  useInsightsRegeneration,
+  type InsightsRegeneratedDetail,
+} from '@/services/insightsRegeneration'
+
+const { t } = useI18n()
+const { active: aiActive } = useAiInsights()
+const { isRunning: isRegenerating } = useInsightsRegeneration()
+const regenerationMessages = useInsightsRegenerationMessages()
 import { consolidateHypothesesForDisplay } from '@/services/hypothesisDisplay'
 import { areasMatch } from '@/services/bodyAreaDetection'
 import { getHealthEntries } from '@/api/healthApi'
@@ -144,15 +187,17 @@ type TabId = 'diagnoses' | 'hypotheses'
 
 const route = useRoute()
 const router = useRouter()
-const loading = ref(true)
+const loading = ref(false)
+const diagnosesRefreshing = ref(false)
 const activeTab = ref<TabId>('diagnoses')
 const hypotheses = ref<Hypothesis[]>([])
 const diagnosisReports = ref<DiagnosisReport[]>([])
 const journalEntries = ref<HealthEntry[]>([])
 const patient = ref<PatientProfile | null>(null)
-const regenerating = ref(false)
 const regenerateMessage = ref('')
 const regenerateMessageType = ref<'success' | 'error' | 'info'>('success')
+const regenerateSlowHint = ref(false)
+const diagnosisMode = ref<'rule' | 'ai'>('rule')
 
 function relatedVariantsForHypothesis(hypothesis: Hypothesis): DiagnosisVariant[] {
   const report = diagnosisReports.value.find((r) =>
@@ -161,16 +206,43 @@ function relatedVariantsForHypothesis(hypothesis: Hypothesis): DiagnosisVariant[
   return report?.variants.slice(0, 3) ?? []
 }
 
-async function loadInsights() {
-  const [hyps, entries, profile] = await Promise.all([
-    getHypotheses(),
-    getHealthEntries(),
-    getPatientProfile(),
-  ])
-  hypotheses.value = consolidateHypothesesForDisplay(hyps)
-  journalEntries.value = entries
-  patient.value = profile
-  diagnosisReports.value = buildDiagnosisReports(hyps, entries)
+function applyCache(cached: InsightsCacheSnapshot) {
+  hypotheses.value = cached.hypotheses
+  journalEntries.value = cached.journalEntries
+  diagnosisReports.value = cached.diagnosisReports
+  patient.value = cached.patient
+}
+
+async function loadInsights(options: { silent?: boolean } = {}) {
+  const silent = options.silent === true
+  if (silent) {
+    diagnosesRefreshing.value = true
+  }
+
+  try {
+    const [hyps, entries, profile] = await Promise.all([
+      getHypotheses(),
+      getHealthEntries(),
+      getPatientProfile(),
+    ])
+    const displayHyps = consolidateHypothesesForDisplay(hyps)
+    hypotheses.value = displayHyps
+    journalEntries.value = entries
+    patient.value = profile
+    diagnosisReports.value = await getDiagnosisReports()
+    diagnosisMode.value = shouldUseAiInsights() ? 'ai' : 'rule'
+
+    setInsightsCache({
+      hypotheses: displayHyps,
+      journalEntries: entries,
+      diagnosisReports: diagnosisReports.value,
+      patient: profile,
+    })
+  } finally {
+    if (silent) {
+      diagnosesRefreshing.value = false
+    }
+  }
 }
 
 const regenerateBannerVariant = computed(() => {
@@ -180,22 +252,95 @@ const regenerateBannerVariant = computed(() => {
   return 'info'
 })
 
-onMounted(async () => {
-  try {
-    await loadInsights()
+function clearInsightsDisplay() {
+  hypotheses.value = []
+  diagnosisReports.value = []
+  regenerateSlowHint.value = false
+  regenerateMessage.value = ''
+}
 
-    const tab = route.query.tab
-    if (tab === 'hypotheses' || tab === 'diagnoses') {
-      activeTab.value = tab
-    } else if (diagnosisReports.value.length === 0 && hypotheses.value.length > 0) {
-      activeTab.value = 'hypotheses'
+function applyRegeneratedDetail(detail: InsightsRegeneratedDetail) {
+  applyCache(detail.snapshot)
+  diagnosisMode.value = detail.snapshot.aiInsightsEnabled ? 'ai' : 'rule'
+  regenerateSlowHint.value = false
+  regenerateMessageType.value =
+    detail.result.hypothesisCount > 0 ? 'success' : 'info'
+  regenerateMessage.value = formatRegenerateMessage(detail.result)
+  if (detail.result.hypothesisCount > 0 && diagnosisReports.value.length > 0) {
+    activeTab.value = 'diagnoses'
+  }
+}
+
+function onInsightsRegenerated(event: Event) {
+  const detail = (event as CustomEvent<InsightsRegeneratedDetail>).detail
+  if (!detail) return
+  applyRegeneratedDetail(detail)
+}
+
+function startBackgroundRegeneration() {
+  void runInsightsRegeneration({
+    messages: regenerationMessages,
+    onCleared: clearInsightsDisplay,
+    onSlow: () => {
+      regenerateSlowHint.value = true
+    },
+    onComplete: applyRegeneratedDetail,
+    onError: () => {
+      regenerateSlowHint.value = false
+      void loadInsights({ silent: true })
+    },
+  })
+}
+
+function onInsightsCleared() {
+  clearInsightsDisplay()
+}
+
+function onRegenerationSlow() {
+  regenerateSlowHint.value = true
+}
+
+onMounted(async () => {
+  window.addEventListener('monday-insights-cleared', onInsightsCleared)
+  window.addEventListener('monday-insights-regeneration-slow', onRegenerationSlow)
+  window.addEventListener(INSIGHTS_REGENERATED_EVENT, onInsightsRegenerated as EventListener)
+
+  const cached = getInsightsCache()
+  const [entries] = await Promise.all([getHealthEntries()])
+  if (cached && isInsightsCacheValid(cached, entries)) {
+    applyCache(cached)
+    diagnosisMode.value = cached.aiInsightsEnabled ? 'ai' : 'rule'
+    void loadInsights({ silent: true })
+  } else {
+    invalidateInsightsCache()
+    loading.value = true
+    try {
+      await loadInsights()
+    } finally {
+      loading.value = false
     }
-  } finally {
-    loading.value = false
+  }
+
+  const tab = route.query.tab
+  if (tab === 'hypotheses' || tab === 'diagnoses') {
+    activeTab.value = tab
+  } else if (diagnosisReports.value.length === 0 && hypotheses.value.length > 0) {
+    activeTab.value = 'hypotheses'
   }
 })
 
-async function onRegenerateInsights() {
+onUnmounted(() => {
+  window.removeEventListener('monday-insights-cleared', onInsightsCleared)
+  window.removeEventListener('monday-insights-regeneration-slow', onRegenerationSlow)
+  window.removeEventListener(
+    INSIGHTS_REGENERATED_EVENT,
+    onInsightsRegenerated as EventListener
+  )
+})
+
+function onRegenerateInsights() {
+  if (isRegenerating.value) return
+
   if (
     hypotheses.value.length > 0 &&
     !window.confirm(t('hypothesesPage.regenerateConfirm'))
@@ -203,24 +348,7 @@ async function onRegenerateInsights() {
     return
   }
 
-  regenerateMessage.value = ''
-  regenerating.value = true
-  try {
-    const result = await regenerateAllHypothesesFromJournal()
-    await loadInsights()
-    regenerateMessageType.value =
-      result.hypothesisCount > 0 ? 'success' : 'info'
-    regenerateMessage.value = formatRegenerateMessage(result)
-    if (result.hypothesisCount > 0 && diagnosisReports.value.length > 0) {
-      activeTab.value = 'diagnoses'
-    }
-  } catch (e) {
-    regenerateMessageType.value = 'error'
-    regenerateMessage.value =
-      e instanceof Error ? e.message : t('hypothesesPage.regenerateFailed')
-  } finally {
-    regenerating.value = false
-  }
+  startBackgroundRegeneration()
 }
 
 watch(activeTab, (tab) => {

@@ -2,10 +2,11 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import { mondayDbSnapshotPlugin } from './scripts/vite-db-snapshot-plugin'
+import { mondayLlmProxyPlugin } from './scripts/vite-llm-proxy-plugin'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue(), mondayDbSnapshotPlugin()],
+  plugins: [vue(), mondayDbSnapshotPlugin(), mondayLlmProxyPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

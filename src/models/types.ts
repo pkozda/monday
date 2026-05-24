@@ -34,6 +34,9 @@ export interface ClinicalModel {
   title: string
   summary: string
   factors: ClinicalFactor[]
+  /** True when summary/factors were refined by the LLM. */
+  aiGenerated?: boolean
+  aiMeta?: AiInsightMeta
 }
 
 export interface TimelineEvent {
@@ -54,6 +57,8 @@ export interface Hypothesis {
   createdAt: string
   updatedAt: string
   history: HypothesisHistoryEntry[]
+  /** LLM-generated narrative when AI insights are enabled. */
+  aiInsight?: HypothesisAiInsight
 }
 
 export type DiagnosisCertainty = 'high' | 'moderate' | 'low'
@@ -109,6 +114,8 @@ export interface DiagnosisVariant {
   hypothesisId?: string
   pattern?: HypothesisPattern
   confidence?: HypothesisConfidence
+  /** True when rationale was written or refined by the LLM. */
+  aiEnhanced?: boolean
 }
 
 export interface DiagnosisReport {
@@ -123,6 +130,8 @@ export interface DiagnosisReport {
   suggestedClinician?: string
   suggestedSpecialty?: string
   specialistVisitAdvice?: string
+  /** True when variant order and % came from the LLM (not rule-based weights). */
+  aiRanked?: boolean
 }
 
 export type HealthEntryType =
@@ -135,6 +144,20 @@ export type HealthEntryType =
 
 export type HealthUrgency = 'routine' | 'monitor' | 'urgent' | 'emergency'
 
+export interface AiInsightMeta {
+  generatedAt: string
+  model?: string
+  source: 'llm'
+}
+
+/** Optional LLM enrichment stored on journal analysis. */
+export interface HealthEntryAiInsight {
+  structuredSymptoms: string[]
+  clinicalSummary: string
+  suggestedBodyAreas: string[]
+  meta: AiInsightMeta
+}
+
 export interface HealthEntryAnalysis {
   urgency: HealthUrgency
   /** Specific care context label shown in the UI (e.g. "Surgery / procedure"). */
@@ -142,6 +165,15 @@ export interface HealthEntryAnalysis {
   flags: string[]
   summary: string
   linkedTimelineEventId?: string
+  /** Present when AI symptom analysis has run for this entry. */
+  ai?: HealthEntryAiInsight
+}
+
+export interface HypothesisAiInsight {
+  narrative: string
+  reasoning: string
+  recommendations: string[]
+  meta: AiInsightMeta
 }
 
 export interface HealthEntry {

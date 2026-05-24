@@ -1,6 +1,7 @@
 <template>
   <div class="medical-card">
     <h3 class="card-title">{{ title }}</h3>
+    <p v-if="aiGenerated" class="card-ai-badge">{{ t('clinicalModel.aiBadge') }}</p>
     <p v-if="summary" class="card-summary">{{ summary }}</p>
     <div v-if="factors && factors.length > 0" class="card-factors">
       <h4 class="factors-title">{{ t('clinicalModel.keyFactors') }}:</h4>
@@ -23,6 +24,7 @@ defineProps<{
   title: string
   summary?: string
   factors?: ClinicalFactor[]
+  aiGenerated?: boolean
 }>()
 </script>
 
@@ -40,6 +42,14 @@ defineProps<{
   font-weight: 600;
   margin: 0 0 0.75rem 0;
   color: var(--text-primary);
+}
+
+.card-ai-badge {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 0.02em;
 }
 
 .card-summary {

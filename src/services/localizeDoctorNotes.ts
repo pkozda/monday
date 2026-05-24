@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import type { Locale } from 'date-fns'
 import type { Composer } from 'vue-i18n'
+import type { AppLocale } from '@/i18n'
 import { buildLocalizedHypothesisDetail } from '@/services/localizeHypothesisDetail'
 import {
   formatLocalizedJournalEntryHeader,
@@ -10,9 +11,175 @@ import {
 import { journalDescriptionAddsDetail } from '@/services/journalEntryText'
 import { buildPatientVisitBasicsLines } from '@/services/patientVisitBasics'
 import { suggestSpecialist } from '@/services/specialistSuggestion'
+import {
+  generateAiDoctorNotesContent,
+  type AiDoctorNotesContent,
+} from '@/services/llm/aiDoctorNotes'
+import { shouldUseAiInsights } from '@/services/llm/config'
 import type { HealthEntry, Hypothesis, PatientProfile } from '@/models/types'
 
 type TFunction = Composer['t']
+
+function bulletLines(items: string[]): string[] {
+  return items.map((item) => `• ${item}`)
+}
+
+export function formatAiDoctorNotesDocument(
+  ai: AiDoctorNotesContent,
+  hypothesis: Hypothesis,
+  profile: PatientProfile | null,
+  allJournalEntries: HealthEntry[],
+  area: string,
+  entryCount: number,
+  t: TFunction,
+  dateLocale: Locale
+): string {
+  const today = format(new Date(), 'PP', { locale: dateLocale })
+  const journalContext = allJournalEntries
+    .filter((e) => e.conditionArea.trim().toLowerCase() === area.toLowerCase())
+    .map((e) => [e.title, e.description, e.medications ?? ''].join(' '))
+    .join('\n')
+  const specialist = suggestSpecialist(area, journalContext)
+
+  const lines: string[] = [
+    String(t('doctorNotes.summaryTitle')),
+    String(t('doctorNotes.preparedWith')),
+    String(t('doctorNotes.generated', { date: today })),
+    String(t('doctorNotes.aiSynthesized')),
+    '',
+    String(t('doctorNotes.baselineTitle')),
+    ...buildPatientVisitBasicsLines(profile, allJournalEntries).map(
+      (line) => `  ${line}`
+    ),
+    '',
+    '—'.repeat(60),
+    '',
+    String(t('doctorNotes.aiChiefConcernTitle')),
+    ai.chiefConcern,
+    '',
+    String(t('doctorNotes.aiHypothesisTitle')),
+    hypothesis.title,
+    `  ${String(
+      t('doctorNotes.patternConfidence', {
+        confidence: localizeHypothesisConfidence(hypothesis.confidence, t),
+      })
+    )}`,
+    '',
+  ]
+
+  if (specialist) {
+    lines.push(
+      String(t('doctorNotes.suggestedDoctorTitle')),
+      `  ${localizeSpecialistVisitAdvice(specialist, area, t)}`,
+      ''
+    )
+  }
+
+  lines.push(
+    String(t('doctorNotes.aiClinicalPictureTitle')),
+    ai.clinicalPicture,
+    ''
+  )
+
+  if (ai.timelineHighlights.length > 0) {
+    lines.push(String(t('doctorNotes.aiTimelineTitle')), ...bulletLines(ai.timelineHighlights), '')
+  }
+
+  if (ai.medicationsAndTreatments.length > 0) {
+    lines.push(
+      String(t('doctorNotes.aiMedicationsTitle')),
+      ...bulletLines(ai.medicationsAndTreatments),
+      ''
+    )
+  }
+
+  if (ai.redFlags.length > 0) {
+    lines.push(String(t('doctorNotes.aiRedFlagsTitle')), ...bulletLines(ai.redFlags), '')
+  }
+
+  lines.push(
+    String(t('doctorNotes.aiQuestionsTitle')),
+    ...bulletLines(ai.questionsForClinician),
+    '',
+    String(t('doctorNotes.discussionTitle')),
+    ...bulletLines(ai.discussionPoints),
+    '',
+    '—'.repeat(60),
+    '',
+    String(t('doctorNotes.aiEvidenceNote', { count: entryCount, area: area.toUpperCase() })),
+    '',
+    String(t('doctorNotes.disclaimerTitle')),
+    String(t('doctorNotes.disclaimerBody')),
+    '',
+    String(t('doctorNotes.signatureLine'))
+  )
+
+  return lines.join('\n')
+}
+
+export async function generateLocalizedDoctorNotesAsync(
+  hypothesis: Hypothesis,
+  profile: PatientProfile | null,
+  allJournalEntries: HealthEntry[],
+  t: TFunction,
+  dateLocale: Locale,
+  locale: AppLocale
+): Promise<string> {
+  const detail = buildLocalizedHypothesisDetail(
+    hypothesis,
+    allJournalEntries,
+    t,
+    dateLocale
+  )
+  const area = detail.area
+
+  const areaEntries = allJournalEntries
+    .filter((e) => e.conditionArea.trim().toLowerCase() === area.toLowerCase())
+    .sort(
+      (a, b) =>
+        new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()
+    )
+  const entriesForNotes =
+    areaEntries.length > 0 ? areaEntries : detail.evidenceEntries
+
+  if (!shouldUseAiInsights()) {
+    return generateLocalizedDoctorNotes(
+      hypothesis,
+      profile,
+      allJournalEntries,
+      t,
+      dateLocale
+    )
+  }
+
+  try {
+    const ai = await generateAiDoctorNotesContent(
+      hypothesis,
+      profile,
+      allJournalEntries,
+      locale
+    )
+    return formatAiDoctorNotesDocument(
+      ai,
+      hypothesis,
+      profile,
+      allJournalEntries,
+      area,
+      entriesForNotes.length,
+      t,
+      dateLocale
+    )
+  } catch (error) {
+    console.warn('[Monday] AI doctor notes failed, using template notes', error)
+    return generateLocalizedDoctorNotes(
+      hypothesis,
+      profile,
+      allJournalEntries,
+      t,
+      dateLocale
+    )
+  }
+}
 
 export function generateLocalizedDoctorNotes(
   hypothesis: Hypothesis,

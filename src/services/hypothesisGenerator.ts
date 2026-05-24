@@ -1,3 +1,5 @@
+import type { JournalFocusPlan } from '@/services/journalFocusAreas'
+import { buildJournalFocusPlan } from '@/services/journalFocusAreas'
 import type {
   HealthEntry,
   Hypothesis,
@@ -33,7 +35,36 @@ interface HypothesisCandidate {
   pattern: HypothesisPattern
 }
 
-function clusterByCondition(entries: HealthEntry[]): ConditionCluster[] {
+function clusterByFocusPlan(
+  entries: HealthEntry[],
+  plan: JournalFocusPlan
+): ConditionCluster[] {
+  const entryById = new Map(entries.map((e) => [e.id, e]))
+
+  return plan.areas
+    .map((focus) => ({
+      area: focus.area,
+      entries: focus.entryIds
+        .map((id) => entryById.get(id))
+        .filter((e): e is HealthEntry => Boolean(e))
+        .sort(
+          (a, b) =>
+            new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()
+        ),
+    }))
+    .filter((cluster) => cluster.entries.length > 0)
+    .sort((a, b) => b.entries.length - a.entries.length)
+}
+
+function clusterByCondition(
+  entries: HealthEntry[],
+  plan?: JournalFocusPlan
+): ConditionCluster[] {
+  const focusPlan = plan ?? buildJournalFocusPlan(entries)
+  if (focusPlan.areas.length > 0) {
+    return clusterByFocusPlan(entries, focusPlan)
+  }
+
   const map = new Map<string, HealthEntry[]>()
   for (const entry of entries) {
     const area = entry.conditionArea.trim()
@@ -52,7 +83,7 @@ function clusterByCondition(entries: HealthEntry[]): ConditionCluster[] {
     .sort((a, b) => b.entries.length - a.entries.length)
 }
 
-function collectEvidenceIds(entries: HealthEntry[]): string[] {
+export function collectEvidenceIds(entries: HealthEntry[]): string[] {
   const ids = new Set<string>()
   for (const entry of entries) {
     ids.add(entry.id)
@@ -377,11 +408,12 @@ function updateHypothesisFromCandidate(
 
 /** Rebuild all hypotheses from current journal (one leading pattern per body area). */
 export function buildAllHypothesesFromJournal(
-  entries: HealthEntry[]
+  entries: HealthEntry[],
+  plan?: JournalFocusPlan
 ): Hypothesis[] {
   if (entries.length === 0) return []
 
-  const clusters = clusterByCondition(entries)
+  const clusters = clusterByCondition(entries, plan)
   const hypotheses: Hypothesis[] = []
 
   for (const cluster of clusters) {

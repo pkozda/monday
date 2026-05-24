@@ -165,7 +165,11 @@
           :title="clinicalModel.title"
           :summary="clinicalModel.summary"
           :factors="clinicalModel.factors"
+          :ai-generated="clinicalModel.aiGenerated"
         />
+        <p v-if="clinicalModelRefreshing" class="clinical-model-hint">
+          {{ t('dashboard.clinicalModelRefreshing') }}
+        </p>
         <p v-if="clinicalModel && !clinicalModel.factors.length" class="clinical-model-hint">
           {{ t('dashboard.clinicalModelHint') }}
         </p>
@@ -176,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format, parseISO } from 'date-fns'
 import { dateFnsLocaleFor } from '@/utils/dateLocale'
@@ -193,7 +197,8 @@ import StatCard from '@/components/dashboard/StatCard.vue'
 import BarChart from '@/components/dashboard/BarChart.vue'
 import DonutChart from '@/components/dashboard/DonutChart.vue'
 import SeverityLineChart from '@/components/dashboard/SeverityLineChart.vue'
-import { buildLocalizedClinicalModel } from '@/services/localizeClinicalModel'
+import { buildLocalizedClinicalModelAsync } from '@/services/clinicalModelWithAi'
+import { shouldUseAiInsights } from '@/services/llm/config'
 import { getHypotheses, getTimeline } from '@/api/mockApi'
 import { getHealthEntries } from '@/api/healthApi'
 import { getAppointments } from '@/api/appointmentsApi'
@@ -214,6 +219,8 @@ const loading = ref(true)
 const patient = ref<PatientProfile | null>(null)
 const stats = ref<DashboardStats | null>(null)
 const clinicalModel = ref<ClinicalModel | null>(null)
+const clinicalModelRefreshing = ref(false)
+let clinicalModelRequestId = 0
 const journalEntries = ref<HealthEntry[]>([])
 const nearestAppointment = ref<DoctorAppointment | null>(null)
 
@@ -274,27 +281,52 @@ const recommendations = computed(() =>
   getHealthRecommendations(patient.value, stats.value)
 )
 
-function applyClinicalModel(entries: HealthEntry[]): void {
-  clinicalModel.value = buildLocalizedClinicalModel(
-    entries,
-    t,
-    dateFnsLocaleFor(locale.value as AppLocale)
-  )
+async function applyClinicalModel(entries: HealthEntry[]): Promise<void> {
+  const requestId = ++clinicalModelRequestId
+  const dateLocale = dateFnsLocaleFor(locale.value as AppLocale)
+  const appLocale = locale.value as AppLocale
+
+  if (shouldUseAiInsights() && entries.length > 0) {
+    clinicalModelRefreshing.value = true
+  }
+
+  try {
+    const model = await buildLocalizedClinicalModelAsync(
+      entries,
+      t,
+      dateLocale,
+      appLocale
+    )
+    if (requestId === clinicalModelRequestId) {
+      clinicalModel.value = model
+    }
+  } finally {
+    if (requestId === clinicalModelRequestId) {
+      clinicalModelRefreshing.value = false
+    }
+  }
 }
 
 function loadDeferredClinicalModel(entries: HealthEntry[]): void {
   scheduleIdleWork(() => {
-    applyClinicalModel(entries)
+    void applyClinicalModel(entries)
   })
 }
 
 watch(locale, () => {
   if (journalEntries.value.length > 0) {
-    applyClinicalModel(journalEntries.value)
+    void applyClinicalModel(journalEntries.value)
   }
 })
 
+function onAiInsightsChanged(): void {
+  if (journalEntries.value.length > 0) {
+    void applyClinicalModel(journalEntries.value)
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('monday-ai-insights-changed', onAiInsightsChanged)
   try {
     const entries = await getHealthEntries()
     const [profile, timeline, hyps, appts] = await Promise.all([
@@ -311,6 +343,10 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('monday-ai-insights-changed', onAiInsightsChanged)
 })
 
 async function refreshStats() {

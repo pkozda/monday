@@ -17,7 +17,7 @@
         </header>
 
         <p class="notes-intro">
-          {{ t('doctorNotes.intro') }}
+          {{ loading ? t('doctorNotes.generating') : t('doctorNotes.intro') }}
         </p>
 
         <textarea
@@ -25,14 +25,16 @@
           class="notes-textarea"
           rows="18"
           spellcheck="true"
+          :disabled="loading"
+          :aria-busy="loading"
           :aria-label="t('doctorNotes.notesLabel')"
         />
 
         <div class="notes-actions">
-          <button type="button" class="btn-secondary" @click="copyNotes">
+          <button type="button" class="btn-secondary" :disabled="loading" @click="copyNotes">
             {{ copied ? t('doctorNotes.copied') : t('doctorNotes.copy') }}
           </button>
-          <button type="button" class="btn-primary" @click="printNotes">
+          <button type="button" class="btn-primary" :disabled="loading" @click="printNotes">
             {{ t('doctorNotes.print') }}
           </button>
         </div>
@@ -50,6 +52,7 @@ const { t } = useI18n()
 const props = defineProps<{
   open: boolean
   content: string
+  loading?: boolean
 }>()
 
 const emit = defineEmits<{

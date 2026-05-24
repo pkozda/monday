@@ -6,7 +6,11 @@ import {
   buildAllHypothesesFromJournal,
   type HypothesisGenerationResult,
 } from '@/services/hypothesisGenerator'
+import { invalidateInsightsCache } from '@/composables/useInsightsCache'
+import { resolveJournalFocusPlan } from '@/services/journalFocusAreas'
+import { shouldUseAiInsights } from '@/services/llm/config'
 import { normalizeHypothesis } from '@/services/hypothesisNormalize'
+import type { Hypothesis } from '@/models/types'
 
 export type { HypothesisGenerationResult }
 
@@ -39,8 +43,9 @@ export async function regenerateAllHypothesesFromJournal(): Promise<RegenerateIn
   }
 
   await clearAllHypotheses()
+  invalidateInsightsCache()
 
-  const built = buildAllHypothesesFromJournal(entries)
+  const built = await buildHypothesesForRegenerate(entries)
   for (const hypothesis of built) {
     await saveHypothesis(normalizeHypothesis(hypothesis))
   }
@@ -55,6 +60,29 @@ export async function regenerateAllHypothesesFromJournal(): Promise<RegenerateIn
     areas,
     messageKey: built.length > 0 ? 'success' : 'noHypotheses',
   }
+}
+
+async function buildHypothesesForRegenerate(
+  entries: Awaited<ReturnType<typeof getHealthEntries>>
+): Promise<Hypothesis[]> {
+  const focusPlan = await resolveJournalFocusPlan(entries)
+
+  if (!shouldUseAiInsights()) {
+    return buildAllHypothesesFromJournal(entries, focusPlan)
+  }
+
+  try {
+    const { buildHypothesesWithAi } = await import('@/services/llm/aiHypotheses')
+    const aiBuilt = await buildHypothesesWithAi(entries, focusPlan)
+    if (aiBuilt.length > 0) return aiBuilt
+  } catch (err) {
+    console.warn(
+      '[Monday] AI hypothesis generation failed; using rule-based engine.',
+      err
+    )
+  }
+
+  return buildAllHypothesesFromJournal(entries, focusPlan)
 }
 
 export async function tryGenerateHypothesis(): Promise<HypothesisGenerationResult> {

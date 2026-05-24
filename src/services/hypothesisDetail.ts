@@ -153,20 +153,21 @@ export function buildHypothesisDetail(
     criticalReason = 'Worsening trend with elevated urgency in recent logs.'
   }
 
+  const summary =
+    hypothesis.aiInsight?.narrative?.trim() ||
+    buildSummary(pattern, area, evidenceEntries, hypothesis.confidence)
+
+  const recommendations =
+    hypothesis.aiInsight?.recommendations?.length &&
+    hypothesis.aiInsight.recommendations.length > 0
+      ? hypothesis.aiInsight.recommendations
+      : buildRecommendations(pattern, evidenceEntries, area)
+
   return {
     pattern,
     area,
-    summary: buildSummary(
-      pattern,
-      area,
-      evidenceEntries,
-      hypothesis.confidence
-    ),
-    recommendations: buildRecommendations(
-      pattern,
-      evidenceEntries,
-      area
-    ),
+    summary,
+    recommendations,
     isCritical,
     criticalReason,
     evidenceEntries,
