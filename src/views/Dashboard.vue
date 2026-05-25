@@ -244,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { format, parseISO } from 'date-fns'
@@ -259,13 +259,24 @@ import SectionHeader from '@/components/SectionHeader.vue'
 import MedicalCard from '@/components/MedicalCard.vue'
 import DoctorNotesModal from '@/components/DoctorNotesModal.vue'
 import {
-  generateClinicalDoctorNotesAsync,
-  type DoctorSpecialtyId,
-} from '@/services/clinicalDoctorNotes'
-import {
   inferDefaultDoctorSpecialty,
   inferDoctorSpecialtyFromAppointment,
+  type DoctorSpecialtyId,
 } from '@/services/doctorSpecialty'
+import {
+  clinicalDoctorNotesSurface,
+  clinicalDoctorNotesContent,
+  clinicalDoctorNotesLoading,
+  clinicalDoctorSpecialty,
+  clinicalDoctorNotesGenerationRequested,
+  clinicalDoctorNotesActiveSurface,
+  clinicalDoctorNotesNotifyWhenDone,
+  resetClinicalDoctorNotesBackgroundNotify,
+  markClinicalDoctorNotesDismissedWhileLoading,
+  reopenClinicalDoctorNotesFromNotification,
+  runClinicalDoctorNotesLoad,
+  type ClinicalDoctorNotesRunParams,
+} from '@/composables/useClinicalDoctorNotesSession'
 import PatientProfileCard from '@/components/dashboard/PatientProfileCard.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
 import AttentionStatCard from '@/components/dashboard/AttentionStatCard.vue'
@@ -283,6 +294,7 @@ import { buildDashboardStats } from '@/services/dashboardStats'
 import { getHealthRecommendations } from '@/services/healthRecommendations'
 import { attentionJournalLinks } from '@/utils/journalLinks'
 import { scheduleIdleWork } from '@/utils/scheduleIdleWork'
+import { REOPEN_CLINICAL_DOCTOR_NOTES_EVENT } from '@/services/doctorNotesNotifications'
 import type {
   ClinicalModel,
   DashboardStats,
@@ -299,12 +311,6 @@ const clinicalModelRefreshing = ref(false)
 let clinicalModelRequestId = 0
 const journalEntries = ref<HealthEntry[]>([])
 const nearestAppointment = ref<DoctorAppointment | null>(null)
-const clinicalDoctorNotesSurface = ref<'dashboard' | 'appointment' | null>(null)
-const clinicalDoctorNotesContent = ref('')
-const clinicalDoctorNotesLoading = ref(false)
-const clinicalDoctorSpecialty = ref<DoctorSpecialtyId>('primary_care')
-let clinicalDoctorNotesRequestId = 0
-
 const avgSeverityLabel = computed(() => {
   const avg = stats.value?.averageSeverity
   return avg !== null && avg !== undefined ? `${avg} / 10` : '—'
@@ -404,33 +410,34 @@ const recommendations = computed(() =>
   getHealthRecommendations(patient.value, stats.value, journalEntries.value)
 )
 
-async function loadClinicalDoctorNotes() {
-  if (!clinicalModel.value || journalEntries.value.length === 0) return
-
-  const requestId = ++clinicalDoctorNotesRequestId
-  clinicalDoctorNotesLoading.value = true
-
-  try {
-    const notes = await generateClinicalDoctorNotesAsync(
-      clinicalModel.value,
-      patient.value,
-      journalEntries.value,
-      clinicalDoctorSpecialty.value,
-      t,
-      dateFnsLocaleFor(locale.value as AppLocale),
-      locale.value as AppLocale
-    )
-    if (requestId === clinicalDoctorNotesRequestId) {
-      clinicalDoctorNotesContent.value = notes
-    }
-  } finally {
-    if (requestId === clinicalDoctorNotesRequestId) {
-      clinicalDoctorNotesLoading.value = false
-    }
+function buildClinicalDoctorNotesParams(): ClinicalDoctorNotesRunParams | null {
+  if (!clinicalModel.value || journalEntries.value.length === 0) return null
+  return {
+    model: clinicalModel.value,
+    profile: patient.value,
+    entries: journalEntries.value,
+    specialty: clinicalDoctorSpecialty.value,
+    t,
+    dateLocale: dateFnsLocaleFor(locale.value as AppLocale),
+    locale: locale.value as AppLocale,
   }
 }
 
+async function loadClinicalDoctorNotes() {
+  const params = buildClinicalDoctorNotesParams()
+  if (!params) return
+  await runClinicalDoctorNotesLoad(params)
+}
+
 function closeClinicalDoctorNotes() {
+  if (
+    clinicalDoctorNotesGenerationRequested.value &&
+    clinicalDoctorNotesLoading.value &&
+    clinicalDoctorNotesActiveSurface.value === 'dashboard'
+  ) {
+    markClinicalDoctorNotesDismissedWhileLoading()
+  }
+
   if (clinicalDoctorNotesSurface.value === 'dashboard') {
     clinicalDoctorNotesSurface.value = null
   }
@@ -443,6 +450,14 @@ function onAppointmentDoctorNotesBack() {
 }
 
 function onAppointmentModalClose() {
+  if (
+    clinicalDoctorNotesGenerationRequested.value &&
+    clinicalDoctorNotesLoading.value &&
+    clinicalDoctorNotesActiveSurface.value === 'appointment'
+  ) {
+    markClinicalDoctorNotesDismissedWhileLoading()
+  }
+
   if (clinicalDoctorNotesSurface.value === 'appointment') {
     clinicalDoctorNotesSurface.value = null
   }
@@ -450,11 +465,24 @@ function onAppointmentModalClose() {
 
 async function openClinicalDoctorNotes() {
   if (!clinicalModel.value || journalEntries.value.length === 0) return
+
+  clinicalDoctorNotesSurface.value = 'dashboard'
+
+  if (clinicalDoctorNotesLoading.value) {
+    return
+  }
+
+  if (clinicalDoctorNotesContent.value) {
+    return
+  }
+
+  resetClinicalDoctorNotesBackgroundNotify()
+  clinicalDoctorNotesGenerationRequested.value = true
+  clinicalDoctorNotesActiveSurface.value = 'dashboard'
   clinicalDoctorSpecialty.value = inferDefaultDoctorSpecialty(
     journalEntries.value,
     stats.value?.conditions ?? []
   )
-  clinicalDoctorNotesSurface.value = 'dashboard'
   clinicalDoctorNotesContent.value = ''
   await loadClinicalDoctorNotes()
 }
@@ -467,18 +495,35 @@ async function openClinicalDoctorNotesFromAppointment() {
   ) {
     return
   }
+
+  clinicalDoctorNotesSurface.value = 'appointment'
+
+  if (clinicalDoctorNotesLoading.value) {
+    return
+  }
+
+  if (clinicalDoctorNotesContent.value) {
+    return
+  }
+
+  resetClinicalDoctorNotesBackgroundNotify()
+  clinicalDoctorNotesGenerationRequested.value = true
+  clinicalDoctorNotesActiveSurface.value = 'appointment'
   clinicalDoctorSpecialty.value = inferDoctorSpecialtyFromAppointment(
     nearestAppointment.value,
     journalEntries.value,
     stats.value?.conditions ?? []
   )
-  clinicalDoctorNotesSurface.value = 'appointment'
   clinicalDoctorNotesContent.value = ''
   await loadClinicalDoctorNotes()
 }
 
-function onClinicalDoctorSpecialtyChange() {
+function onClinicalDoctorSpecialtyChange(specialty: DoctorSpecialtyId) {
   if (!clinicalDoctorNotesSurface.value) return
+
+  clinicalDoctorSpecialty.value = specialty
+  clinicalDoctorNotesContent.value = ''
+  clinicalDoctorNotesGenerationRequested.value = true
   void loadClinicalDoctorNotes()
 }
 
@@ -532,11 +577,25 @@ function onInsightsRegenerated(): void {
   }
 }
 
+onBeforeUnmount(() => {
+  if (
+    clinicalDoctorNotesGenerationRequested.value &&
+    clinicalDoctorNotesLoading.value &&
+    !clinicalDoctorNotesNotifyWhenDone.value
+  ) {
+    markClinicalDoctorNotesDismissedWhileLoading()
+  }
+})
+
 onMounted(async () => {
   window.addEventListener('monday-ai-insights-changed', onAiInsightsChanged)
   window.addEventListener(
     'monday-insights-regenerated',
     onInsightsRegenerated as EventListener
+  )
+  window.addEventListener(
+    REOPEN_CLINICAL_DOCTOR_NOTES_EVENT,
+    reopenClinicalDoctorNotesFromNotification
   )
   try {
     const entries = await getHealthEntries()
@@ -561,6 +620,10 @@ onUnmounted(() => {
   window.removeEventListener(
     'monday-insights-regenerated',
     onInsightsRegenerated as EventListener
+  )
+  window.removeEventListener(
+    REOPEN_CLINICAL_DOCTOR_NOTES_EVENT,
+    reopenClinicalDoctorNotesFromNotification
   )
 })
 

@@ -155,13 +155,13 @@
       :open="doctorNotesOpen"
       :content="doctorNotesContent"
       :loading="doctorNotesLoading"
-      @close="doctorNotesOpen = false"
+      @close="closeDoctorNotes"
     />
   </article>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format, parseISO } from 'date-fns'
 import DoctorNotesModal from '@/components/DoctorNotesModal.vue'
@@ -179,6 +179,16 @@ import {
 import { patternFromTitle } from '@/services/hypothesisGenerator'
 import { buildLocalizedHypothesisDetail } from '@/services/localizeHypothesisDetail'
 import { generateLocalizedDoctorNotesAsync } from '@/services/localizeDoctorNotes'
+import { useDoctorNotesNotificationMessages } from '@/composables/useDoctorNotesNotificationMessages'
+import {
+  notifyDoctorNotesComplete,
+  notifyDoctorNotesFailed,
+} from '@/composables/useNotifications'
+import {
+  hypothesisDoctorNotesGroupId,
+  notifyDoctorNotesInProgress,
+  REOPEN_HYPOTHESIS_DOCTOR_NOTES_EVENT,
+} from '@/services/doctorNotesNotifications'
 import { journalDescriptionAddsDetail } from '@/services/journalEntryText'
 import type {
   DiagnosisVariant,
@@ -206,7 +216,14 @@ const expanded = ref(false)
 const doctorNotesOpen = ref(false)
 const doctorNotesContent = ref('')
 const doctorNotesLoading = ref(false)
+const doctorNotesNotifyWhenDone = ref(false)
 let doctorNotesRequestId = 0
+
+const doctorNotesNotificationMessages = useDoctorNotesNotificationMessages()
+
+const doctorNotesGroupId = computed(() =>
+  hypothesisDoctorNotesGroupId(props.hypothesis.id)
+)
 
 const detail = computed(() =>
   buildLocalizedHypothesisDetail(
@@ -277,11 +294,74 @@ function historyKindLabel(kind: HypothesisHistoryKind): string {
     : String(t('hypothesisCard.historyUpdated'))
 }
 
+function closeDoctorNotes() {
+  if (doctorNotesLoading.value) {
+    doctorNotesNotifyWhenDone.value = true
+    const messages = doctorNotesNotificationMessages
+    notifyDoctorNotesInProgress(
+      doctorNotesGroupId.value,
+      messages.progressToastTitle,
+      messages.progressToastMessage,
+      messages.progressNotificationTitle,
+      messages.progressNotificationMessage
+    )
+  }
+  doctorNotesOpen.value = false
+}
+
+function finishDoctorNotesBackgroundNotify(success: boolean) {
+  if (!doctorNotesNotifyWhenDone.value) return
+
+  doctorNotesNotifyWhenDone.value = false
+  const messages = doctorNotesNotificationMessages
+
+  if (success && doctorNotesContent.value) {
+    notifyDoctorNotesComplete(
+      doctorNotesGroupId.value,
+      messages.readyTitle,
+      messages.readyToastMessage,
+      {
+        actionRoute: '/hypotheses',
+        actionKey: 'hypothesis-doctor-notes',
+        actionPayload: { hypothesisId: props.hypothesis.id },
+      }
+    )
+    return
+  }
+
+  if (!success) {
+    notifyDoctorNotesFailed(doctorNotesGroupId.value, messages.errorTitle)
+  }
+}
+
+function onReopenHypothesisDoctorNotes(event: Event) {
+  const detail = (event as CustomEvent<{ hypothesisId?: string }>).detail
+  if (detail?.hypothesisId !== props.hypothesis.id) return
+  if (!doctorNotesContent.value) return
+  doctorNotesOpen.value = true
+}
+
+onMounted(() => {
+  window.addEventListener(
+    REOPEN_HYPOTHESIS_DOCTOR_NOTES_EVENT,
+    onReopenHypothesisDoctorNotes as EventListener
+  )
+})
+
+onUnmounted(() => {
+  window.removeEventListener(
+    REOPEN_HYPOTHESIS_DOCTOR_NOTES_EVENT,
+    onReopenHypothesisDoctorNotes as EventListener
+  )
+})
+
 async function openDoctorNotes() {
+  doctorNotesNotifyWhenDone.value = false
   doctorNotesOpen.value = true
   const requestId = ++doctorNotesRequestId
   doctorNotesLoading.value = true
   doctorNotesContent.value = ''
+  let succeeded = false
 
   try {
     const notes = await generateLocalizedDoctorNotesAsync(
@@ -294,10 +374,19 @@ async function openDoctorNotes() {
     )
     if (requestId === doctorNotesRequestId) {
       doctorNotesContent.value = notes
+      succeeded = true
+    }
+  } catch (err) {
+    console.warn('[Monday] Hypothesis doctor notes failed.', err)
+    if (requestId === doctorNotesRequestId) {
+      finishDoctorNotesBackgroundNotify(false)
     }
   } finally {
     if (requestId === doctorNotesRequestId) {
       doctorNotesLoading.value = false
+      if (succeeded) {
+        finishDoctorNotesBackgroundNotify(true)
+      }
     }
   }
 }

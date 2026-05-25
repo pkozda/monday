@@ -51,6 +51,18 @@ export default {
         'Hypothesen und Diagnosen sind fertig. Öffnen Sie die Seite Hypothesen & Diagnosen.',
       errorTitle: 'Neu-Generierung fehlgeschlagen',
     },
+    doctorNotes: {
+      progressToastTitle: 'Arztnotizen werden erstellt…',
+      progressToastMessage:
+        'Sie können weiter browsen — wir benachrichtigen Sie, sobald die Notizen fertig sind.',
+      progressNotificationTitle: 'Arztnotizen in Arbeit',
+      progressNotificationMessage:
+        'Ihr Besuchsüberblick wird aus Tagebuch und klinischem Modell erstellt.',
+      readyTitle: 'Arztnotizen bereit',
+      readyToastMessage:
+        'Öffnen Sie die Benachrichtigung, um Ihre Notizen anzuzeigen und zu kopieren.',
+      errorTitle: 'Arztnotizen konnten nicht erstellt werden',
+    },
   },
   common: {
     close: 'Schließen',
@@ -179,6 +191,8 @@ export default {
     addHealthHistory: 'Gesundheitsgeschichte hinzufügen',
     addHealthHistoryHint: 'Gesundheitsgeschichte (Anamnese)',
     editProfile: 'Profil bearbeiten',
+    quickActions: 'Schnellaktionen Profil',
+    sectionAbout: 'Über Sie',
     cancelEdit: 'Abbrechen',
     saveProfile: 'Profil speichern',
     displayName: 'Anzeigename',

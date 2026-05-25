@@ -1,10 +1,11 @@
 <template>
   <div class="patient-card">
     <div class="patient-header">
-      <div class="patient-avatar" aria-hidden="true">{{ initials }}</div>
-      <div class="patient-info">
-        <h2 class="patient-name">{{ profile.displayName }}</h2>
-        <div v-if="headerChips.length" class="patient-chips">
+      <div class="patient-header__identity">
+        <div class="patient-avatar" aria-hidden="true">{{ initials }}</div>
+        <div class="patient-info">
+          <h2 class="patient-name">{{ profile.displayName }}</h2>
+          <div v-if="headerChips.length" class="patient-chips">
           <span
             v-for="chip in headerChips"
             :key="chip.id"
@@ -24,12 +25,14 @@
             </span>
           </span>
         </div>
-        <p v-if="trackingLabel" class="patient-tracking">
-          <ProfileFieldIcon name="journal" :size="13" class="patient-tracking__icon" />
-          <span>{{ trackingLabel }}</span>
-        </p>
+          <p v-if="trackingLabel" class="patient-tracking">
+            <ProfileFieldIcon name="journal" :size="14" class="patient-tracking__icon" />
+            <span>{{ trackingLabel }}</span>
+          </p>
+        </div>
       </div>
-      <div class="patient-actions">
+      <div class="patient-header__toolbar">
+        <div class="patient-toolbar" role="group" :aria-label="t('profile.quickActions')">
         <button
           type="button"
           class="profile-icon-btn profile-icon-btn--appointment"
@@ -98,6 +101,7 @@
             />
           </svg>
         </button>
+        </div>
         <button type="button" class="edit-toggle" @click="editing = !editing">
           <ProfileFieldIcon v-if="!editing" name="pencil" :size="14" />
           <span>{{ editing ? t('profile.cancelEdit') : t('profile.editProfile') }}</span>
@@ -198,38 +202,25 @@
     </form>
 
     <div v-else class="patient-details">
-      <div
-        v-if="showDemographicsRow"
-        class="patient-details__row patient-details__row--triple"
+      <section
+        v-if="demographicFacts.length"
+        class="profile-section"
+        aria-labelledby="profile-about-heading"
       >
-        <ProfileDetailTile
-          v-if="profile.dateOfBirth"
-          :label="t('profile.dateOfBirth')"
-          :value="formattedDob"
-          icon="calendar"
-          tone="accent"
-          variant="surface"
-        />
-        <ProfileDetailTile
-          v-if="profile.biologicalSex"
-          :label="t('profile.sexLabel')"
-          :value="sexLabel"
-          icon="user"
-          tone="violet"
-          variant="surface"
-        />
-        <ProfileDetailTile
-          v-if="profile.bloodType"
-          :label="t('profile.bloodType')"
-          :value="profile.bloodType"
-          icon="droplet"
-          tone="rose"
-          variant="surface"
-        />
-      </div>
+        <h3 id="profile-about-heading" class="profile-section__title">
+          {{ t('profile.sectionAbout') }}
+        </h3>
+        <dl class="profile-facts">
+          <div v-for="fact in demographicFacts" :key="fact.id" class="profile-fact">
+            <dt class="profile-fact__term">{{ fact.label }}</dt>
+            <dd class="profile-fact__value">{{ fact.value }}</dd>
+          </div>
+        </dl>
+      </section>
 
       <ProfileBodyMetricsCard
         v-if="showBodyMetricsCard"
+        class="profile-section profile-section--metrics"
         :bmi="profileBmi"
         :height-label="profileHeightLabel || null"
         :weight-label="profileWeightLabel || null"
@@ -240,15 +231,14 @@
       />
 
       <p class="patient-details-footer">
-        <ProfileFieldIcon name="clock" :size="14" class="patient-details-footer__icon" />
-        <span>{{ t('profile.profileCreated') }} · {{ formattedCreated }}</span>
+        {{ t('profile.profileCreated') }} · {{ formattedCreated }}
       </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch, withDefaults } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch, withDefaults } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format, parseISO, differenceInYears } from 'date-fns'
 import { savePatientProfile } from '@/api/patientApi'
@@ -258,7 +248,6 @@ import { dateFnsLocaleFor } from '@/utils/dateLocale'
 import AnamnesisModal from '@/components/dashboard/AnamnesisModal.vue'
 import HealthRecommendationsModal from '@/components/dashboard/HealthRecommendationsModal.vue'
 import ProfileBodyMetricsCard from '@/components/dashboard/ProfileBodyMetricsCard.vue'
-import ProfileDetailTile from '@/components/dashboard/ProfileDetailTile.vue'
 import ProfileFieldIcon, {
   type ProfileFieldIconName,
 } from '@/components/dashboard/ProfileFieldIcon.vue'
@@ -345,6 +334,18 @@ function onAppointmentModalClose() {
   appointmentOpen.value = false
   emit('appointment-modal-close')
 }
+
+function onReopenAppointmentModal() {
+  appointmentOpen.value = true
+}
+
+onMounted(() => {
+  window.addEventListener('monday-reopen-appointment-modal', onReopenAppointmentModal)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('monday-reopen-appointment-modal', onReopenAppointmentModal)
+})
 
 const recommendationsTitle = computed(() => {
   const n = props.recommendations.length
@@ -519,12 +520,33 @@ const profileBmi = computed(() => {
   return formatProfileBmi(weightKg, heightCm)
 })
 
-const showDemographicsRow = computed(
-  () =>
-    Boolean(props.profile.dateOfBirth) ||
-    Boolean(props.profile.biologicalSex) ||
-    Boolean(props.profile.bloodType)
-)
+type DemographicFact = { id: string; label: string; value: string }
+
+const demographicFacts = computed((): DemographicFact[] => {
+  const facts: DemographicFact[] = []
+  if (props.profile.dateOfBirth) {
+    facts.push({
+      id: 'dob',
+      label: t('profile.dateOfBirth'),
+      value: formattedDob.value,
+    })
+  }
+  if (props.profile.biologicalSex) {
+    facts.push({
+      id: 'sex',
+      label: t('profile.sexLabel'),
+      value: sexLabel.value,
+    })
+  }
+  if (props.profile.bloodType) {
+    facts.push({
+      id: 'blood',
+      label: t('profile.bloodType'),
+      value: props.profile.bloodType,
+    })
+  }
+  return facts
+})
 
 const showBodyMetricsCard = computed(
   () =>
@@ -555,27 +577,52 @@ async function save() {
 
 <style scoped>
 .patient-card {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1rem 1.1rem;
-  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-surface) 100%);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 12px;
+  padding: 1.15rem 1.2rem;
+  background: var(--bg-surface);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--shadow) 35%, transparent),
+    0 6px 24px color-mix(in srgb, var(--shadow) 18%, transparent);
 }
 
 .patient-header {
   display: flex;
   align-items: flex-start;
-  gap: 0.85rem;
+  justify-content: space-between;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
+.patient-header__identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: min(100%, 220px);
+}
+
+.patient-header__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.patient-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .patient-avatar {
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: linear-gradient(
     145deg,
     var(--accent-strong),
-    color-mix(in srgb, var(--accent-strong) 65%, #1a237e)
+    color-mix(in srgb, var(--accent-strong) 55%, #1565c0)
   );
   color: #fff;
   display: flex;
@@ -583,48 +630,56 @@ async function save() {
   justify-content: center;
   font-size: 1.05rem;
   font-weight: 600;
+  letter-spacing: 0.02em;
   flex-shrink: 0;
-  box-shadow: 0 3px 10px color-mix(in srgb, var(--accent-strong) 30%, transparent);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--accent-strong) 28%, transparent);
 }
 
 .patient-info {
   flex: 1;
-  min-width: 160px;
+  min-width: 0;
 }
 
 .patient-name {
-  font-size: 1.2rem;
+  font-size: 1.22rem;
   font-weight: 600;
-  margin: 0 0 0.2rem;
+  margin: 0;
   color: var(--text-primary);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 .patient-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.35rem;
+  align-items: center;
+  gap: 0;
+  margin-top: 0.45rem;
 }
 
 .patient-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.28rem;
+  gap: 0.32rem;
   max-width: 100%;
-  padding: 0.2rem 0.45rem 0.2rem 0.38rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
+  padding: 0;
+  font-size: 0.8rem;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.4;
   color: var(--text-secondary);
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: none;
+}
+
+.patient-chip:not(:last-child)::after {
+  content: '·';
+  margin-left: 0.4rem;
+  color: var(--text-faint);
+  font-weight: 400;
 }
 
 .patient-chip--weight {
-  color: var(--accent-strong);
-  background: color-mix(in srgb, var(--accent-strong) 10%, var(--bg-muted));
-  border-color: color-mix(in srgb, var(--accent-strong) 30%, var(--border));
+  color: var(--text-primary);
 }
 
 .patient-chip__text {
@@ -634,21 +689,21 @@ async function save() {
 .patient-tracking {
   display: flex;
   align-items: flex-start;
-  gap: 0.38rem;
-  margin: 0.4rem 0 0;
-  padding: 0.38rem 0.55rem;
-  font-size: 0.74rem;
-  line-height: 1.4;
+  gap: 0.42rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
   color: var(--text-muted);
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: transparent;
+  border: none;
 }
 
 .patient-tracking__icon {
   flex-shrink: 0;
-  margin-top: 0.1rem;
-  color: var(--text-faint);
+  margin-top: 0.15rem;
+  color: var(--accent-strong);
+  opacity: 0.85;
 }
 
 .patient-chip__trend {
@@ -677,75 +732,18 @@ async function save() {
   color: #ef5350;
 }
 
-.patient-weight__arrow {
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.patient-weight__arrow--inline {
-  margin-left: 0.35rem;
-}
-
-.patient-weight__arrow--down {
-  color: #2e7d32;
-}
-
-.patient-weight__arrow--up {
-  color: #c62828;
-}
-
-.patient-weight__arrow--flat {
-  color: var(--text-faint);
-}
-
-[data-theme='dark'] .patient-weight__arrow--down {
-  color: #66bb6a;
-}
-
-[data-theme='dark'] .patient-weight__arrow--up {
-  color: #ef5350;
-}
-
-.patient-weight__delta {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.detail-weight {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
-
-.detail-weight__delta {
-  display: block;
-  margin-top: 0.2rem;
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.patient-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
 .profile-icon-btn {
-  --profile-btn-fg: var(--accent-strong);
-  --profile-btn-bg: color-mix(in srgb, var(--accent-strong) 12%, var(--bg-surface));
-  --profile-btn-border: color-mix(in srgb, var(--accent-strong) 38%, var(--border));
+  --profile-btn-fg: var(--text-secondary);
+  --profile-btn-bg: transparent;
+  --profile-btn-border: transparent;
   --profile-btn-badge: var(--accent-strong);
 
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.15rem;
-  height: 2.15rem;
+  width: 2.25rem;
+  height: 2.25rem;
   padding: 0;
   border: 1px solid var(--profile-btn-border);
   border-radius: 8px;
@@ -754,49 +752,20 @@ async function save() {
   cursor: pointer;
   font-family: inherit;
   transition:
-    background-color 0.2s,
-    border-color 0.2s,
-    color 0.2s;
-}
-
-.profile-icon-btn--appointment {
-  --profile-btn-fg: var(--accent-strong);
-  --profile-btn-bg: color-mix(in srgb, var(--accent-strong) 14%, var(--bg-surface));
-  --profile-btn-border: color-mix(in srgb, var(--accent-strong) 42%, var(--border));
-  --profile-btn-badge: var(--accent-strong);
-}
-
-.profile-icon-btn--recommendations {
-  --profile-btn-fg: #2e7d32;
-  --profile-btn-bg: color-mix(in srgb, #2e7d32 14%, var(--bg-surface));
-  --profile-btn-border: color-mix(in srgb, #2e7d32 40%, var(--border));
-  --profile-btn-badge: #388e3c;
-}
-
-[data-theme='dark'] .profile-icon-btn--recommendations {
-  --profile-btn-fg: #81c784;
-  --profile-btn-bg: color-mix(in srgb, #81c784 16%, var(--bg-surface));
-  --profile-btn-border: color-mix(in srgb, #81c784 38%, var(--border));
-  --profile-btn-badge: #66bb6a;
-}
-
-.profile-icon-btn--history {
-  --profile-btn-fg: #6a1b9a;
-  --profile-btn-bg: color-mix(in srgb, #6a1b9a 12%, var(--bg-surface));
-  --profile-btn-border: color-mix(in srgb, #6a1b9a 38%, var(--border));
-  --profile-btn-badge: #7b1fa2;
-}
-
-[data-theme='dark'] .profile-icon-btn--history {
-  --profile-btn-fg: #ce93d8;
-  --profile-btn-bg: color-mix(in srgb, #ce93d8 14%, var(--bg-surface));
-  --profile-btn-border: color-mix(in srgb, #ce93d8 36%, var(--border));
-  --profile-btn-badge: #ba68c8;
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .profile-icon-btn:hover {
-  filter: brightness(1.06);
-  border-color: var(--profile-btn-fg);
+  --profile-btn-fg: var(--accent-strong);
+  --profile-btn-bg: color-mix(in srgb, var(--accent-strong) 10%, var(--bg-surface));
+  --profile-btn-border: color-mix(in srgb, var(--accent-strong) 20%, transparent);
+}
+
+.profile-icon-btn:active {
+  transform: scale(0.96);
 }
 
 .profile-icon-btn:focus-visible {
@@ -841,67 +810,93 @@ async function save() {
 .edit-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  color: var(--text-secondary);
-  padding: 0.35rem 0.65rem;
-  border-radius: 7px;
-  font-size: 0.78rem;
-  font-weight: 500;
+  gap: 0.4rem;
+  background: color-mix(in srgb, var(--accent-strong) 8%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 22%, var(--border));
+  color: var(--text-primary);
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
   font-family: inherit;
   transition:
-    border-color 0.15s ease,
-    color 0.15s ease,
-    background-color 0.15s ease;
+    border-color 0.18s ease,
+    color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .edit-toggle:hover {
   border-color: var(--accent-strong);
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--accent-strong) 8%, var(--bg-surface));
+  background: color-mix(in srgb, var(--accent-strong) 14%, var(--bg-surface));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-strong) 15%, transparent);
 }
 
 .patient-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin: 0.85rem 0 0;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--border);
+  margin: 1rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
-.patient-details__row {
+.profile-section__title,
+:deep(.profile-section__title) {
+  margin: 0 0 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.profile-section:not(:first-child) {
+  margin-top: 1.1rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.profile-facts {
   display: grid;
-  gap: 0.5rem;
-}
-
-.patient-details__row--triple {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem 1.25rem;
+  margin: 0;
 }
 
 @media (max-width: 640px) {
-  .patient-details__row--triple {
+  .profile-facts {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 }
 
-.patient-details-footer {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin: 0.05rem 0 0;
-  padding: 0.25rem 0.05rem 0;
-  font-size: 0.72rem;
-  color: var(--text-faint);
+.profile-fact {
+  min-width: 0;
+}
+
+.profile-fact__term {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.profile-fact__value {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
   line-height: 1.4;
 }
 
-.patient-details-footer__icon {
-  flex-shrink: 0;
-  opacity: 0.85;
+.patient-details-footer {
+  margin: 1rem 0 0;
+  padding-top: 0.85rem;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  line-height: 1.45;
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
 }
 
 .patient-form {
@@ -922,14 +917,25 @@ async function save() {
 .form-row input,
 .form-row select {
   width: 100%;
-  padding: 0.42rem 0.55rem;
+  padding: 0.48rem 0.6rem;
   font-size: 0.88rem;
+  line-height: 1.4;
   background: var(--bg-input);
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-primary);
   font-family: inherit;
   box-sizing: border-box;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.form-row input:focus-visible,
+.form-row select:focus-visible {
+  outline: none;
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-strong) 18%, transparent);
 }
 
 .form-row--pair {

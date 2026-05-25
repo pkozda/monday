@@ -51,6 +51,18 @@ export default {
         'Hypotheses and diagnoses are ready. Open Hypotheses & diagnoses to review.',
       errorTitle: 'Regeneration failed',
     },
+    doctorNotes: {
+      progressToastTitle: 'Preparing doctor notes…',
+      progressToastMessage:
+        'You can keep browsing — we will notify you when your notes are ready.',
+      progressNotificationTitle: 'Doctor notes in progress',
+      progressNotificationMessage:
+        'Your visit brief is being generated from your journal and clinical model.',
+      readyTitle: 'Doctor notes ready',
+      readyToastMessage:
+        'Open the notification to view and copy your notes.',
+      errorTitle: 'Could not prepare doctor notes',
+    },
   },
   common: {
     close: 'Close',
@@ -176,6 +188,8 @@ export default {
     addHealthHistory: 'Add health history',
     addHealthHistoryHint: 'Add health history (anamnesis)',
     editProfile: 'Edit profile',
+    quickActions: 'Profile quick actions',
+    sectionAbout: 'About you',
     cancelEdit: 'Cancel',
     saveProfile: 'Save profile',
     displayName: 'Display name',

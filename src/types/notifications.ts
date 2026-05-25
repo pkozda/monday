@@ -9,6 +9,9 @@ export interface AppNotification {
   read: boolean
   /** Navigate when clicking a center item */
   actionRoute?: string
+  /** In-app action (e.g. reopen doctor notes modal) */
+  actionKey?: string
+  actionPayload?: Record<string, string>
   /** Group for replacing related toasts (e.g. insights-regeneration) */
   groupId?: string
 }
@@ -21,4 +24,6 @@ export interface ToastOptions {
   groupId?: string
   persist?: boolean
   actionRoute?: string
+  actionKey?: string
+  actionPayload?: Record<string, string>
 }

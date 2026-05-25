@@ -19,6 +19,8 @@ function createNotification(
     createdAt: new Date().toISOString(),
     read: options.read ?? false,
     actionRoute: options.actionRoute,
+    actionKey: options.actionKey,
+    actionPayload: options.actionPayload,
     groupId: options.groupId,
   }
 }
@@ -130,6 +132,52 @@ export function notifyProgress(
 
 export function clearToastGroup(groupId: string): void {
   dismissToastGroup(groupId)
+}
+
+/** Replace in-progress doctor-notes toast with success toast + notification. */
+export function notifyDoctorNotesComplete(
+  groupId: string,
+  title: string,
+  message: string,
+  options?: {
+    actionRoute?: string
+    actionKey?: string
+    actionPayload?: Record<string, string>
+  }
+): void {
+  clearToastGroup(groupId)
+
+  pushToast({
+    kind: 'success',
+    title,
+    message,
+    groupId,
+    durationMs: 12_000,
+    actionRoute: options?.actionRoute,
+    actionKey: options?.actionKey,
+    actionPayload: options?.actionPayload,
+  })
+
+  pushNotification({
+    kind: 'success',
+    title,
+    message,
+    actionRoute: options?.actionRoute,
+    actionKey: options?.actionKey,
+    actionPayload: options?.actionPayload,
+    groupId,
+    showToast: false,
+    read: false,
+  })
+}
+
+export function notifyDoctorNotesFailed(
+  groupId: string,
+  title: string,
+  message?: string
+): void {
+  clearToastGroup(groupId)
+  notifyError(title, message)
 }
 
 /** Replace in-progress regeneration toast with a visible success toast + notification. */
