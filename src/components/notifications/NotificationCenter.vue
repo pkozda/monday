@@ -128,6 +128,29 @@ function formatTime(iso: string): string {
 function onItemClick(item: AppNotification) {
   markNotificationRead(item.id)
   open.value = false
+
+  if (item.actionKey === 'clinical-doctor-notes') {
+    window.dispatchEvent(
+      new CustomEvent('monday-reopen-clinical-doctor-notes')
+    )
+    return
+  }
+
+  if (
+    item.actionKey === 'hypothesis-doctor-notes' &&
+    item.actionPayload?.hypothesisId
+  ) {
+    window.dispatchEvent(
+      new CustomEvent('monday-reopen-hypothesis-doctor-notes', {
+        detail: { hypothesisId: item.actionPayload.hypothesisId },
+      })
+    )
+    if (item.actionRoute) {
+      void router.push(item.actionRoute)
+    }
+    return
+  }
+
   if (item.actionRoute) {
     void router.push(item.actionRoute)
   }

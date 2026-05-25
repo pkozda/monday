@@ -51,6 +51,18 @@ export default {
         'Гипотезы и диагнозы готовы. Откройте раздел «Гипотезы и диагнозы».',
       errorTitle: 'Ошибка пересборки',
     },
+    doctorNotes: {
+      progressToastTitle: 'Готовим заметки для врача…',
+      progressToastMessage:
+        'Можно продолжать работу — мы уведомим, когда заметки будут готовы.',
+      progressNotificationTitle: 'Заметки для врача готовятся',
+      progressNotificationMessage:
+        'Краткий обзор визита создаётся из журнала и клинической модели.',
+      readyTitle: 'Заметки для врача готовы',
+      readyToastMessage:
+        'Откройте уведомление, чтобы просмотреть и скопировать заметки.',
+      errorTitle: 'Не удалось подготовить заметки для врача',
+    },
   },
   common: {
     close: 'Закрыть',
@@ -179,6 +191,8 @@ export default {
     addHealthHistory: 'Добавить историю болезни',
     addHealthHistoryHint: 'История болезни (анамнез)',
     editProfile: 'Изменить профиль',
+    quickActions: 'Быстрые действия профиля',
+    sectionAbout: 'О вас',
     cancelEdit: 'Отмена',
     saveProfile: 'Сохранить профиль',
     displayName: 'Имя',

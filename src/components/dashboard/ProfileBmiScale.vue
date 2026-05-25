@@ -123,36 +123,25 @@ const trackAriaLabel = computed(() =>
 }
 
 .profile-bmi-scale__badge {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.3;
 }
 
 .profile-bmi-scale__badge--underweight {
   color: #0277bd;
-  background: color-mix(in srgb, #0277bd 16%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, #0277bd 35%, var(--border));
 }
 
 .profile-bmi-scale__badge--normal {
   color: #2e7d32;
-  background: color-mix(in srgb, #2e7d32 14%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, #2e7d32 32%, var(--border));
 }
 
 .profile-bmi-scale__badge--overweight {
   color: #ef6c00;
-  background: color-mix(in srgb, #ef6c00 14%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, #ef6c00 32%, var(--border));
 }
 
 .profile-bmi-scale__badge--obese {
   color: #c62828;
-  background: color-mix(in srgb, #c62828 14%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, #c62828 32%, var(--border));
 }
 
 [data-theme='dark'] .profile-bmi-scale__badge--underweight {
@@ -173,9 +162,9 @@ const trackAriaLabel = computed(() =>
 
 .profile-bmi-scale__hint {
   margin: 0;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .profile-bmi-scale__track {
