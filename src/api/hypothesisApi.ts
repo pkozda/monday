@@ -1,5 +1,4 @@
 import { db } from '@/db/database'
-import { clearStoredDiagnosisReports } from '@/api/diagnosisStorageApi'
 import { getHealthEntries } from '@/api/healthApi'
 import { getHypotheses, saveHypothesis } from '@/api/mockApi'
 import { invalidateInsightsCache } from '@/composables/useInsightsCache'
@@ -10,7 +9,6 @@ import type { Hypothesis } from '@/models/types'
 export type RegenerateMessageKey =
   | 'needEntries'
   | 'success'
-  | 'successNoDiagnoses'
   | 'noHypotheses'
   | 'aiRequired'
 
@@ -50,7 +48,6 @@ export async function regenerateAllHypothesesFromJournal(): Promise<RegenerateIn
   }
 
   await clearAllHypotheses()
-  await clearStoredDiagnosisReports()
   invalidateInsightsCache()
 
   const built = await buildHypothesesForJournal(entries)
@@ -106,6 +103,6 @@ export async function tryGenerateHypothesis(): Promise<{
   return {
     status: 'skipped',
     message:
-      'Hypotheses are updated when you use Generate on the Hypotheses & diagnoses page.',
+      'Hypotheses are updated when you use Generate on the Hypotheses page.',
   }
 }

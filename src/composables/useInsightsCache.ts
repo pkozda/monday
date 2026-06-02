@@ -1,16 +1,10 @@
 import { ref, shallowRef } from 'vue'
 import { readAiInsightsPreference } from '@/services/llm/config'
-import type {
-  DiagnosisReport,
-  HealthEntry,
-  Hypothesis,
-  PatientProfile,
-} from '@/models/types'
+import type { HealthEntry, Hypothesis, PatientProfile } from '@/models/types'
 
 export interface InsightsCacheSnapshot {
   hypotheses: Hypothesis[]
   journalEntries: HealthEntry[]
-  diagnosisReports: DiagnosisReport[]
   patient: PatientProfile | null
   fetchedAt: number
   /** Must match current AI toggle or cache is ignored. */

@@ -7,6 +7,35 @@
     >
       <template #actions>
         <button
+          v-if="assistantAvailable"
+          type="button"
+          class="btn-assistant"
+          :title="t('hypothesesPage.assistant.open')"
+          @click="assistantOpen = true"
+        >
+          <svg
+            class="btn-assistant__icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          {{ t('hypothesesPage.assistant.open') }}
+          <span
+            v-if="assistantHistoryCount > 0"
+            class="btn-assistant__dot"
+            :title="t('hypothesesPage.assistant.hasHistory')"
+            aria-hidden="true"
+          />
+        </button>
+        <button
           type="button"
           class="btn-regenerate"
           :disabled="isRegenerating || journalEntries.length === 0 || !aiActive"
@@ -43,6 +72,14 @@
       {{ regenerateMessage }}
     </div>
 
+    <HypothesisAssistantDrawer
+      v-if="assistantAvailable"
+      v-model:open="assistantOpen"
+      :hypotheses="hypotheses"
+      :journal-entries="journalEntries"
+      @history-updated="assistantHistoryCount = $event"
+    />
+
     <div
       v-if="isRegenerating && !hasGeneratedInsights"
       class="page-loading"
@@ -69,81 +106,29 @@
       </p>
     </div>
 
-    <template v-else-if="hasGeneratedInsights || isRegenerating">
-      <div class="hypotheses-tabs page-panel page-panel--compact" role="tablist" aria-label="Hypotheses and diagnoses">
-        <button
-          type="button"
-          role="tab"
-          class="hypotheses-tab"
-          :class="{ 'hypotheses-tab--active': activeTab === 'diagnoses' }"
-          :aria-selected="activeTab === 'diagnoses'"
-          @click="activeTab = 'diagnoses'"
-        >
-          {{ t('hypothesesPage.tabDiagnoses') }}
-          <span v-if="diagnosisReports.length" class="tab-count">{{
-            diagnosisReports.length
-          }}</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="hypotheses-tab"
-          :class="{ 'hypotheses-tab--active': activeTab === 'hypotheses' }"
-          :aria-selected="activeTab === 'hypotheses'"
-          @click="activeTab = 'hypotheses'"
-        >
-          {{ t('hypothesesPage.tabHypotheses') }}
-          <span v-if="hypotheses.length" class="tab-count">{{ hypotheses.length }}</span>
-        </button>
+    <section
+      v-else-if="hasGeneratedInsights || isRegenerating"
+      class="tab-panel page-panel"
+      aria-label="Hypotheses"
+    >
+      <div v-if="hypotheses.length === 0" class="page-empty">
+        <span class="page-empty__title">{{ t('hypothesesPage.noHypothesesTitle') }}</span>
+        <p>
+          {{ t('hypothesesPage.noHypothesesText') }}
+        </p>
+        <router-link to="/" class="link-cta">{{ t('common.goToDashboard') }}</router-link>
       </div>
 
-      <div
-        v-show="activeTab === 'diagnoses'"
-        role="tabpanel"
-        class="tab-panel page-panel"
-        aria-label="Diagnoses"
-      >
-        <DiagnosisPanel
-          :reports="diagnosisReports"
+      <div v-else class="hypotheses-container">
+        <HypothesisCard
+          v-for="hypothesis in hypotheses"
+          :key="hypothesis.id"
+          :hypothesis="hypothesis"
           :journal-entries="journalEntries"
-          :loading="diagnosisEmptyState?.loading ?? false"
-          :refreshing="diagnosesRefreshing || isRegenerating"
-          :diagnosis-mode="diagnosisMode"
-          :empty-title="diagnosisEmptyState?.title"
-          :empty-hint="diagnosisEmptyState?.hint"
-          :show-empty-action="diagnosisEmptyState?.showAction ?? false"
-          :empty-action-disabled="isRegenerating || diagnosesRefreshing"
-          :empty-action-label="t('diagnosis.generateAction')"
-          @empty-action="generateDiagnosesOnly"
+          :patient="patient"
         />
       </div>
-
-      <div
-        v-show="activeTab === 'hypotheses'"
-        role="tabpanel"
-        class="tab-panel page-panel"
-        aria-label="Hypotheses"
-      >
-        <div v-if="hypotheses.length === 0" class="page-empty">
-          <span class="page-empty__title">{{ t('hypothesesPage.noHypothesesTitle') }}</span>
-          <p>
-            {{ t('hypothesesPage.noHypothesesText') }}
-          </p>
-          <router-link to="/" class="link-cta">{{ t('common.goToDashboard') }}</router-link>
-        </div>
-
-        <div v-else class="hypotheses-container">
-          <HypothesisCard
-            v-for="hypothesis in hypotheses"
-            :key="hypothesis.id"
-            :hypothesis="hypothesis"
-            :journal-entries="journalEntries"
-            :patient="patient"
-            :related-variants="relatedVariantsForHypothesis(hypothesis)"
-          />
-        </div>
-      </div>
-    </template>
+    </section>
 
     <ConfirmDialog
       v-model:open="regenerateConfirmOpen"
@@ -158,19 +143,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import HypothesisCard from '@/components/HypothesisCard.vue'
-import DiagnosisPanel from '@/components/DiagnosisPanel.vue'
+import HypothesisAssistantDrawer from '@/components/hypotheses/HypothesisAssistantDrawer.vue'
+import { countHypothesisAssistantMessages } from '@/api/hypothesisAssistantApi'
 import { getHypotheses } from '@/api/mockApi'
-import { generateDiagnosisReports } from '@/api/diagnosisApi'
-import { getStoredClinicalInsights } from '@/api/diagnosisStorageApi'
-import { enrichAiDiagnosisReports } from '@/services/llm/aiDiagnosisJournalSupport'
-import { fillJournalLinkExplanations } from '@/services/llm/aiDiagnosisJournalLinks'
-import { saveDiagnosisReports } from '@/api/diagnosisStorageApi'
 import { useAiInsights } from '@/composables/useAiInsights'
 import { useInsightsRegenerationMessages } from '@/composables/useInsightsRegenerationMessages'
 import {
@@ -180,7 +160,6 @@ import {
   setInsightsCache,
   type InsightsCacheSnapshot,
 } from '@/composables/useInsightsCache'
-import { shouldUseAiInsights } from '@/services/llm/config'
 import {
   INSIGHTS_REGENERATED_EVENT,
   runInsightsRegeneration,
@@ -188,23 +167,25 @@ import {
   type InsightsRegeneratedDetail,
 } from '@/services/insightsRegeneration'
 import { consolidateHypothesesForDisplay } from '@/services/hypothesisDisplay'
-
-const { t } = useI18n()
-const { active: aiActive } = useAiInsights()
-const { isRunning: isRegenerating } = useInsightsRegeneration()
-const regenerationMessages = useInsightsRegenerationMessages()
-import { areasMatch } from '@/services/bodyAreaDetection'
 import { getHealthEntries } from '@/api/healthApi'
 import { getPatientProfile } from '@/api/patientApi'
-import type {
-  DiagnosisGenerationOutcome,
-  DiagnosisReport,
-  DiagnosisVariant,
-  HealthEntry,
-  Hypothesis,
-  PatientProfile,
-} from '@/models/types'
+import type { HealthEntry, Hypothesis, PatientProfile } from '@/models/types'
 import type { RegenerateInsightsResult } from '@/api/hypothesisApi'
+
+const { t } = useI18n()
+const { active: aiActive, available: assistantAvailable } = useAiInsights()
+const { isRunning: isRegenerating } = useInsightsRegeneration()
+const regenerationMessages = useInsightsRegenerationMessages()
+
+const hypotheses = ref<Hypothesis[]>([])
+const journalEntries = ref<HealthEntry[]>([])
+const patient = ref<PatientProfile | null>(null)
+const regenerateMessage = ref('')
+const regenerateMessageType = ref<'success' | 'error' | 'info'>('success')
+const regenerateSlowHint = ref(false)
+const regenerateConfirmOpen = ref(false)
+const assistantOpen = ref(false)
+const assistantHistoryCount = ref(0)
 
 function formatRegenerateMessage(result: RegenerateInsightsResult): string {
   const params = {
@@ -215,93 +196,8 @@ function formatRegenerateMessage(result: RegenerateInsightsResult): string {
   return t(`hypothesesPage.regenerateMessages.${result.messageKey}`, params)
 }
 
-type TabId = 'diagnoses' | 'hypotheses'
-
-const route = useRoute()
-const router = useRouter()
-const diagnosesRefreshing = ref(false)
-const activeTab = ref<TabId>('diagnoses')
-const hypotheses = ref<Hypothesis[]>([])
-const diagnosisReports = ref<DiagnosisReport[]>([])
-const journalEntries = ref<HealthEntry[]>([])
-const patient = ref<PatientProfile | null>(null)
-const regenerateMessage = ref('')
-const regenerateMessageType = ref<'success' | 'error' | 'info'>('success')
-const regenerateSlowHint = ref(false)
-const regenerateConfirmOpen = ref(false)
-const diagnosisMode = ref<'rule' | 'ai'>('rule')
-const diagnosisOutcome = ref<DiagnosisGenerationOutcome | null>(null)
-const diagnosisOutcomeMessage = ref<string | undefined>(undefined)
-
-interface DiagnosisEmptyState {
-  loading?: boolean
-  title: string
-  hint?: string
-  showAction?: boolean
-}
-
-const diagnosisEmptyState = computed((): DiagnosisEmptyState | null => {
-  if (diagnosisReports.value.length > 0) return null
-
-  if (diagnosesRefreshing.value || isRegenerating.value) {
-    return { loading: true, title: '' }
-  }
-
-  if (!aiActive.value) {
-    return {
-      title: t('diagnosis.emptyAiOffTitle'),
-      hint: t('diagnosis.emptyAiOffHint'),
-    }
-  }
-
-  if (journalEntries.value.length === 0) {
-    return {
-      title: t('diagnosis.emptyNeedEntriesTitle'),
-      hint: t('diagnosis.emptyNeedEntriesHint'),
-    }
-  }
-
-  if (!hypotheses.value.some((h) => Boolean(h.aiInsight))) {
-    return {
-      title: t('diagnosis.emptyNotGeneratedTitle'),
-      hint: t('diagnosis.emptyNotGeneratedHint'),
-    }
-  }
-
-  switch (diagnosisOutcome.value) {
-    case 'no_suggestions':
-      return {
-        title: t('diagnosis.emptyNoSuggestionsTitle'),
-        hint: t('diagnosis.emptyNoSuggestionsHint'),
-        showAction: true,
-      }
-    case 'needs_more_journal':
-      return {
-        title: t('diagnosis.emptyNeedsMoreJournalTitle'),
-        hint: t('diagnosis.emptyNeedsMoreJournalHint'),
-        showAction: true,
-      }
-    case 'failed':
-      return {
-        title: t('diagnosis.emptyFailedTitle'),
-        hint:
-          diagnosisOutcomeMessage.value?.trim() ||
-          t('diagnosis.emptyFailedHint'),
-        showAction: true,
-      }
-    default:
-      return {
-        title: t('diagnosis.emptyIncompleteTitle'),
-        hint: t('diagnosis.emptyIncompleteHint'),
-        showAction: true,
-      }
-  }
-})
-
-const hasGeneratedInsights = computed(
-  () =>
-    diagnosisReports.value.length > 0 ||
-    hypotheses.value.some((h) => Boolean(h.aiInsight))
+const hasGeneratedInsights = computed(() =>
+  hypotheses.value.some((h) => Boolean(h.aiInsight))
 )
 
 const generateButtonLabel = computed(() => {
@@ -320,185 +216,51 @@ const generateButtonTitle = computed(() => {
     : t('hypothesesPage.generateTitle')
 })
 
-function relatedVariantsForHypothesis(hypothesis: Hypothesis): DiagnosisVariant[] {
-  const report = diagnosisReports.value.find((r) =>
-    areasMatch(r.conditionArea, hypothesis.conditionArea)
-  )
-  return report?.variants.slice(0, 3) ?? []
-}
+const regenerateBannerVariant = computed(() => {
+  const type = regenerateMessageType.value
+  if (type === 'success') return 'success'
+  if (type === 'error') return 'error'
+  return 'info'
+})
 
 function applyCache(cached: InsightsCacheSnapshot) {
   hypotheses.value = cached.hypotheses
   journalEntries.value = cached.journalEntries
-  diagnosisReports.value = cached.diagnosisReports
   patient.value = cached.patient
 }
 
-/** Read IndexedDB only — never calls the LLM. */
 async function loadPageState(): Promise<void> {
-  const [hyps, entries, profile, storedInsights] = await Promise.all([
+  const [hyps, entries, profile] = await Promise.all([
     getHypotheses(),
     getHealthEntries(),
     getPatientProfile(),
-    getStoredClinicalInsights(),
   ])
   const displayHyps = consolidateHypothesesForDisplay(hyps)
-  const storedReports = storedInsights?.diagnosisReports ?? []
   hypotheses.value = displayHyps
   journalEntries.value = entries
   patient.value = profile
-  diagnosisReports.value =
-    storedReports.length > 0
-      ? enrichAiDiagnosisReports(storedReports, entries)
-      : []
-  diagnosisOutcome.value = storedInsights?.diagnosisOutcome ?? null
-  diagnosisOutcomeMessage.value = storedInsights?.diagnosisOutcomeMessage
-  diagnosisMode.value = shouldUseAiInsights() ? 'ai' : 'rule'
 
   if (displayHyps.length > 0) {
     setInsightsCache({
       hypotheses: displayHyps,
       journalEntries: entries,
-      diagnosisReports: storedReports,
       patient: profile,
     })
   }
 }
 
-function applyDiagnosisGeneration(
-  reports: DiagnosisReport[],
-  outcome: DiagnosisGenerationOutcome,
-  outcomeMessage?: string
-) {
-  diagnosisReports.value = reports
-  diagnosisOutcome.value = outcome
-  diagnosisOutcomeMessage.value = outcomeMessage
-
-  const cached = getInsightsCache()
-  if (cached) {
-    setInsightsCache({
-      ...cached,
-      diagnosisReports: reports,
-    })
-  }
-}
-
-async function generateDiagnosesOnly(): Promise<void> {
-  if (isRegenerating.value || diagnosesRefreshing.value) return
-  if (!aiActive.value) return
-
-  diagnosesRefreshing.value = true
-  try {
-    const result = await generateDiagnosisReports({ forceRegenerate: true })
-    applyDiagnosisGeneration(
-      result.reports,
-      result.outcome,
-      result.outcomeMessage
-    )
-
-    if (result.reports.length > 0) {
-      regenerateMessageType.value = 'success'
-      regenerateMessage.value = t('diagnosis.generatedSuccess', {
-        count: result.reports.length,
-      })
-      activeTab.value = 'diagnoses'
-      return
-    }
-
-    regenerateMessageType.value =
-      result.outcome === 'failed' ? 'error' : 'info'
-    regenerateMessage.value = t(`diagnosis.outcomeBanner.${result.outcome}`)
-  } finally {
-    diagnosesRefreshing.value = false
-  }
-}
-
-/** Hypotheses saved but diagnoses missing (e.g. interrupted generation). */
-function reportsNeedLinkExplanations(reports: DiagnosisReport[]): boolean {
-  return reports.some((r) =>
-    r.variants.some(
-      (v) =>
-        v.aiRanked &&
-        v.confirmCriteria.some(
-          (c) =>
-            c.status === 'met' &&
-            Boolean(c.sourceEntryId) &&
-            !c.linkExplanation?.trim()
-        )
-    )
-  )
-}
-
-async function ensureJournalLinkExplanations(): Promise<void> {
-  if (!aiActive.value || isRegenerating.value || diagnosesRefreshing.value) {
-    return
-  }
-  if (!reportsNeedLinkExplanations(diagnosisReports.value)) return
-
-  diagnosesRefreshing.value = true
-  try {
-    const updated = await fillJournalLinkExplanations(
-      diagnosisReports.value,
-      journalEntries.value
-    )
-    applyDiagnosisGeneration(updated, diagnosisOutcome.value ?? 'ok')
-    await saveDiagnosisReports(updated, diagnosisOutcome.value ?? 'ok')
-  } catch (err) {
-    console.warn('[Monday] journal link explanations', err)
-  } finally {
-    diagnosesRefreshing.value = false
-  }
-}
-
-async function backfillDiagnosesIfNeeded(): Promise<void> {
-  const hasAiHypotheses = hypotheses.value.some((h) => Boolean(h.aiInsight))
-  if (!hasAiHypotheses || diagnosisReports.value.length > 0) return
-  if (!aiActive.value || isRegenerating.value) return
-  if (
-    diagnosisOutcome.value === 'no_suggestions' ||
-    diagnosisOutcome.value === 'needs_more_journal'
-  ) {
-    return
-  }
-
-  await generateDiagnosesOnly()
-}
-
-const regenerateBannerVariant = computed(() => {
-  const t = regenerateMessageType.value
-  if (t === 'success') return 'success'
-  if (t === 'error') return 'error'
-  return 'info'
-})
-
 function clearInsightsDisplay() {
   hypotheses.value = []
-  diagnosisReports.value = []
-  diagnosisOutcome.value = null
-  diagnosisOutcomeMessage.value = undefined
   regenerateSlowHint.value = false
   regenerateMessage.value = ''
 }
 
 function applyRegeneratedDetail(detail: InsightsRegeneratedDetail) {
   applyCache(detail.snapshot)
-  applyDiagnosisGeneration(
-    detail.diagnosis.reports,
-    detail.diagnosis.outcome,
-    detail.diagnosis.outcomeMessage
-  )
-  diagnosisMode.value = detail.snapshot.aiInsightsEnabled ? 'ai' : 'rule'
   regenerateSlowHint.value = false
   regenerateMessageType.value =
-    detail.result.hypothesisCount > 0 && detail.diagnosis.reports.length > 0
-      ? 'success'
-      : detail.result.hypothesisCount > 0
-        ? 'info'
-        : 'info'
+    detail.result.hypothesisCount > 0 ? 'success' : 'info'
   regenerateMessage.value = formatRegenerateMessage(detail.result)
-  if (detail.result.hypothesisCount > 0 && diagnosisReports.value.length > 0) {
-    activeTab.value = 'diagnoses'
-  }
 }
 
 function onInsightsRegenerated(event: Event) {
@@ -538,24 +300,17 @@ onMounted(async () => {
   const entries = await getHealthEntries()
   journalEntries.value = entries
 
+  if (assistantAvailable.value) {
+    assistantHistoryCount.value = await countHypothesisAssistantMessages()
+  }
+
   const cached = getInsightsCache()
   if (cached && isInsightsCacheValid(cached, entries) && cached.hypotheses.length > 0) {
     applyCache(cached)
-    diagnosisMode.value = cached.aiInsightsEnabled ? 'ai' : 'rule'
   } else {
     if (cached) invalidateInsightsCache()
     await loadPageState()
   }
-
-  const tab = route.query.tab
-  if (tab === 'hypotheses' || tab === 'diagnoses') {
-    activeTab.value = tab
-  } else if (diagnosisReports.value.length === 0 && hypotheses.value.length > 0) {
-    activeTab.value = 'hypotheses'
-  }
-
-  await backfillDiagnosesIfNeeded()
-  await ensureJournalLinkExplanations()
 })
 
 onUnmounted(() => {
@@ -581,15 +336,50 @@ function onRegenerateInsights() {
 function confirmRegenerateInsights() {
   startBackgroundRegeneration()
 }
-
-watch(activeTab, (tab) => {
-  router.replace({ query: { tab } })
-})
 </script>
 
 <style scoped>
 .regenerate-feedback {
   margin: -0.5rem 0 1.25rem;
+}
+
+.btn-assistant {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-assistant:hover {
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
+}
+
+.btn-assistant__icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.btn-assistant__dot {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  box-shadow: 0 0 0 2px var(--bg-surface);
 }
 
 .btn-regenerate {
@@ -615,141 +405,21 @@ watch(activeTab, (tab) => {
   cursor: not-allowed;
 }
 
-.insights-toolbar {
-  margin-bottom: 1.25rem;
-}
-
-.btn-regenerate {
-  padding: 0.6rem 1.1rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid var(--accent);
-  background: var(--accent-strong);
-  color: #fff;
-  font-family: inherit;
-}
-
-.btn-regenerate:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn-regenerate:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.regenerate-feedback {
-  margin: 0.75rem 0 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-.regenerate-feedback.success {
-  color: var(--success-text, #2e7d32);
-}
-
-.regenerate-feedback.error {
-  color: var(--error-text);
-}
-
-.regenerate-feedback.info {
-  color: var(--text-muted);
-}
-
-.hypotheses-tabs {
-  display: flex;
-  gap: 0.25rem;
-  margin-bottom: 1.25rem;
-  padding: 0.35rem;
-  width: fit-content;
-  box-shadow: none;
-}
-
-.hypotheses-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 1.1rem;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: inherit;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease;
-}
-
-.hypotheses-tab:hover {
-  color: var(--text-primary);
-  background: var(--bg-muted);
-}
-
-.hypotheses-tab--active {
-  background: var(--accent-strong);
-  color: #fff;
-}
-
-.hypotheses-tab--active .tab-count {
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
-}
-
-.tab-count {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.1rem 0.4rem;
-  border-radius: 10px;
-  background: var(--bg-muted);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.tab-panel {
-  min-height: 120px;
-}
-
-.link-cta {
-  display: inline-block;
+.btn-regenerate--cta {
   margin-top: 0.75rem;
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.link-cta:hover {
-  text-decoration: underline;
 }
 
 .hypotheses-container {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 1rem;
 }
 
-.page-empty--generate {
-  max-width: 32rem;
-  margin: 2rem auto;
-  text-align: center;
+.regenerate-slow-hint {
+  margin-bottom: 1rem;
 }
 
-.page-empty--generate p {
-  margin: 0.75rem 0 1.25rem;
-  color: var(--text-muted);
-  line-height: 1.55;
-}
-
-.page-empty__hint {
-  margin-top: 1rem !important;
-  font-size: 0.875rem;
-}
-
-.btn-regenerate--cta {
-  margin-top: 0.25rem;
+.ai-banner {
+  margin-bottom: 1rem;
 }
 </style>

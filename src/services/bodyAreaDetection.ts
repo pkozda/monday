@@ -2,11 +2,9 @@ import { combinedEntryText } from '@/services/healthAnalysis'
 import {
   buildJournalFocusPlan,
   collectFocusAreaLabels,
-  entriesForFocusArea,
-  type JournalFocusPlan,
 } from '@/services/journalFocusAreas'
 import { isWeightRelatedText } from '@/services/weightEntry'
-import type { DiagnosisReport, HealthEntry, Hypothesis } from '@/models/types'
+import type { HealthEntry, Hypothesis } from '@/models/types'
 
 /** Ordered most-specific first so “left ankle” wins before “ankle” / “leg”. */
 export const BODY_AREA_RULES: { pattern: RegExp; area: string }[] = [
@@ -118,19 +116,6 @@ export function entryRelatesToArea(entry: HealthEntry, area: string): boolean {
   return areasForEntry(entry).some((candidate) => areasMatch(candidate, area))
 }
 
-export function entriesForDiagnosisArea(
-  area: string,
-  entries: HealthEntry[],
-  focusPlan?: JournalFocusPlan
-): HealthEntry[] {
-  if (focusPlan) {
-    return entriesForFocusArea(area, entries, focusPlan)
-  }
-
-  if (isGeneralHealthArea(area)) return [...entries]
-  return entries.filter((entry) => entryRelatesToArea(entry, area))
-}
-
 export function collectConditionAreas(
   entries: HealthEntry[],
   hypotheses: Hypothesis[]
@@ -139,17 +124,3 @@ export function collectConditionAreas(
   return collectFocusAreaLabels(plan, hypotheses)
 }
 
-export function sortDiagnosisReportsByArea(
-  reports: DiagnosisReport[]
-): DiagnosisReport[] {
-  const general: DiagnosisReport[] = []
-  const rest: DiagnosisReport[] = []
-  for (const report of reports) {
-    if (isGeneralHealthArea(report.conditionArea)) general.push(report)
-    else rest.push(report)
-  }
-  rest.sort(
-    (a, b) => (b.variants[0]?.percentage ?? 0) - (a.variants[0]?.percentage ?? 0)
-  )
-  return [...general, ...rest]
-}

@@ -26,10 +26,10 @@ export default {
     toggle: 'AI insights',
     on: 'On',
     hintOn:
-      'Journal analysis, hypotheses, and diagnosis text use AI when you regenerate or add entries.',
+      'Journal analysis and hypotheses use AI when you regenerate or add entries.',
     hintOff: 'Enable to send journal text to your configured LLM (dev proxy).',
     banner:
-      'AI insights are on — symptom analysis runs on new entries; regenerate to refresh hypotheses; diagnoses are ranked and explained by AI from your journal.',
+      'AI insights are on — symptom analysis runs on new entries; regenerate to refresh hypotheses from your journal.',
     unavailable:
       'AI insights need LLM_API_KEY in .env.local and npm run dev (see .env.example).',
   },
@@ -45,10 +45,10 @@ export default {
         'Regeneration can take a while. You can use other pages — we will notify you when it is finished.',
       slowNotificationTitle: 'Regenerating insights',
       slowNotificationMessage:
-        'Hypotheses and diagnoses are being rebuilt from your journal.',
-      successTitle: 'Insights ready',
+        'Hypotheses are being rebuilt from your journal.',
+      successTitle: 'Hypotheses ready',
       successToastMessage:
-        'Hypotheses and diagnoses are ready. Open Hypotheses & diagnoses to review.',
+        'Hypotheses are ready. Open the Hypotheses page to review.',
       errorTitle: 'Regeneration failed',
     },
     doctorNotes: {
@@ -431,42 +431,61 @@ export default {
   },
   hypothesesPage: {
     eyebrow: 'Clinical insights',
-    title: 'Hypotheses & diagnoses',
-    subtitle:
-      'Regenerate pulls the latest journal data into possible conditions and hypotheses.',
-    generate: 'Generate hypotheses & conditions',
-    generateTitle: 'Build hypotheses and possible conditions from your journal',
-    regenerate: 'Regenerate hypotheses & conditions',
+    title: 'Hypotheses',
+    subtitle: 'Regenerate pulls the latest journal data into AI hypotheses per body area.',
+    generate: 'Generate hypotheses',
+    generateTitle: 'Build hypotheses from your journal',
+    regenerate: 'Regenerate hypotheses',
     regenerating: 'Regenerating…',
-    loading: 'Loading insights…',
+    loading: 'Loading hypotheses…',
     notGeneratedTitle: 'Nothing generated yet',
     notGeneratedText:
-      'Hypotheses and possible conditions are built from your journal when you run Generate. Nothing is created automatically when you open this page.',
-    tabDiagnoses: 'Diagnoses',
-    tabHypotheses: 'Hypotheses',
+      'Hypotheses are built from your journal when you run Generate. Nothing is created automatically when you open this page.',
     noHypothesesTitle: 'No hypotheses yet',
     noHypothesesText:
-      'Add journal entries, then use Regenerate hypotheses & conditions in the header.',
-    regenerateConfirmTitle: 'Regenerate insights?',
+      'Add journal entries, then use Regenerate hypotheses in the header.',
+    regenerateConfirmTitle: 'Regenerate hypotheses?',
     regenerateConfirmMessage:
-      'This replaces all hypotheses with new ones from your current journal. Possible conditions will be recalculated from the same records.',
+      'This replaces all hypotheses with new ones from your current journal.',
     regenerateConfirmAction: 'Regenerate',
     regenerateSlowHint:
-      'Regeneration is still running. You can leave this page — we will notify you when hypotheses and diagnoses are ready.',
+      'Regeneration is still running. You can leave this page — we will notify you when hypotheses are ready.',
     regenerateTitleEmpty: 'Add journal entries first',
     regenerateTitle: 'Regenerate from current journal',
     regenerateFailed: 'Regeneration failed.',
     regenerateMessages: {
       aiRequired:
-        'Turn on AI insights in the navigation bar and configure your LLM API key to generate hypotheses and diagnoses.',
-      needEntries:
-        'Add journal entries first, then regenerate hypotheses and possible conditions.',
+        'Turn on AI insights in the navigation bar and configure your LLM API key to generate hypotheses.',
+      needEntries: 'Add journal entries first, then regenerate hypotheses.',
       success:
-        'Regenerated {hypothesisCount} hypotheses from {journalEntryCount} journal entries across {areaCount} areas. Possible conditions use the same records.',
+        'Regenerated {hypothesisCount} hypotheses from {journalEntryCount} journal entries across {areaCount} areas.',
       noHypotheses:
         'Reviewed {journalEntryCount} journal entries but could not derive hypotheses — add more detail per body area and try again.',
-      successNoDiagnoses:
-        'Created {hypothesisCount} hypotheses from {journalEntryCount} journal entries, but the AI could not suggest possible conditions to discuss — add more journal detail or try Generate possible conditions on the Diagnoses tab.',
+    },
+    assistant: {
+      open: 'Assistant',
+      close: 'Close assistant',
+      hasHistory: 'Saved conversation',
+      title: 'AI assistant',
+      subtitle:
+        'Ask questions about your journal and generated hypotheses. Answers use your configured LLM.',
+      emptyHint: 'Ask about patterns, what to track next, or how to prepare for a visit.',
+      starters: [
+        'Summarize my main hypotheses in plain language',
+        'What should I discuss with my doctor?',
+        'Which body area needs more journal detail?',
+      ],
+      you: 'You',
+      assistant: 'Assistant',
+      thinking: 'Thinking…',
+      placeholder: 'Ask about your journal or hypotheses…',
+      inputLabel: 'Message to the assistant',
+      send: 'Send',
+      clear: 'Clear chat',
+      aiOff: 'Turn on AI insights in the navigation bar to use the assistant.',
+      needJournal: 'Add at least one journal entry before chatting.',
+      disclaimer:
+        'Assistant replies are informational only and are not medical advice or a diagnosis.',
     },
   },
   journalPage: {
@@ -508,136 +527,6 @@ export default {
     noAttentionTitle: 'No urgent entries right now',
     noAttentionText:
       'None of your journal records are currently flagged as urgent or emergency. You can view all entries instead.',
-  },
-  diagnosis: {
-    loading: 'Analyzing your journal for possible conditions…',
-    refreshing: 'Updating possible conditions…',
-    generateAction: 'Generate possible conditions',
-    generatedSuccess:
-      'Generated possible conditions for {count} body area(s) from your journal.',
-    empty:
-      'Use Generate on this page (with AI insights on) to build possible conditions from your journal.',
-    emptyNotGeneratedTitle: 'Possible conditions not generated yet',
-    emptyNotGeneratedHint:
-      'Use Generate in the page header (with AI insights on) to build hypotheses and possible conditions together.',
-    emptyIncompleteTitle: 'Possible conditions were not saved',
-    emptyIncompleteHint:
-      'Your hypotheses are saved, but possible conditions did not finish generating (for example after an interrupted run). Use the button below or Regenerate in the header.',
-    emptyAiOffTitle: 'AI insights are off',
-    emptyAiOffHint:
-      'Turn on AI insights in the navigation bar to generate possible conditions from your journal.',
-    emptyNeedEntriesTitle: 'Add journal entries first',
-    emptyNeedEntriesHint:
-      'Possible conditions are built from your health journal. Log symptoms, visits, or test results, then generate again.',
-    emptyNoSuggestionsTitle: 'No possible conditions suggested',
-    emptyNoSuggestionsHint:
-      'The AI reviewed your journal and hypotheses but could not name exploratory conditions to discuss with a clinician. This is not a diagnosis — try adding more specific symptoms, timing, and test results, then generate again.',
-    emptyNeedsMoreJournalTitle: 'More journal detail may help',
-    emptyNeedsMoreJournalHint:
-      'With only a brief journal record, the AI may not suggest ranked possible conditions. Add entries for symptoms, medications, imaging, or visits, then tap Generate possible conditions.',
-    emptyFailedTitle: 'Could not generate possible conditions',
-    emptyFailedHint:
-      'Something went wrong while calling the AI. Check your API key and network, then try again.',
-    outcomeBanner: {
-      no_suggestions:
-        'No possible conditions were suggested from your current journal. Add more detail and try again.',
-      needs_more_journal:
-        'Add more journal entries or richer symptom notes, then generate possible conditions again.',
-      failed: 'Possible conditions could not be generated. Check AI settings and try again.',
-    },
-    disclaimer:
-      'Possible conditions are exploratory suggestions from AI based on your journal text. Always confirm with a qualified clinician.',
-    aiRankedNote:
-      'Percentages and condition names were generated by AI from your de-identified journal entries only.',
-    ruleBasedNote:
-      'Turn on AI insights and use Generate to create possible conditions.',
-    aiBadge: 'AI ranked',
-    certaintyHigh: 'Likely',
-    certaintyModerate: 'Leading',
-    certaintyLow: 'Uncertain',
-    seeSpecialist: 'See: {name}',
-    whoToSee: 'Who to see:',
-    crossBodyNote:
-      'We also used related journal entries from other body areas when they may fit the same condition.',
-    uncertainNote:
-      'No single condition stands out — compare the options below and discuss with a clinician.',
-    journalMatch: {
-      strong: 'Closely matches your journal',
-      partial: 'Partly matches your journal',
-      limited: 'Limited match in your journal so far',
-    },
-    whySuggested: 'Why we suggested this',
-    criteriaSupport: 'Criteria that support this diagnosis',
-    criteriaAgainst: 'Criteria that argue against it',
-    suggestedWorkup: 'Suggested workup to confirm or exclude',
-    evidenceJournal: 'Evidence from your journal',
-    variantTabsLabel: 'Possible conditions for {area}',
-    notDocumented: 'Not yet documented — discuss with your clinician',
-    certaintyReportHigh: 'Most likely match',
-    certaintyReportModerate: 'Leading possibility',
-    certaintyReportLow: 'Several possibilities — review all variants',
-    rationale: {
-      primaryScope: '{count} journal {entries} about {area}',
-      crossScope: '{count} related {entries} from other body areas',
-      scopeAnd: 'and',
-      fullHistory: 'your health journal',
-      intro: 'We looked at {scope}.',
-      symptoms_all:
-        'Typical signs for this condition show up in what you logged ({typicalMet} of {typicalTotal} common signs, plus supporting journal checks).',
-      symptoms_some:
-        'Only part of the picture is in your journal ({typicalMet} of {typicalTotal} typical signs; {met} of {total} supporting checks). Log more detail if you can.',
-      symptoms_none:
-        'Few typical signs for this condition appear in your journal so far — percentages may change if you add more entries.',
-      exclusions:
-        '{count} journal notes may point away from this condition—worth discussing with your clinician.',
-      disclaimer:
-        'This is a suggestion to explore with a clinician, not a confirmed diagnosis.',
-    },
-    variantFooter: {
-      journalIn: '{count} journal {entries} in {area}',
-      crossFrom: '+ {count} from other body {areas}',
-      hypothesisLine: 'Hypothesis: {pattern} · {confidence}',
-    },
-  },
-  diseaseInsight: {
-    aboutTitle: 'What is this condition?',
-    whatYouLoggedTitle: 'What you logged that supports this',
-    whatYouLoggedIntro:
-      'Your journal entries linked to this possible condition. Each note includes an AI explanation of what in your text connects to this disease — not a confirmed diagnosis.',
-    whyThisSupports: 'Why this supports this possibility',
-    supportReason: {
-      symptom_logged:
-        'You logged symptoms or changes that match what we look for with this condition.',
-      imaging_or_test:
-        'Your note documents imaging, labs, or test results — not just an appointment.',
-      finding_in_visit_note:
-        'Your visit note includes specific findings or results, not only that you went.',
-      medication_change:
-        'Your medication note is relevant to how this condition is tracked.',
-      explicit_diagnosis:
-        'Your journal mentions a diagnosis or confirmed condition name.',
-      journal_pattern: 'Your journal entry matches patterns for this condition.',
-    },
-    noJournalProofYet:
-      'None of your journal entries clearly match yet. Add symptom detail or see typical signs below.',
-    typicalSymptomsTitle: 'Typical signs for this condition',
-    typicalSymptomsIntro:
-      'For reference — what doctors often look for. Your own notes above are what we used to score this match.',
-    journalCompareTitle: 'Gaps in your journal',
-    journalCompareIntro:
-      'Common signs for this condition that you have not logged yet (you may still have them).',
-    missingToConfirmTitle: 'Not in your journal yet',
-    missingToConfirmHint:
-      'These signs are often seen with this condition but are not in your logged entries. If you have them, mention them at your visit or add a journal note.',
-    notReportedTitle: 'Not in your journal yet',
-    notReportedHint:
-      'Absence in your log does not rule out a symptom — mention anything relevant at your visit.',
-    cautionTitle: 'Conflicting signals in your journal',
-    whenToSeekTitle: 'When to seek care',
-    possibleConditionsTitle: 'Possible conditions to discuss',
-    possibleConditionsHint:
-      'From your journal and body area — percentages are estimates, not a diagnosis.',
-    variantPercent: '{percent}% match',
   },
   anamnesis: {
     title: 'Health history (anamnesis)',
@@ -878,16 +767,6 @@ export default {
       urgent: 'Urgent signals detected in your health journal.',
       worseningUrgent: 'Worsening trend with elevated urgency in recent logs.',
     },
-  },
-  diagnosisFlagKinds: {
-    body_area: 'Body area',
-    keyword: 'Symptom',
-    medication: 'Medication',
-    named_condition: 'Named',
-    hypothesis: 'Hypothesis',
-    urgency: 'Urgency',
-    journal_flag: 'Journal flag',
-    cross_body: 'Cross-area',
   },
   specialist: {
     areaPhrase: ' for {area}',

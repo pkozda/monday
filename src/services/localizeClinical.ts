@@ -82,44 +82,8 @@ export function localizeJournalFlag(flag: string, t: TFunction): string {
   return translated !== key ? String(translated) : flag.replace(/_/g, ' ')
 }
 
-export function localizeDiagnosisFlagKind(
-  kind: string,
-  t: TFunction
-): string {
-  const key = `diagnosisFlagKinds.${kind}`
-  const translated = t(key)
-  return translated !== key ? String(translated) : kind
-}
-
 export function specialistSlug(specialty: string): string {
   return SPECIALTY_SLUG[specialty] ?? 'primaryCare'
-}
-
-export function localizedDiagnosisSpecialistName(
-  report: { suggestedSpecialty?: string; suggestedClinician?: string },
-  t: TFunction
-): string | undefined {
-  if (!report.suggestedSpecialty && !report.suggestedClinician) return undefined
-  if (report.suggestedSpecialty) {
-    return String(t(`specialist.${specialistSlug(report.suggestedSpecialty)}.clinician`))
-  }
-  return report.suggestedClinician
-}
-
-export function localizedDiagnosisSpecialistAdvice(
-  report: { suggestedSpecialty?: string; conditionArea: string },
-  t: TFunction
-): string | undefined {
-  if (!report.suggestedSpecialty) return undefined
-  return localizeSpecialistVisitAdvice(
-    {
-      specialty: report.suggestedSpecialty,
-      clinicianTitle: '',
-      reason: '',
-    },
-    report.conditionArea,
-    t
-  )
 }
 
 export function localizeSpecialistVisitAdvice(

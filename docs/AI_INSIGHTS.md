@@ -4,10 +4,9 @@ Monday can use an **OpenAI-compatible** LLM to:
 
 1. **Translate journal text** — Russian entries are translated to English with AI when you save (handles typos and uncommon medical wording). Requires `LLM_API_KEY` in `.env.local` (same proxy as insights). Without it, a limited free MyMemory fallback is used.
 2. **Analyze journal entries** — structured symptoms and a clinical summary when you save an entry.
-3. **Generate hypotheses & diagnoses** — only when you click *Generate* on the Hypotheses & diagnoses page (AI insights must be on). Nothing runs automatically on first visit.
-4. **Possible conditions** — the LLM reads your **de-identified journal text** only (no profile name, no rule-based disease catalog, no pre-ranked “cellulitis” guesses). Results are stored locally after generation.
-5. **Current clinical model** (Dashboard) — refines the rule-based summary and key factors from your full journal.
-6. **Notes for doctor** (from a hypothesis) — a clinician-oriented visit brief (timeline highlights, red flags, discussion questions), not a raw journal dump.
+3. **Generate hypotheses** — only when you click *Generate* on the Hypotheses page (AI insights must be on). Nothing runs automatically on first visit.
+4. **Current clinical model** (Dashboard) — refines the rule-based summary and key factors from your full journal.
+5. **Notes for doctor** (from a hypothesis or clinical model) — a clinician-oriented visit brief (timeline highlights, red flags, discussion questions), not a raw journal dump.
 
 ## Setup (local development)
 
@@ -41,7 +40,7 @@ Without that, the AI toggle is hidden (`VITE_LLM_CHAT_URL` unset).
 
 ## Body focus areas
 
-Before hypotheses or diagnoses are generated, Monday runs a **full-journal focus pass**:
+Before hypotheses are generated, Monday runs a **full-journal focus pass**:
 
 - Scans every entry (text, tags, AI symptom hints)
 - Merges duplicates (e.g. left leg + legs → **Legs**)
