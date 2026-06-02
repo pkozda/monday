@@ -379,7 +379,7 @@ async function inferJournalFocusAreasWithAi(
       { role: 'system', content: CLINICAL_SAFETY_SYSTEM },
       {
         role: 'user',
-        content: `Analyze the ENTIRE health journal and decide which body regions deserve separate clinical focus (hypotheses + possible diagnoses).
+        content: `Analyze the ENTIRE health journal and decide which body regions deserve separate clinical focus (hypotheses per area).
 
 Return JSON:
 {

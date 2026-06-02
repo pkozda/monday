@@ -26,10 +26,10 @@ export default {
     toggle: 'KI-Einblicke',
     on: 'An',
     hintOn:
-      'Tagebuch, Hypothesen und Diagnose-Texte nutzen KI bei Regenerieren oder neuen Einträgen.',
+      'Tagebuch und Hypothesen nutzen KI bei Regenerieren oder neuen Einträgen.',
     hintOff: 'Aktivieren, um Tagebuchtext an das konfigurierte LLM zu senden (Dev-Proxy).',
     banner:
-      'KI-Einblicke sind aktiv — neue Einträge werden analysiert; Regenerieren aktualisiert Hypothesen; Diagnosen werden per KI aus dem Tagebuch gerankt.',
+      'KI-Einblicke sind aktiv — neue Einträge werden analysiert; Regenerieren aktualisiert Hypothesen aus dem Tagebuch.',
     unavailable:
       'KI benötigt LLM_API_KEY in .env.local und npm run dev (siehe .env.example).',
   },
@@ -45,10 +45,10 @@ export default {
         'Die Neu-Generierung kann dauern. Sie können andere Seiten nutzen — wir benachrichtigen Sie nach Abschluss.',
       slowNotificationTitle: 'Einblicke werden neu generiert',
       slowNotificationMessage:
-        'Hypothesen und Diagnosen werden aus Ihrem Tagebuch neu erstellt.',
-      successTitle: 'Einblicke bereit',
+        'Hypothesen werden aus Ihrem Tagebuch neu erstellt.',
+      successTitle: 'Hypothesen bereit',
       successToastMessage:
-        'Hypothesen und Diagnosen sind fertig. Öffnen Sie die Seite Hypothesen & Diagnosen.',
+        'Hypothesen sind fertig. Öffnen Sie die Seite Hypothesen.',
       errorTitle: 'Neu-Generierung fehlgeschlagen',
     },
     doctorNotes: {
@@ -427,28 +427,26 @@ export default {
   },
   hypothesesPage: {
     eyebrow: 'Klinische Einblicke',
-    title: 'Hypothesen & Diagnosen',
+    title: 'Hypothesen',
     subtitle:
-      'Neu generieren lädt aktuelle Journal-Daten in Diagnosen und Hypothesen.',
-    generate: 'Hypothesen & Diagnosen erstellen',
-    generateTitle: 'Hypothesen und mögliche Diagnosen aus dem Journal erstellen',
-    regenerate: 'Hypothesen & Diagnosen neu generieren',
+      'Neu generieren lädt aktuelle Journal-Daten in KI-Hypothesen pro Körperregion.',
+    generate: 'Hypothesen erstellen',
+    generateTitle: 'Hypothesen aus dem Journal erstellen',
+    regenerate: 'Hypothesen neu generieren',
     regenerating: 'Wird generiert…',
-    loading: 'Einblicke werden geladen…',
+    loading: 'Hypothesen werden geladen…',
     notGeneratedTitle: 'Noch nichts generiert',
     notGeneratedText:
-      'Hypothesen und mögliche Diagnosen werden erstellt, wenn Sie auf Erstellen klicken. Beim Öffnen dieser Seite läuft nichts automatisch.',
-    tabDiagnoses: 'Diagnosen',
-    tabHypotheses: 'Hypothesen',
+      'Hypothesen werden erstellt, wenn Sie auf Erstellen klicken. Beim Öffnen dieser Seite läuft nichts automatisch.',
     noHypothesesTitle: 'Noch keine Hypothesen',
     noHypothesesText:
       'Journal-Einträge hinzufügen, dann „Neu generieren“ in der Kopfzeile.',
-    regenerateConfirmTitle: 'Einblicke neu generieren?',
+    regenerateConfirmTitle: 'Hypothesen neu generieren?',
     regenerateConfirmMessage:
-      'Alle Hypothesen werden durch neue aus dem aktuellen Journal ersetzt. Mögliche Erkrankungen werden aus denselben Einträgen neu berechnet.',
+      'Alle Hypothesen werden durch neue aus dem aktuellen Journal ersetzt.',
     regenerateConfirmAction: 'Neu generieren',
     regenerateSlowHint:
-      'Die Neu-Generierung läuft noch. Sie können die Seite verlassen — wir benachrichtigen Sie, wenn alles fertig ist.',
+      'Die Neu-Generierung läuft noch. Sie können die Seite verlassen — wir benachrichtigen Sie, wenn die Hypothesen fertig sind.',
     regenerateTitleEmpty: 'Zuerst Journal-Einträge hinzufügen',
     regenerateTitle: 'Aus aktuellem Journal neu generieren',
     regenerateFailed: 'Neu-Generierung fehlgeschlagen.',
@@ -456,13 +454,37 @@ export default {
       aiRequired:
         'Aktivieren Sie KI-Einblicke in der Navigation und konfigurieren Sie den LLM-API-Schlüssel.',
       needEntries:
-        'Zuerst Journal-Einträge hinzufügen, dann Hypothesen und Diagnosen neu generieren.',
+        'Zuerst Journal-Einträge hinzufügen, dann Hypothesen neu generieren.',
       success:
-        '{hypothesisCount} Hypothesen aus {journalEntryCount} Journal-Einträgen über {areaCount} Bereiche neu generiert. Diagnosen nutzen dieselben Daten.',
+        '{hypothesisCount} Hypothesen aus {journalEntryCount} Journal-Einträgen über {areaCount} Bereiche neu generiert.',
       noHypotheses:
         '{journalEntryCount} Einträge geprüft, keine Hypothesen ableitbar — mehr Details pro Körperregion und erneut versuchen.',
-      successNoDiagnoses:
-        '{hypothesisCount} Hypothesen aus {journalEntryCount} Einträgen erstellt, aber die KI konnte keine möglichen Erkrankungen vorschlagen — mehr Journal-Details oder „Mögliche Erkrankungen generieren“ im Tab Diagnosen.',
+    },
+    assistant: {
+      open: 'Assistent',
+      close: 'Assistent schließen',
+      hasHistory: 'Gespeicherter Verlauf',
+      title: 'KI-Assistent',
+      subtitle:
+        'Fragen zu Ihrem Journal und den generierten Hypothesen. Antworten über Ihr konfiguriertes LLM.',
+      emptyHint:
+        'Fragen Sie nach Mustern, was Sie als Nächstes dokumentieren sollten oder zum Arztbesuch.',
+      starters: [
+        'Fasse meine wichtigsten Hypothesen in einfacher Sprache zusammen',
+        'Was soll ich mit meinem Arzt besprechen?',
+        'Welcher Körperbereich braucht mehr Journal-Details?',
+      ],
+      you: 'Sie',
+      assistant: 'Assistent',
+      thinking: 'Denkt nach…',
+      placeholder: 'Frage zu Journal oder Hypothesen…',
+      inputLabel: 'Nachricht an den Assistenten',
+      send: 'Senden',
+      clear: 'Chat löschen',
+      aiOff: 'Aktivieren Sie KI-Einblicke in der Navigation, um den Assistenten zu nutzen.',
+      needJournal: 'Fügen Sie mindestens einen Journal-Eintrag hinzu, bevor Sie chatten.',
+      disclaimer:
+        'Antworten des Assistenten sind nur zur Information und keine medizinische Beratung oder Diagnose.',
     },
   },
   journalPage: {
@@ -506,134 +528,6 @@ export default {
     noAttentionTitle: 'Keine dringenden Einträge',
     noAttentionText:
       'Aktuell keine Einträge mit Dringend/Notfall. Alle Einträge anzeigen?',
-  },
-  diagnosis: {
-    loading: 'Journal wird auf mögliche Erkrankungen analysiert…',
-    refreshing: 'Mögliche Erkrankungen werden aktualisiert…',
-    generateAction: 'Mögliche Erkrankungen generieren',
-    generatedSuccess:
-      'Mögliche Erkrankungen für {count} Körperbereich(e) aus dem Journal erstellt.',
-    empty:
-      'Beschreiben Sie Symptome, Körperregion und Medikamente für Diagnose-Vorschläge mit Prozenten.',
-    emptyNotGeneratedTitle: 'Mögliche Erkrankungen noch nicht erstellt',
-    emptyNotGeneratedHint:
-      '„Erstellen“ in der Kopfzeile nutzen (mit KI-Einblicke an), um Hypothesen und mögliche Erkrankungen zusammen zu erzeugen.',
-    emptyIncompleteTitle: 'Mögliche Erkrankungen nicht gespeichert',
-    emptyIncompleteHint:
-      'Ihre Hypothesen sind gespeichert, aber mögliche Erkrankungen wurden nicht fertig generiert. Button unten oder „Neu generieren“ in der Kopfzeile.',
-    emptyAiOffTitle: 'KI-Einblicke sind aus',
-    emptyAiOffHint:
-      'KI-Einblicke in der Navigation aktivieren, um mögliche Erkrankungen zu erzeugen.',
-    emptyNeedEntriesTitle: 'Zuerst Journal-Einträge',
-    emptyNeedEntriesHint:
-      'Mögliche Erkrankungen stammen aus dem Gesundheitsjournal. Symptome, Besuche oder Befunde eintragen und erneut generieren.',
-    emptyNoSuggestionsTitle: 'Keine möglichen Erkrankungen vorgeschlagen',
-    emptyNoSuggestionsHint:
-      'Die KI hat Journal und Hypothesen geprüft, konnte aber keine Erkundungsvorschläge nennen. Mehr Symptome, Zeitverlauf und Befunde eintragen und erneut versuchen.',
-    emptyNeedsMoreJournalTitle: 'Mehr Journal-Details können helfen',
-    emptyNeedsMoreJournalHint:
-      'Bei nur kurzen Einträgen schlägt die KI oft keine Rangliste vor. Weitere Symptome, Medikamente oder Befunde eintragen und erneut generieren.',
-    emptyFailedTitle: 'Erzeugung fehlgeschlagen',
-    emptyFailedHint:
-      'Beim KI-Aufruf ist ein Fehler aufgetreten. API-Schlüssel und Netzwerk prüfen und erneut versuchen.',
-    outcomeBanner: {
-      no_suggestions:
-        'Keine möglichen Erkrankungen aus dem aktuellen Journal. Mehr Details eintragen und erneut versuchen.',
-      needs_more_journal:
-        'Weitere oder ausführlichere Journal-Einträge hinzufügen und erneut generieren.',
-      failed:
-        'Mögliche Erkrankungen konnten nicht erzeugt werden. KI-Einstellungen prüfen und erneut versuchen.',
-    },
-    disclaimer:
-      'Aus dem gesamten Journal abgeleitet — immer mit Ärztin/Arzt abklären.',
-    aiRankedNote:
-      'Prozent und Reihenfolge möglicher Erkrankungen wurden per KI aus Ihrem Tagebuch gerankt; Kriterien stützen sich weiter auf Ihre Einträge.',
-    ruleBasedNote:
-      'Rankings nutzen den eingebauten Katalog und Ihr Tagebuch (ohne KI). KI-Einblicke in der Kopfzeile aktivieren für LLM-Rankings.',
-    aiBadge: 'KI-Ranking',
-    certaintyHigh: 'Wahrscheinlich',
-    certaintyModerate: 'Führend',
-    certaintyLow: 'Unsicher',
-    seeSpecialist: 'Siehe: {name}',
-    whoToSee: 'Wen aufsuchen:',
-    crossBodyNote:
-      'Wir haben auch passende Einträge aus anderen Körperbereichen berücksichtigt, wenn sie zur gleichen Erkrankung passen könnten.',
-    uncertainNote:
-      'Keine Erkrankung sticht klar hervor — vergleichen Sie die Optionen unten und besprechen Sie sie mit Ärztin/Arzt.',
-    journalMatch: {
-      strong: 'Passt gut zu Ihrem Journal',
-      partial: 'Passt teilweise zu Ihrem Journal',
-      limited: 'Bisher nur wenig Passung im Journal',
-    },
-    whySuggested: 'Warum wir das vorschlagen',
-    criteriaSupport: 'Kriterien dafür',
-    criteriaAgainst: 'Kriterien dagegen',
-    suggestedWorkup: 'Vorgeschlagene Abklärung',
-    evidenceJournal: 'Belege aus dem Journal',
-    variantTabsLabel: 'Mögliche Erkrankungen für {area}',
-    notDocumented: 'Noch nicht dokumentiert — mit Ärztin/Arzt besprechen',
-    certaintyReportHigh: 'Wahrscheinlichste Übereinstimmung',
-    certaintyReportModerate: 'Führende Möglichkeit',
-    certaintyReportLow: 'Mehrere Möglichkeiten — alle Varianten prüfen',
-    rationale: {
-      primaryScope: '{count} Journal-{entries} zu {area}',
-      crossScope: '{count} verwandte {entries} aus anderen Körperbereichen',
-      scopeAnd: 'und',
-      fullHistory: 'Ihr Gesundheitsjournal',
-      intro: 'Wir haben {scope} ausgewertet.',
-      symptoms_all:
-        'Typische Anzeichen dieser Erkrankung stehen in Ihren Einträgen ({typicalMet} von {typicalTotal} häufigen Anzeichen plus passende Journal-Hinweise).',
-      symptoms_some:
-        'Nur ein Teil passt zu Ihrem Journal ({typicalMet} von {typicalTotal} typischen Anzeichen; {met} von {total} unterstützenden Prüfungen). Mehr Einträge können die Einschätzung ändern.',
-      symptoms_none:
-        'Wenige typische Anzeichen dieser Erkrankung sind bisher im Journal — Prozentwerte können sich bei neuen Einträgen ändern.',
-      exclusions:
-        '{count} Einträge im Journal sprechen eher gegen diese Möglichkeit — bitte mit Ärztin/Arzt besprechen.',
-      disclaimer:
-        'Das ist ein Hinweis zum Besprechen, keine bestätigte Diagnose.',
-    },
-    variantFooter: {
-      journalIn: '{count} Journal-{entries} in {area}',
-      crossFrom: '+ {count} aus anderen Körper-{areas}',
-      hypothesisLine: 'Hypothese: {pattern} · {confidence}',
-    },
-  },
-  diseaseInsight: {
-    aboutTitle: 'Was ist diese Erkrankung?',
-    whatYouLoggedTitle: 'Was Sie dokumentiert haben',
-    whatYouLoggedIntro:
-      'Verknüpfte Journal-Einträge mit KI-Erklärung, welcher Text zu dieser möglichen Erkrankung passt — keine bestätigte Diagnose.',
-    whyThisSupports: 'Warum das diese Möglichkeit stützt',
-    supportReason: {
-      symptom_logged:
-        'Sie haben Symptome oder Veränderungen dokumentiert, die zu dieser Möglichkeit passen.',
-      imaging_or_test:
-        'Ihre Notiz enthält Bildgebung, Labor oder Testergebnisse — nicht nur einen Termin.',
-      finding_in_visit_note:
-        'Ihr Besuchs-Eintrag nennt Befunde oder Ergebnisse, nicht nur den Besuch.',
-      medication_change:
-        'Ihre Medikations-Notiz ist für diese Verfolgung relevant.',
-      explicit_diagnosis:
-        'Ihr Journal nennt eine Diagnose oder bestätigte Erkrankung.',
-      journal_pattern: 'Ihr Eintrag passt zu Mustern für diese Möglichkeit.',
-    },
-    noJournalProofYet:
-      'Noch kein klarer Eintrag im Journal. Symptome genauer notieren oder typische Anzeichen unten lesen.',
-    typicalSymptomsTitle: 'Typische Anzeichen dieser Erkrankung',
-    typicalSymptomsIntro:
-      'Zur Orientierung — was Ärztinnen oft prüfen. Für die Bewertung zählen Ihre Einträge oben.',
-    journalCompareTitle: 'Lücken in Ihrem Journal',
-    journalCompareIntro:
-      'Häufige Anzeichen dieser Erkrankung, die Sie noch nicht dokumentiert haben.',
-    missingToConfirmTitle: 'Noch nicht in Ihrem Journal',
-    missingToConfirmHint:
-      'Diese Anzeichen sind bei dieser Erkrankung häufig, stehen aber nicht in Ihren Einträgen. Falls Sie sie haben: beim Arztbesuch erwähnen oder im Journal nachtragen.',
-    cautionTitle: 'Widersprüchliche Hinweise im Journal',
-    whenToSeekTitle: 'Wann ärztliche Hilfe suchen',
-    possibleConditionsTitle: 'Mögliche Erkrankungen zum Besprechen',
-    possibleConditionsHint:
-      'Aus Ihrem Journal und Körperbereich — Prozentangaben sind Schätzungen, keine Diagnose.',
-    variantPercent: '{percent} % Übereinstimmung',
   },
   anamnesis: {
     title: 'Gesundheitsgeschichte (Anamnese)',
@@ -872,16 +766,6 @@ export default {
       urgent: 'Dringende Signale im Gesundheitsjournal.',
       worseningUrgent: 'Verschlechterungstrend mit erhöhter Dringlichkeit.',
     },
-  },
-  diagnosisFlagKinds: {
-    body_area: 'Körperregion',
-    keyword: 'Symptom',
-    medication: 'Medikament',
-    named_condition: 'Benannt',
-    hypothesis: 'Hypothese',
-    urgency: 'Dringlichkeit',
-    journal_flag: 'Journal-Merkmal',
-    cross_body: 'Übergreifend',
   },
   specialist: {
     areaPhrase: ' für {area}',

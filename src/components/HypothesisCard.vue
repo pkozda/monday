@@ -63,32 +63,6 @@
         </ul>
       </section>
 
-      <section v-if="relatedVariants.length" class="hypothesis-section">
-        <h4 class="section-label">{{ t('diseaseInsight.possibleConditionsTitle') }}</h4>
-        <p class="possible-conditions-hint">
-          {{ t('diseaseInsight.possibleConditionsHint') }}
-        </p>
-        <div class="possible-conditions-list">
-          <article
-            v-for="variant in relatedVariants"
-            :key="variant.id"
-            class="possible-condition-card"
-          >
-            <header class="possible-condition-header">
-              <span class="possible-condition-percent">{{ variant.percentage }}%</span>
-              <h5 class="possible-condition-name">
-                <TranslatedText :text="variant.diseaseName" tag="span" />
-              </h5>
-            </header>
-            <DiseaseEducationBlock
-              :variant="variant"
-              :journal-entries="journalEntries"
-              compact
-            />
-          </article>
-        </div>
-      </section>
-
       <section v-if="historyNewestFirst.length" class="hypothesis-section">
         <h4 class="section-label">{{ t('hypothesisCard.history') }}</h4>
         <ol class="history-list">
@@ -165,7 +139,6 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format, parseISO } from 'date-fns'
 import DoctorNotesModal from '@/components/DoctorNotesModal.vue'
-import DiseaseEducationBlock from '@/components/disease/DiseaseEducationBlock.vue'
 import TranslatedText from '@/components/TranslatedText.vue'
 import { localizeHypothesisTitle } from '@/services/localizeHypothesisTitle'
 import { useLocale } from '@/composables/useLocale'
@@ -191,22 +164,17 @@ import {
 } from '@/services/doctorNotesNotifications'
 import { journalDescriptionAddsDetail } from '@/services/journalEntryText'
 import type {
-  DiagnosisVariant,
   HealthEntry,
   Hypothesis,
   HypothesisHistoryKind,
   PatientProfile,
 } from '@/models/types'
 
-const props = withDefaults(
-  defineProps<{
-    hypothesis: Hypothesis
-    journalEntries: HealthEntry[]
-    patient?: PatientProfile | null
-    relatedVariants?: DiagnosisVariant[]
-  }>(),
-  { relatedVariants: () => [] }
-)
+const props = defineProps<{
+  hypothesis: Hypothesis
+  journalEntries: HealthEntry[]
+  patient?: PatientProfile | null
+}>()
 
 const { t } = useI18n()
 const { locale } = useLocale()

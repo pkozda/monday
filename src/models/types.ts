@@ -61,98 +61,6 @@ export interface Hypothesis {
   aiInsight?: HypothesisAiInsight
 }
 
-export type DiagnosisCertainty = 'high' | 'moderate' | 'low'
-
-export type DiagnosisMatchFlagKind =
-  | 'body_area'
-  | 'keyword'
-  | 'medication'
-  | 'named_condition'
-  | 'hypothesis'
-  | 'urgency'
-  | 'journal_flag'
-  | 'cross_body'
-
-export interface DiagnosisMatchFlag {
-  kind: DiagnosisMatchFlagKind
-  label: string
-  detail: string
-  sourceArea?: string
-}
-
-export type DiagnosisCriterionStatus = 'met' | 'not_met' | 'exclusion_present'
-
-export interface DiagnosisCriterion {
-  id: string
-  text: string
-  role: 'confirm' | 'exclude'
-  status: DiagnosisCriterionStatus
-  detail?: string
-  /** Journal entry this criterion was linked from (AI / enriched path). */
-  sourceEntryId?: string
-  /** Plain-language AI note: why this journal entry supports the possible condition. */
-  linkExplanation?: string
-}
-
-export interface DiagnosisVariant {
-  id: string
-  /** Catalog id for education lookup */
-  diseaseId?: string
-  /** Medical disease / condition name */
-  diseaseName: string
-  label: string
-  percentage: number
-  /** Internal 0–100 fit score from history (before normalization to %) */
-  precisionScore: number
-  conditionArea: string
-  rationale: string
-  /** @deprecated use matchFlags — kept for compact summaries */
-  matchedSignals: string[]
-  matchFlags: DiagnosisMatchFlag[]
-  confirmCriteria: DiagnosisCriterion[]
-  excludeCriteria: DiagnosisCriterion[]
-  /** Tests or findings that would help confirm or rule out */
-  suggestedWorkup: string[]
-  primaryJournalCount: number
-  crossBodyJournalCount: number
-  hypothesisId?: string
-  pattern?: HypothesisPattern
-  confidence?: HypothesisConfidence
-  /** True when rationale was written or refined by the LLM. */
-  aiEnhanced?: boolean
-}
-
-/** Result of the last AI diagnosis generation attempt (stored with reports). */
-export type DiagnosisGenerationOutcome =
-  | 'ok'
-  | 'no_suggestions'
-  | 'needs_more_journal'
-  | 'failed'
-
-export interface StoredClinicalInsights {
-  id: string
-  diagnosisReports: DiagnosisReport[]
-  generatedAt: string
-  diagnosisOutcome?: DiagnosisGenerationOutcome
-  diagnosisOutcomeMessage?: string
-}
-
-export interface DiagnosisReport {
-  conditionArea: string
-  certainty: DiagnosisCertainty
-  certaintyLabel: string
-  variants: DiagnosisVariant[]
-  updatedAt: string
-  /** True when journal entries from other body areas influenced scoring */
-  usesCrossBodyJournal: boolean
-  /** Suggested clinician type from tracked body area (not a diagnosis) */
-  suggestedClinician?: string
-  suggestedSpecialty?: string
-  specialistVisitAdvice?: string
-  /** True when variant order and % came from the LLM (not rule-based weights). */
-  aiRanked?: boolean
-}
-
 export type HealthEntryType =
   | 'symptom'
   | 'medication'
@@ -317,6 +225,20 @@ export interface HealthRecommendation {
   actionRoute?: string
   /** Journal entries this recommendation refers to. */
   journalLinks?: RecommendationJournalLink[]
+}
+
+export interface HypothesisAssistantMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
+}
+
+/** Persisted hypothesis-page assistant thread (single row id `current`). */
+export interface StoredHypothesisAssistantChat {
+  id: string
+  messages: HypothesisAssistantMessage[]
+  updatedAt: string
 }
 
 export interface DashboardStats {

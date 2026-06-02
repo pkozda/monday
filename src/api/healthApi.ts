@@ -10,7 +10,6 @@ import {
 import { polishJournalEntryInput } from '@/services/journalEntryText'
 import { getAppLocale, type AppLocale } from '@/i18n'
 import { normalizeHealthEntryInput } from '@/services/translation'
-import { clearStoredDiagnosisReports } from '@/api/diagnosisStorageApi'
 import { invalidateInsightsCache } from '@/composables/useInsightsCache'
 import { invalidateClinicalModelCache } from '@/services/clinicalModelCache'
 import { shouldUseAiInsights } from '@/services/llm/config'
@@ -265,16 +264,17 @@ export async function clearAllJournalRecords(): Promise<ClearJournalResult> {
     db.healthEntries,
     db.timelineEvents,
     db.hypotheses,
+    db.hypothesisAssistantChats,
     async () => {
       await db.healthEntries.clear()
       if (timelineIds.length > 0) {
         await db.timelineEvents.bulkDelete(timelineIds)
       }
       await db.hypotheses.clear()
+      await db.hypothesisAssistantChats.clear()
     }
   )
 
-  await clearStoredDiagnosisReports()
   invalidateInsightsCache()
 
   return {

@@ -1,9 +1,5 @@
 import { computed, ref } from 'vue'
 import {
-  generateDiagnosisReports,
-  type DiagnosisGenerationResult,
-} from '@/api/diagnosisApi'
-import {
   regenerateAllHypothesesFromJournal,
   type RegenerateInsightsResult,
 } from '@/api/hypothesisApi'
@@ -15,9 +11,7 @@ import {
   setInsightsCache,
   type InsightsCacheSnapshot,
 } from '@/composables/useInsightsCache'
-import {
-  invalidateClinicalModelCache,
-} from '@/services/clinicalModelCache'
+import { invalidateClinicalModelCache } from '@/services/clinicalModelCache'
 import {
   clearToastGroup,
   notifyError,
@@ -36,7 +30,6 @@ export type InsightsRegenerationPhase = 'idle' | 'running'
 export interface InsightsRegeneratedDetail {
   result: RegenerateInsightsResult
   snapshot: InsightsCacheSnapshot
-  diagnosis: DiagnosisGenerationResult
 }
 
 const phase = ref<InsightsRegenerationPhase>('idle')
@@ -44,22 +37,17 @@ let slowNotified = false
 let activeJob = 0
 let inFlight: Promise<InsightsRegeneratedDetail | null> | null = null
 
-async function buildInsightsSnapshot(): Promise<{
-  snapshot: InsightsCacheSnapshot
-  diagnosis: DiagnosisGenerationResult
-}> {
+async function buildInsightsSnapshot(): Promise<InsightsCacheSnapshot> {
   const [hyps, entries, profile] = await Promise.all([
     getHypotheses(),
     getHealthEntries(),
     getPatientProfile(),
   ])
   const displayHyps = consolidateHypothesesForDisplay(hyps)
-  const diagnosis = await generateDiagnosisReports({ forceRegenerate: true })
 
   const snapshot: InsightsCacheSnapshot = {
     hypotheses: displayHyps,
     journalEntries: entries,
-    diagnosisReports: diagnosis.reports,
     patient: profile,
     aiInsightsEnabled: shouldUseAiInsights(),
     journalRevision: '',
@@ -69,21 +57,11 @@ async function buildInsightsSnapshot(): Promise<{
   setInsightsCache({
     hypotheses: snapshot.hypotheses,
     journalEntries: snapshot.journalEntries,
-    diagnosisReports: snapshot.diagnosisReports,
     patient: snapshot.patient,
     aiInsightsEnabled: snapshot.aiInsightsEnabled,
   })
 
-  return { snapshot, diagnosis }
-}
-
-function resolveRegenerateMessageKey(
-  result: RegenerateInsightsResult,
-  diagnosis: DiagnosisGenerationResult
-): RegenerateInsightsResult['messageKey'] {
-  if (result.messageKey !== 'success') return result.messageKey
-  if (diagnosis.reports.length > 0) return 'success'
-  return 'successNoDiagnoses'
+  return snapshot
 }
 
 export function isInsightsRegenerationRunning(): boolean {
@@ -108,7 +86,7 @@ export interface InsightsRegenerationMessages {
 
 export interface RunInsightsRegenerationOptions {
   messages: InsightsRegenerationMessages
-  /** Called immediately — clear hypotheses & diagnoses in the UI */
+  /** Called immediately — clear hypotheses in the UI */
   onCleared?: () => void
   /** Called after 2s if still running */
   onSlow?: () => void
@@ -157,18 +135,12 @@ export async function runInsightsRegeneration(
       const result = await regenerateAllHypothesesFromJournal()
       if (activeJob !== jobId) return null
 
-      const { snapshot, diagnosis } = await buildInsightsSnapshot()
+      const snapshot = await buildInsightsSnapshot()
       if (activeJob !== jobId) return null
 
-      const mergedResult: RegenerateInsightsResult = {
-        ...result,
-        messageKey: resolveRegenerateMessageKey(result, diagnosis),
-      }
-
       const detail: InsightsRegeneratedDetail = {
-        result: mergedResult,
+        result,
         snapshot,
-        diagnosis,
       }
 
       window.dispatchEvent(
@@ -178,9 +150,9 @@ export async function runInsightsRegeneration(
       )
 
       const successDetail =
-        mergedResult.messageKey === 'success'
+        result.messageKey === 'success'
           ? options.messages.successToastMessage
-          : options.messages.successMessage(mergedResult)
+          : options.messages.successMessage(result)
 
       notifyInsightsRegenerationComplete(
         INSIGHTS_REGENERATION_GROUP,
