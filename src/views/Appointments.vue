@@ -22,6 +22,8 @@
       </div>
     </div>
 
+    <NearbyDoctorSearchPanel class="appointments-nearby" />
+
     <div class="appointments-content">
       <aside class="appointments-column appointments-column--calendar" aria-label="Appointment calendar">
         <div class="appointments-column-header">
@@ -114,6 +116,7 @@ import SectionHeader from '@/components/SectionHeader.vue'
 import AppointmentFormModal from '@/components/AppointmentFormModal.vue'
 import AppointmentCard from '@/components/AppointmentCard.vue'
 import AppointmentCalendar from '@/components/AppointmentCalendar.vue'
+import NearbyDoctorSearchPanel from '@/components/appointments/NearbyDoctorSearchPanel.vue'
 import {
   deleteAppointment,
   getAppointments,
@@ -179,13 +182,10 @@ async function onRemove(id: string) {
   --appointments-grid-cols: minmax(260px, 300px) minmax(0, 1fr) minmax(0, 1fr);
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  gap: 0.5rem;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0.75rem 2rem 1rem;
+  padding: 0.75rem 2rem 2rem;
   width: 100%;
   box-sizing: border-box;
 }
@@ -202,6 +202,11 @@ async function onRemove(id: string) {
 
 .success-banner {
   margin: 0;
+}
+
+.appointments-nearby {
+  flex-shrink: 0;
+  margin-top: 0.5rem;
 }
 
 .btn-add-appointment {
@@ -222,12 +227,9 @@ async function onRemove(id: string) {
 }
 
 .appointments-content {
-  flex: 1 1 0;
-  min-height: 0;
   display: grid;
   grid-template-columns: var(--appointments-grid-cols);
   gap: 1.25rem;
-  overflow: hidden;
   margin-top: 0.75rem;
   padding-top: 0.25rem;
   border-top: 1px solid var(--border);
@@ -237,8 +239,6 @@ async function onRemove(id: string) {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 0;
-  overflow: hidden;
 }
 
 .appointments-column-header {
@@ -247,12 +247,7 @@ async function onRemove(id: string) {
 }
 
 .appointments-column-scroll {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
   padding-right: 0.35rem;
-  scrollbar-gutter: stable;
 }
 
 .column-header :deep(.section-header) {
@@ -300,49 +295,8 @@ async function onRemove(id: string) {
 }
 
 @media (max-width: 960px) {
-  .appointments-view {
-    height: auto;
-    overflow: visible;
-    flex: none;
-    padding-bottom: 2rem;
-  }
-
-  .appointments-top {
-    position: sticky;
-    top: 5.5rem;
-    z-index: 35;
-    padding-bottom: 0.35rem;
-    margin-bottom: 0.25rem;
-  }
-
   .appointments-content {
-    display: flex;
-    flex-direction: column;
-    flex: none;
-    gap: 1.25rem;
-    overflow: visible;
-    border-top: none;
-    padding-top: 0;
-  }
-
-  .appointments-column {
-    min-height: 0;
-    overflow: hidden;
-    max-height: none;
-  }
-
-  .appointments-column-header {
-    position: sticky;
-    top: 5.5rem;
-    z-index: 30;
-    background: var(--bg-page);
-    padding-top: 0.25rem;
-    padding-bottom: 0.5rem;
-  }
-
-  .appointments-column-scroll {
-    flex: 1;
-    max-height: 20rem;
+    grid-template-columns: 1fr;
   }
 
   .appointments-column--calendar {
@@ -352,19 +306,11 @@ async function onRemove(id: string) {
 
 @media (max-width: 600px) {
   .appointments-view {
-    padding: 1rem;
+    padding: 1rem 1rem 2rem;
   }
 
   .btn-add-appointment {
     width: 100%;
-  }
-
-  .appointments-column {
-    max-width: 100%;
-  }
-
-  .appointments-column-scroll {
-    max-height: 18rem;
   }
 }
 </style>
