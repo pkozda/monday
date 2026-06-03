@@ -3,10 +3,16 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import { mondayDbSnapshotPlugin } from './scripts/vite-db-snapshot-plugin'
 import { mondayLlmProxyPlugin } from './scripts/vite-llm-proxy-plugin'
+import { mondayDoctorsNearbyPlugin } from './scripts/vite-doctors-nearby-plugin'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue(), mondayDbSnapshotPlugin(), mondayLlmProxyPlugin()],
+  plugins: [
+    vue(),
+    mondayDbSnapshotPlugin(),
+    mondayLlmProxyPlugin(),
+    mondayDoctorsNearbyPlugin(),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
