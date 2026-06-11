@@ -47,7 +47,7 @@ function zoomForRadius(km: number): number {
 function numberedIcon(index: number, active: boolean): L.DivIcon {
   return L.divIcon({
     className: 'nearby-map-pin',
-    html: `<span class="nearby-map-pin__badge${active ? ' nearby-map-pin__badge--active' : ''}">${index}</span>`,
+    html: `<span class="nearby-map-pin__badge${active ? ' nearby-map-pin__badge--active' : ''}"><span class="nearby-map-pin__number">${index}</span></span>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
   })
@@ -263,6 +263,11 @@ onUnmounted(() => {
 .nearby-map-pin__badge--active {
   background: var(--accent-strong, #0d9488);
   transform: rotate(-45deg) scale(1.12);
+}
+
+.nearby-map-pin__number {
+  display: block;
+  transform: rotate(45deg);
 }
 
 .nearby-map .leaflet-container {
